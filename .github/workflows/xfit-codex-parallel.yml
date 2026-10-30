@@ -34,6 +34,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Verify even a harmless authenticated GET works before testing writes.
+          if ! gh api "repos/$GITHUB_REPOSITORY" --jq '.full_name' >/dev/null 2>auth-probe.err; then
+            echo "can_create_pr=false" >> "$GITHUB_OUTPUT"
+            if grep -q '401' auth-probe.err; then
+              echo "::warning::GitHub Actions token rejected for read-only repository GET (HTTP 401). No Codex calls."
+            else
+              echo "::warning::GitHub Actions token could not query repository. No Codex calls."
+            fi
+            exit 0
+          fi
           # A GitHub Actions token may lack access to repository admin settings.
           # An unavailable permissions endpoint is not proof PRs are disabled.
           allowed="$(gh api "repos/$GITHUB_REPOSITORY/actions/permissions/workflow" \
