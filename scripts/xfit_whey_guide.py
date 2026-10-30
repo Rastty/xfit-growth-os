@@ -88,8 +88,10 @@ def build_document(catalog, base, sample):
     for index,item in enumerate(chosen):
         title=html.escape(item["title"])
         kind=html.escape(kind_label(item["title"]))
-        price=str(round(item["price_czk"]))
-        unit=str(round(item["price_per_100g_powder_czk"]))
+        # Keep the selector's two-decimal precision so distinct ranked prices
+        # remain distinguishable; use Czech decimal and thousands separators.
+        price=f'{item["price_czk"]:,.2f}'.replace(",", "\u00a0").replace(".", ",")
+        unit=f'{item["price_per_100g_powder_czk"]:,.2f}'.replace(",", "\u00a0").replace(".", ",")
         link=html.escape(item["affiliate_url"],quote=True)
         img=('<p><img src="'+html.escape(item["image"],quote=True)+
              '" alt="'+title+'" loading="lazy" width="120" height="120" style="max-width:100%;width:120px;height:120px;object-fit:contain;" /></p>'
