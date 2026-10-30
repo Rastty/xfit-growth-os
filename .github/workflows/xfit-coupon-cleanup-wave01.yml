@@ -1,0 +1,37 @@
+name: XFIT Expired Coupon Cleanup Wave 01
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/xfit-coupon-cleanup-wave01.yml']
+permissions:
+  contents: read
+concurrency:
+  group: xfit-coupon-cleanup
+  cancel-in-progress: false
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Repository tests
+        run: python -m unittest discover -s tests -v
+      - name: Read-only exact coupon preview and backup
+        run: python -m scripts.xfit_coupon_cleanup snapshot
+      - name: Backup artifact is mandatory before any WordPress writes
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-expired-coupon-wave01-source-backup
+          path: reports/backups/xfit-expired-coupon-wave01.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Remove expired coupon blocks with exact readback and rollback
+        run: python -m scripts.xfit_coupon_cleanup apply
