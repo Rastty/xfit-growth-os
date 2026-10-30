@@ -121,17 +121,28 @@ def fetch_feed():
         raise ValueError("Feed too large")
     return data
 
-def validate_ehub_link():
-    link = os.getenv("XFIT_EHUB_DEFAULT_LINK", "").strip()
+def validate_affiliate_link(link=None):
+    """Format-only check. Never assume the feed and click link share a merchant.
+
+    In particular, an ehub.cz click hostname is NOT evidence that
+    an Affial.com campaign is associated with the same publisher ID.
+    """
+    if link is None:
+        link = os.getenv("XFIT_AFFIL_DEFAULT_LINK", "").strip()
     if not link:
         return "not_configured"
     p = urllib.parse.urlsplit(link)
+    if p.scheme != "https" or not p.hostname or p.username or p.password:
+        return "invalid_https_tracking_url"
+    host = p.hostname.lower()
     qs = urllib.parse.parse_qs(p.query)
-    if (p.scheme != "https" or p.hostname != "ehub.cz" or
-        p.path != "/system/scripts/click.php" or
-        not qs.get("a_aid") or not qs.get("a_bid")):
-        raise ValueError("eHUB redirect is not a valid default click URL")
-    return "default_link_validated_but_product_deeplinks_unverified"
+    has_click_ids = bool(qs.get("a_aid") and qs.get("a_bid"))
+    known_click_path = p.path in ("/system/scripts/click.php", "/scripts/click.php")
+    if host in ("ehub.cz", "www.ehub.cz"):
+        return "ehub_host_NOT_VERIFIED_for_affial_program" if has_click_ids and known_click_path else "ehub_link_format_needs_review"
+    if host in ("affial.com", "www.affial.com"):
+        return "affial_host_link_requires_campaign_and_deeplink_review"
+    return "other_tracking_host_manual_verification_required"
 
 def main():
     ap = argparse.ArgumentParser()
@@ -143,7 +154,7 @@ def main():
         "merchant": "greenmedical_feed_unverified_match",
         "status": "PRIVATE_REVIEW_REQUIRED",
         "currency_assumption": "CZK; confirm source feed currency before using offers",
-        "affiliate_default_link": validate_ehub_link(),
+        "affiliate_default_link": validate_affiliate_link(),
         "product_deeplinks": "NOT_VERIFIED",
         "offer_count": len(offers),
         "skipped": dict(skipped),
