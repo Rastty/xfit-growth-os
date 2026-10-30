@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/xfit-feed-validation.yml'
+      - 'scripts/xfit_feed_ingest.py'
   schedule:
     - cron: '41 5 * * *'
 permissions:
