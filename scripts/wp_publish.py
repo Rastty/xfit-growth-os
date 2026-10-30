@@ -42,7 +42,13 @@ def validate_document(doc):
     excerpt = doc.get("excerpt", "")
     if not isinstance(excerpt, str) or len(excerpt) > 600:
         raise PublishError("Excerpt must be a string of up to 600 chars")
-    return {"slug": slug, "title": title.strip(), "content": MARKER + "\n" + content, "excerpt": excerpt}
+    post_id = doc.get("wp_post_id")
+    if post_id is not None and (type(post_id) is not int or post_id <= 0):
+        raise PublishError("wp_post_id must be a positive integer")
+    result = {"slug": slug, "title": title.strip(), "content": MARKER + "\n" + content, "excerpt": excerpt}
+    if post_id is not None:
+        result["wp_post_id"] = post_id
+    return result
 
 
 def normalized_base():
@@ -102,17 +108,29 @@ def verify_public(url, title):
 def publish(doc, *, live=False):
     base = normalized_base()
     slug = doc["slug"]
-    posts = wp_request(base, "posts?" + urllib.parse.urlencode({
-        "slug": slug, "context": "edit", "per_page": 1,
-        "_fields": "id,slug,status,content,link",
-    }))
-    if not isinstance(posts, list):
-        raise PublishError("Unexpected WordPress API listing")
-    existing = next((p for p in posts if p.get("slug") == slug), None)
+    post_id = doc.get("wp_post_id")
+    if post_id:
+        # A pinned ID prevents duplicate articles if WordPress excludes draft posts
+        # from its default list query or if a slug becomes temporarily unavailable.
+        existing = wp_request(base, "posts/" + str(post_id) + "?context=edit&_fields=id,slug,status,content,link")
+        if existing.get("id") != post_id or existing.get("slug") != slug:
+            raise PublishError("Pinned wp_post_id does not match article slug; refusing update")
+    else:
+        posts = wp_request(base, "posts?" + urllib.parse.urlencode({
+            "slug": slug, "context": "edit", "status": "any", "per_page": 10,
+            "_fields": "id,slug,status,content,link",
+        }))
+        if not isinstance(posts, list):
+            raise PublishError("Unexpected WordPress API listing")
+        matched = [p for p in posts if p.get("slug") == slug]
+        if len(matched) > 1:
+            raise PublishError("Multiple WordPress posts share owned slug; refusing write")
+        existing = matched[0] if matched else None
     if existing and MARKER not in existing_content(existing):
         raise PublishError("Collision with an existing post not owned by Xfit Growth OS; refusing overwrite")
     status = "publish" if live else "draft"
-    body = dict(doc, status=status)
+    body = {k: v for k, v in doc.items() if k != "wp_post_id"}
+    body["status"] = status
     route = "posts/" + str(int(existing["id"])) if existing else "posts"
     saved = wp_request(base, route, payload=body)
     post_id = saved.get("id")
