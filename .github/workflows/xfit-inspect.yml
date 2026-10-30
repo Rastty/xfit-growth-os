@@ -1,0 +1,47 @@
+name: XFIT Inspect Publishing State
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-inspect.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Read-only inspect article ID 25450
+        shell: bash
+        run: |
+          if [[ -z "${WP_BASE_URL:-}" ]]; then export WP_BASE_URL="https://xfit.cz"; fi
+          python - <<'PY'
+          import json
+          from scripts.wp_publish import wp_request, normalized_base, MARKER
+          base = normalized_base()
+          data = wp_request(base, "posts/25450?context=edit&_fields=id,slug,status,title,content,link")
+          content = data.get("content", {})
+          raw = content.get("raw", "") or ""
+          rendered = content.get("rendered", "") or ""
+          print(json.dumps({
+            "id": data.get("id"),
+            "slug": data.get("slug"),
+            "status": data.get("status"),
+            "link": data.get("link"),
+            "title": (data.get("title") or {}).get("raw", ""),
+            "contains_marker_raw": MARKER in raw,
+            "contains_marker_rendered": MARKER in rendered,
+            "raw_chars": len(raw),
+            "rendered_chars": len(rendered),
+            "contains_table": "<table" in raw.lower(),
+          }, ensure_ascii=False))
+          PY
