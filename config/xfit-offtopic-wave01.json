@@ -1,0 +1,152 @@
+{
+  "wave_id": "xfit-e-bike-offtopic-zero-traffic-2026-10-30",
+  "intent": "remove from public website irrelevant electric bicycle content with no measured visits or Google impressions in last 90 days; reversible as WordPress drafts",
+  "evidence": {
+    "full_public_archive_posts_scanned": 11814,
+    "ga4_period": "2026-08-01..2026-10-29",
+    "gsc_period": "2026-07-29..2026-10-28",
+    "conditions": "GA4 landing sessions=0 AND Google Search Console clicks=0 AND impressions=0; title/slug about electric bicycles, not supplements or fitness",
+    "exclusions": "Five observed-traffic electric bike posts excluded; all content with any traffic/impressions excluded; this is NOT a claim about Seznam/referrals/backlinks outside GA4."
+  },
+  "actions_limit": 34,
+  "restore_status": "publish",
+  "new_status": "draft",
+  "candidates": [
+    {
+      "id": 3925,
+      "slug": "jake-elektrokolo-do-50-tisic-vybrat-porovnani-nejlepsich-modelu"
+    },
+    {
+      "id": 4005,
+      "slug": "elektrokolo-nejlepsi-volba-pro-pohodlnou-a-ekologickou-jizdu"
+    },
+    {
+      "id": 3754,
+      "slug": "jak-vybrat-nejlepsi-elektrokolo-pro-vase-potreby"
+    },
+    {
+      "id": 3723,
+      "slug": "jake-elektrokolo-za-60000-recenze-tipy-a-doporuceni"
+    },
+    {
+      "id": 3941,
+      "slug": "7-tipu-na-elektrokolo-pro-zeny-jake-zvolit"
+    },
+    {
+      "id": 8148,
+      "slug": "mohu-najit-levne-elektrokolo-ve-vyprodeji-nebo-druhe-ruce"
+    },
+    {
+      "id": 3772,
+      "slug": "elektrokolo-5-duvodu-proc-si-ho-poridit"
+    },
+    {
+      "id": 3201,
+      "slug": "vybrat-spravne-elektrokolo-do-60000-kc-navod-pro-zacatecniky"
+    },
+    {
+      "id": 3608,
+      "slug": "jak-zvolit-spravne-elektrokolo-pro-jizdu-po-praze"
+    },
+    {
+      "id": 3746,
+      "slug": "jakou-baterii-si-vybrat-pro-elektrokolo"
+    },
+    {
+      "id": 7512,
+      "slug": "kde-koupit-levne-elektrokolo"
+    },
+    {
+      "id": 3336,
+      "slug": "jake-elektrokolo-je-nejlepsi-pro-dlouhe-vzdalenosti"
+    },
+    {
+      "id": 2981,
+      "slug": "elektrokolo-moderni-a-udrzitelna-volba-pro-pohodlnou-a-ekologickou-dopravu"
+    },
+    {
+      "id": 2911,
+      "slug": "ktere-elektrokolo-je-vhodne-pro-mesto-i-prirodu"
+    },
+    {
+      "id": 4142,
+      "slug": "co-je-elektrokolo-a-jake-jsou-jeho-vyhody-pro-cyklistiku-v-brne"
+    },
+    {
+      "id": 3910,
+      "slug": "jak-vybrat-elektrokolo-pro-pohodlnou-jizdu"
+    },
+    {
+      "id": 3972,
+      "slug": "nejlepsi-elektrokolo-pro-vas-jak-vybrat-spravne-kolo-s-elektrickym-pohonem"
+    },
+    {
+      "id": 3508,
+      "slug": "porovnani-nejlepsich-elektrokol-na-trhu-jak-si-vybrat-spravne-elektrokolo"
+    },
+    {
+      "id": 4082,
+      "slug": "jak-si-vybrat-elektrokolo-v-brne-a-co-musite-vedet"
+    },
+    {
+      "id": 2941,
+      "slug": "jak-vybrat-spravne-elektrokolo-rady-a-tipy-pro-zacatecniky"
+    },
+    {
+      "id": 3489,
+      "slug": "jak-vybrat-idealni-elektrokolo-pro-vas-pruvodce-nakupem"
+    },
+    {
+      "id": 7593,
+      "slug": "kde-sehnat-elektrokolo-za-nizkou-cenu"
+    },
+    {
+      "id": 3835,
+      "slug": "elektrokola-v-ostrave-jak-si-vybrat-to-spravne-elektrokolo-pro-maximalni-zabavu-a-pohodli"
+    },
+    {
+      "id": 2903,
+      "slug": "jak-vybrat-elektrokolo-pro-zenu-doporuceni-a-tipy"
+    },
+    {
+      "id": 3435,
+      "slug": "jake-elektrokolo-koupit-do-50-000-kc-porovnani-nejlepsich-modelu-a-tipy-na-nakup"
+    },
+    {
+      "id": 3894,
+      "slug": "prodej-elektrokol-na-bazar-jak-najit-kvalitni-a-levne-elektrokolo"
+    },
+    {
+      "id": 8161,
+      "slug": "kde-sehnat-levne-elektrokolo-s-dobrou-recenzi-zakazniku"
+    },
+    {
+      "id": 3255,
+      "slug": "proc-si-poridit-elektrokolo-a-jak-vam-muze-zlepsit-zivot"
+    },
+    {
+      "id": 2923,
+      "slug": "jake-elektrokolo-koupit-za-60-000-kc"
+    },
+    {
+      "id": 3738,
+      "slug": "jak-vybrat-idealni-elektrokolo-pro-sve-potreby-navod-na-vyber-a-srovnani-modelu"
+    },
+    {
+      "id": 2882,
+      "slug": "proc-si-vybrat-elektrokolo-do-50-000-kc-srovnani-nejlepsich-modelu-na-trhu"
+    },
+    {
+      "id": 3220,
+      "slug": "jak-vybrat-elektrokolo-pruvodce-pro-zacatecniky"
+    },
+    {
+      "id": 3000,
+      "slug": "10-duvodu-proc-si-poridit-elektrokolo-a-usetrit-na-doprave"
+    },
+    {
+      "id": 2962,
+      "slug": "jak-vybrat-nejlepsi-elektrokolo-pro-sve-potreby-pruvodce-pro-zacatecniky"
+    }
+  ]
+}
