@@ -5,7 +5,10 @@ from pathlib import Path
 from urllib.parse import urlencode,urlsplit
 from scripts.wp_publish import PublishError,normalized_base,wp_request
 
-MAX_COUNT=3
+MAX_COUNT=8
+# This post repeatedly refused a safe WP REST write while all neighbors succeeded.
+# Quarantine until its encoding/permissions are inspected independently.
+QUARANTINE_IDS={11945}
 BACKUP=Path("reports/backups/xfit-expired-coupon-wave01.json")
 PROMO=re.compile(r"\[su_button\b[^\]]{0,1200}\][^\[]*?5NM2022\[/su_button\]",re.I|re.S)
 def sha(s):return hashlib.sha256(s.encode("utf-8")).hexdigest()
@@ -42,7 +45,7 @@ def snapshot():
     if not isinstance(posts,list):raise PublishError("Unexpected WordPress search response")
     entries=[];ids=set()
     for p in posts:
-        if p.get("id") in ids:continue
+        if p.get("id") in ids or p.get("id") in QUARANTINE_IDS:continue
         ids.add(p.get("id"))
         source=validate(p)
         result,count=stripped(source)
