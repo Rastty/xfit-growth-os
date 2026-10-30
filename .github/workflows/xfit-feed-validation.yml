@@ -19,6 +19,7 @@ jobs:
     env:
       XFIT_NAMAXIMUM_FEED_URL: ${{ secrets.XFIT_NAMAXIMUM_FEED_URL || secrets.XFIT_GREENMEDICAL_FEED_URL }}
       XFIT_AFFIL_DEFAULT_LINK: ${{ secrets.XFIT_AFFIL_DEFAULT_LINK }}
+      XFIT_AFFIL_SAMPLE_PRODUCT_LINK: ${{ secrets.XFIT_AFFIL_SAMPLE_PRODUCT_LINK }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -28,6 +29,8 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Read-only feed reconnaissance
         run: python scripts/xfit_feed_ingest.py
+      - name: Validate optional Affial sample deeplink structure (no clicks)
+        run: python scripts/xfit_affil_deeplink.py
       - name: Evaluate creatine and protein selection candidates (read-only)
         shell: bash
         run: |
