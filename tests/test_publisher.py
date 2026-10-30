@@ -31,6 +31,16 @@ class PublisherValidationTests(unittest.TestCase):
         with self.assertRaises(PublishError):
             validate_document(doc)
 
+
+    def test_pinned_post_id(self):
+        doc = dict(SAMPLE, wp_post_id=25451)
+        self.assertEqual(validate_document(doc)["wp_post_id"], 25451)
+
+    def test_invalid_post_id_rejected(self):
+        doc = dict(SAMPLE, wp_post_id="25451")
+        with self.assertRaises(PublishError):
+            validate_document(doc)
+
     def test_checked_in_first_article(self):
         doc = json.loads(Path("content/ready/xfit-os-protein-guide.json").read_text(encoding="utf-8"))
         validated = validate_document(doc)
