@@ -125,6 +125,10 @@ def build_document(catalog, base, sample):
       'Pokud přijímáte dostatek bílkovin z běžné stravy, nemusíte žádný kupovat. '
       'Sportovní zdroje zdůrazňují především celkový denní příjem bílkovin '
       'a pravidelnost tréninku, nikoli značku nebo čas jedné dávky.</p>',
+      '<p><strong>Nejste si jistí, zda zvolit kreatin, nebo protein?</strong> '
+      '<a href="https://xfit.cz/xfit-os-kreatin-nebo-protein/">'
+      'Otevřete praktický rozhodovací pomocník</a> – zahrnuje i možnost '
+      'nekoupit žádný doplněk.</p>',
       '<p>Detailnější základy jsou v průvodci '
       '<a href="https://xfit.cz/xfit-os-protein-guide/">Jak vybrat protein</a>.</p>',
       '<h2>Metodika a zdroje</h2>',
