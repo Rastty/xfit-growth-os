@@ -24,7 +24,7 @@ KINDS = {
     "plant_protein": {"title": ("vegansk", "vegan", "rastlinn", "rostlinn", "hrachov", "sojov"), "category": ("protein",)},
 }
 MASS_RE = re.compile(r"(?<![a-z0-9])(\d+(?:[,.]\d+)?)\s*(kg|g)\b", re.I)
-MAX_OPTIONS = 20
+MAX_OPTIONS = 200
 
 def mass_grams(title):
     """Return known powder package mass in grams or None; not serving dose."""
