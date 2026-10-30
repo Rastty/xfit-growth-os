@@ -8,11 +8,14 @@ on:
       - '.github/workflows/xfit-feed-validation.yml'
       - 'scripts/xfit_feed_ingest.py'
   schedule:
-    - cron: '41 5 * * *'
+    - cron: '17 */3 * * *'
 permissions:
   contents: read
 jobs:
   check-feed:
+    concurrency:
+      group: xfit-feed-refresh
+      cancel-in-progress: false
     if: ${{ vars.XFIT_AFFIL_FEED_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
