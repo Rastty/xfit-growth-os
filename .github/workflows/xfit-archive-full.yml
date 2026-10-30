@@ -1,0 +1,35 @@
+name: XFIT Full Archive Audit
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-archive-full.yml'
+  schedule:
+    - cron: '29 3 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-public-archive-audit
+  cancel-in-progress: false
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python safety unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Read-only full archive inventory (up to 25000 public posts)
+        run: python scripts/xfit_archive_full.py --pages 250 --size 100
+      - name: Store reproducible audit candidates (not automatic deletions)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-full-public-archive-audit
+          path: reports/xfit-archive-full-audit.json
+          retention-days: 14
+          if-no-files-found: ignore
