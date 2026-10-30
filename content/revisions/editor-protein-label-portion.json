@@ -1,0 +1,13 @@
+{
+  "status": "editorial_proposal_not_deployed",
+  "issue": 4,
+  "wp_post_id": 25451,
+  "slug": "xfit-os-protein-guide",
+  "source_file": "content/ready/xfit-os-protein-guide.json",
+  "source_file_sha256": "feaaa07c0f0ae20e509f01ac3953a70ec0fc51ac4a3ade84e2ecf491fa6e38ad",
+  "source_content_sha256": "dc4a0fd0471f5cfea146ee1beb522abf4028d8d0872b129450f4e0ac003694a8",
+  "operation": "replace_exact_once",
+  "original": "<h2>4. Jak číst etiketu za jednu minutu</h2>",
+  "replacement": "<h3>Kolik prášku odpovídá chybějícím bílkovinám?</h3>\n<p><strong>Gramy prášku nejsou gramy bílkovin.</strong> Pokud už příjem pokryjete jídlem, protein nekupujte. Jestli vám do zvoleného denního příjmu část bílkovin chybí, nejdřív zvažte běžné jídlo; prášek je jen pohodlná možnost.</p>\n<p><strong>Postup podle etikety:</strong> chybějící bílkoviny v g ÷ (bílkoviny na 100 g prášku ÷ 100) = množství prášku v g. Použijte údaj pro konkrétní příchuť a pro samotný prášek, nikoli nápoj připravený s mlékem.</p>\n<p>Čistě početní příklad: při obsahu 80 g bílkovin na 100 g prášku získáte 20 g bílkovin z 25 g prášku (20 ÷ 0,80). Odměrka s 30 g stejného prášku dodá 24 g bílkovin, nikoli 30 g. Nejde o doporučenou dávku ani o ověřený výrobek.</p>\n<p>Hmotnost odměrky ověřte vážením; její objem sám o sobě neurčuje gramy. Když obsah bílkovin pro danou variantu neznáte, množství ani cenu za skutečné bílkoviny neodhadujte. Nejdřív si vyžádejte etiketu od prodejce.</p>\n<h2>4. Jak číst etiketu za jednu minutu</h2>",
+  "evidence": "Arithmetic from the nutrition-label protein fraction; no new clinical claim, product offer or recommended intake."
+}
