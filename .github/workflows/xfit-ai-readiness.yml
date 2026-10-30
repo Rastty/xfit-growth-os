@@ -1,0 +1,32 @@
+name: XFIT AI Search Readiness
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-ai-readiness.yml'
+  schedule:
+    - cron: '27 3,15 * * *'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test visibility parser
+        run: python -m unittest discover -s tests -p 'test_ai_visibility.py' -v
+      - name: Check real public crawlability, canonical, source and machine readability
+        run: python -m scripts.xfit_ai_visibility
+      - name: Save independent evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-ai-search-visibility
+          path: reports/xfit-ai-visibility.json
+          retention-days: 14
+          if-no-files-found: ignore
