@@ -6,6 +6,7 @@ const checks = [
   {name:"whey",url:"https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/",expected:"Srovnání syrovátkových proteinů",minH2:3,commercial:true}
 ];
 fs.mkdirSync("reports/browser-qa", {recursive:true});
+(async()=>{
 const browser=await chromium.launch({headless:true});
 let bad=false;
 for(const spec of checks){
@@ -46,3 +47,5 @@ for(const spec of checks){
 }
 await browser.close();
 if(bad)process.exitCode=2;
+
+})().catch(e=>{console.error(e);process.exitCode=2;});
