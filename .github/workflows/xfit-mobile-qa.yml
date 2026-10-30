@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/xfit-mobile-qa.yml'
+      - 'tests/live_page_qa.cjs'
   schedule:
     - cron: '11 8 * * 2,5'
 permissions:
