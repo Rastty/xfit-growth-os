@@ -62,9 +62,19 @@ jobs:
           git add "docs/.codex-permission-probe-$GITHUB_RUN_ID.txt"
           git commit -m "Test GitHub Actions PR creation without Codex API" >/dev/null
           gh auth setup-git
-          if ! git push --set-upstream origin HEAD >/dev/null 2>&1; then
+          if ! git push --set-upstream origin HEAD >push.stdout 2>push.stderr; then
             echo "can_create_pr=false" >> "$GITHUB_OUTPUT"
             echo "::warning::GitHub Actions cannot push a test branch. No Codex calls."
+            # Only emit the class of Git error, never credentials or URL tokens.
+            if grep -qi '403\|permission denied\|write access' push.stderr; then
+              echo "::warning::Probe error category: github_permission_denied"
+            elif grep -qi 'Authentication failed\|could not read Username' push.stderr; then
+              echo "::warning::Probe error category: authentication"
+            elif grep -qi 'protected branch\|repository rules\|ruleset' push.stderr; then
+              echo "::warning::Probe error category: repository_ruleset"
+            else
+              echo "::warning::Probe error category: git_push_other"
+            fi
             exit 0
           fi
           if probe_pr="$(gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" \
