@@ -1,0 +1,51 @@
+name: XFIT Whey Advisor Live
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-whey-live.yml'
+      - 'scripts/xfit_whey_guide.py'
+      - 'tests/test_whey_guide.py'
+  schedule:
+    - cron: '7 1,7,13,19 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-direct-publish
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: ${{ vars.XFIT_AFFIL_FEED_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+      XFIT_NAMAXIMUM_FEED_URL: ${{ secrets.XFIT_NAMAXIMUM_FEED_URL || secrets.XFIT_GREENMEDICAL_FEED_URL }}
+      XFIT_AFFIL_DEFAULT_LINK: ${{ secrets.XFIT_AFFIL_DEFAULT_LINK }}
+      XFIT_AFFIL_SAMPLE_PRODUCT_LINK: ${{ secrets.XFIT_AFFIL_SAMPLE_PRODUCT_LINK }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Safety and recommendation unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Check mandatory credentials without printing values
+        shell: bash
+        run: |
+          set -euo pipefail
+          for key in WP_USERNAME WP_APP_PASSWORD XFIT_NAMAXIMUM_FEED_URL XFIT_AFFIL_DEFAULT_LINK XFIT_AFFIL_SAMPLE_PRODUCT_LINK; do
+            if [[ -z "${!key:-}" ]]; then echo "::error::Missing required secret: $key"; exit 2; fi
+          done
+          if [[ -z "${WP_BASE_URL:-}" ]]; then echo "WP_BASE_URL=https://xfit.cz" >> "$GITHUB_ENV"; fi
+      - name: Fetch fresh NaMaximum catalog on ephemeral runner
+        run: python scripts/xfit_feed_ingest.py
+      - name: Validate sample affiliate campaign tracking
+        run: python scripts/xfit_affil_deeplink.py
+      - name: Prepare whey comparison and verify completeness
+        run: python -m scripts.xfit_whey_guide
+      - name: Publish or update existing whey page and verify public permalink
+        run: python -m scripts.xfit_whey_guide --deploy
