@@ -55,9 +55,17 @@ jobs:
           }
           trap cleanup EXIT
           if ! gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" \
-              -f ref="refs/heads/$branch" -f sha="$GITHUB_SHA" >/dev/null 2>&1; then
+              -f ref="refs/heads/$branch" -f sha="$GITHUB_SHA" > /dev/null 2>probe.err; then
             echo "can_create_pr=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Probe cannot create temporary git ref (GitHub API permission). No Codex credits used."
+            if grep -q '403' probe.err; then
+              echo "::warning::Probe failed: HTTP 403 (GitHub Actions token cannot create git refs). No model credits."
+            elif grep -q '401' probe.err; then
+              echo "::warning::Probe failed: HTTP 401 (GitHub Actions token authentication). No model credits."
+            elif grep -q '422' probe.err; then
+              echo "::warning::Probe failed: HTTP 422 (branch or repository rule validation). No model credits."
+            else
+              echo "::warning::Probe failed: unknown GitHub API ref creation error. No model credits."
+            fi
             exit 0
           fi
           probe_content="$(printf 'Temporary Xfit PR permission test for GitHub run %s.\n' \
