@@ -1,0 +1,28 @@
+name: XFIT Read-only Audit
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 4 * * *'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test publisher safety
+        run: python -m unittest discover -s tests -v
+      - name: Audit public WordPress sample (no writes)
+        run: python scripts/wp_audit.py --pages 3 --size 50
+      - name: Save audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-readonly-audit
+          path: reports/archive-audit.json
+          if-no-files-found: ignore
+          retention-days: 14
