@@ -1,0 +1,50 @@
+name: XFIT Creatine Advisor Live
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-creatine-live.yml'
+      - 'scripts/xfit_creatine_guide.py'
+  schedule:
+    - cron: '47 */6 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-direct-publish
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: ${{ vars.XFIT_AFFIL_FEED_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+      XFIT_NAMAXIMUM_FEED_URL: ${{ secrets.XFIT_NAMAXIMUM_FEED_URL || secrets.XFIT_GREENMEDICAL_FEED_URL }}
+      XFIT_AFFIL_DEFAULT_LINK: ${{ secrets.XFIT_AFFIL_DEFAULT_LINK }}
+      XFIT_AFFIL_SAMPLE_PRODUCT_LINK: ${{ secrets.XFIT_AFFIL_SAMPLE_PRODUCT_LINK }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Safety and recommendation unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Verify secrets without exposing values
+        shell: bash
+        run: |
+          set -euo pipefail
+          for key in WP_USERNAME WP_APP_PASSWORD XFIT_NAMAXIMUM_FEED_URL XFIT_AFFIL_DEFAULT_LINK XFIT_AFFIL_SAMPLE_PRODUCT_LINK; do
+            if [[ -z "${!key:-}" ]]; then echo "::error::Required secret missing: $key"; exit 2; fi
+          done
+          if [[ -z "${WP_BASE_URL:-}" ]]; then echo "WP_BASE_URL=https://xfit.cz" >> "$GITHUB_ENV"; fi
+      - name: Fetch fresh authentic catalog into ephemeral runner
+        run: python scripts/xfit_feed_ingest.py
+      - name: Validate original affiliate sample tracking (no redirect clicks)
+        run: python scripts/xfit_affil_deeplink.py
+      - name: Build guide and check completeness without remote writes
+        run: python -m scripts.xfit_creatine_guide
+      - name: Idempotently publish or update canonical creatine guide, verify live
+        run: python -m scripts.xfit_creatine_guide --deploy
