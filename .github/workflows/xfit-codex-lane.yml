@@ -84,7 +84,12 @@ jobs:
             performance results, test claims or affiliate commissions.
             Run targeted tests if possible. Do not deploy, publish, push, create
             branches, merge, change secrets, or send traffic to xfit.cz.
-            Stay within a small patch (at most 3 files, under 200 changed lines); do not\n            scan the entire 11k-post archive or browse the web. Prioritize existing\n            high-signal issues and tests. If no safe evidence-backed change is\n            possible, do not edit anything. Then stop.\n            The next stages independently validate the diff and create a PR.
+            Stay within a small patch (at most 3 files, under 200 changed lines);
+            do not scan the entire 11k-post archive or browse the web.
+            Prioritize existing high-signal issues and tests. If no safe
+            evidence-backed change is possible, do not edit anything.
+            Then stop. The next stages independently validate the diff
+            and create a PR.
       - name: Validate working-tree ownership and run unit tests without write token
         if: steps.preflight.outputs.go == 'yes'
         id: patch
