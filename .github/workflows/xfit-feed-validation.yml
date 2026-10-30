@@ -1,4 +1,5 @@
 name: XFIT Affiliate Feed Validation
+# Trigger initial post-setup read-only catalog check; no WordPress writes.
 on:
   workflow_dispatch:
   push:
