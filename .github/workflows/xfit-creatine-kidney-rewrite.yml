@@ -1,0 +1,44 @@
+name: XFIT Creatine Kidney Evidence Rewrite
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-creatine-kidney-rewrite.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-kidney-rewrite-6440
+  cancel-in-progress: false
+jobs:
+  guarded-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: All Python tests and editorial quality gate
+        run: |
+          python -m unittest discover -s tests -v
+          python - <<'PY'
+          from scripts.xfit_kidney_rewrite import read_revision
+          d=read_revision()
+          print({"stage":"editorial_pass","slug":d["slug"],"chars":len(d["content"]),"no_remote_writes":True})
+          PY
+      - name: Snapshot live source and verify unchanged checksum
+        run: python -m scripts.xfit_kidney_rewrite snapshot
+      - name: Preserve original content backup BEFORE any change
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-kidney-6440-original-before-upgrade
+          path: reports/backups/creatine-kidney-6440-before.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Update existing WP post 6440 in-place and verify live or roll back
+        run: python -m scripts.xfit_kidney_rewrite deploy
