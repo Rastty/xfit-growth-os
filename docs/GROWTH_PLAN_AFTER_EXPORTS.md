@@ -43,14 +43,18 @@ WordPress API credentials already work. Need GA4 correct export, affiliate feeds
 
 ## Affiliate feed integration status
 
-- Received a tracking URL on ehub.cz, while the user clarifies their affiliate account is with Affial.com; also received private Venalio Heureka XML URL in chat. The feed URL contains a secret-like authorization token; it has intentionally NOT been committed, logged or attached as a repository file.
-- Installed validation-only importer in `scripts/xfit_feed_ingest.py` and GitHub workflow `.github/workflows/xfit-feed-validation.yml`. It will read secrets `XFIT_GREENMEDICAL_FEED_URL` and `XFIT_AFFIL_DEFAULT_LINK`, only when variable `XFIT_AFFIL_FEED_ENABLED=true`.
+- Owner corrected the former eHUB link with a tracked NaMaximum.cz link for Affial. Venalio-hosted Heureka XML feed is confirmed by sample SHOPITEM/URL to link to the **same NaMaximum.cz merchant**. The feed URL contains a secret-like authorization token; it has intentionally NOT been committed, logged or attached as a repository file.
+- Installed validation-only importer in `scripts/xfit_feed_ingest.py` and GitHub workflow `.github/workflows/xfit-feed-validation.yml`. It will read secrets `XFIT_NAMAXIMUM_FEED_URL` (or backward-compatible `XFIT_GREENMEDICAL_FEED_URL`) and `XFIT_AFFIL_DEFAULT_LINK`, only when variable `XFIT_AFFIL_FEED_ENABLED=true`.
 - **No actual feed product inventory, verified merchant ↔ Affial tracking mapping, product deep links or live affiliate page yet.** First validate feed privately, assess health-product compliance and then publish relevant selections.
 - Setup guide: `docs/AFFIL_ONBOARDING.md`.
 
 ## Affiliate correction: 2026-10-30
 
 - Publisher clarified that the initial ehub.cz referral URL was wrong. Correct tracking structure targets `www.namaximum.cz` with Affial/PAP UTM parameters plus `a_aid` and `a_bid` IDs (not stored here).
-- Do NOT pair the separately provided `greenmedical.venalio.com` XML feed with NaMaximum product offers; they are different merchants. Request the NaMaximum XML feed via Affial → Propagace → XML feedy and store in separate GitHub Secret.
+- Correction based on actual XML example: GreenMedical/Venalio is the feed hosting infrastructure, but SHOPITEM/URL points to NaMaximum.cz product pages. The existing feed is valid in principle for NaMaximum offers. Normalize product URLs by removing Heureka CPC tracking while preserving variant IDs. Actual live inventory and commissioned product deeplinks still need verification.
 - Official Affial NaMaximum campaign lists 7.5% commission, 30-day cookies and prohibits PPC. Double-check publisher approval and current terms before live use.
 - The validation script now distinguishes NaMaximum Affial link format from the former incorrect eHUB URL; it does not generate unapproved product deeplinks.
+
+## Feed merchant verification update, 2026-10-30
+
+Sample item 392 (Creapure creatine, 1kg) explicitly links to `www.namaximum.cz/kategorie/kreatin/creatine-creapure?variant=392`, while the image resides at `greenmedical.bwcdn.net`. Merchant identity must be checked from item URLs, not XML/CDN host. Parser and tests now enforce NaMaximum product URL host and remove `utm_source=heureka&utm_medium=cpc`. No price was provided in excerpt; no price should be inferred. Conversion attribution requires an approved Affial product deeplink or confirmed parameter scheme. Legacy secret naming is supported.
