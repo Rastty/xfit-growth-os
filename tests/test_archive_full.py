@@ -43,5 +43,22 @@ class ArchiveAuditTests(unittest.TestCase):
         row=inventory([p])["flagged_candidates"][0]
         self.assertEqual(row["internal_link_count"],0)
         self.assertEqual(row["external_hosts"],{"example.org":3,"xfit.cz.example.org":1})
+    def test_malformed_links_do_not_abort_inventory(self):
+        links=["https://[broken/", "https://example.org／other/",
+               "/kreatin/", "https://example.org/protein/"]
+        p=post(1,"protein","Protein", "".join(
+            '<a href="'+href+'">Rada</a>' for href in links))
+        a=inventory([p,post(2,"trenink","Trénink","Krátký text")])
+        self.assertEqual(a["scanned"],2)
+        self.assertEqual(a["invalid_link_count"],2)
+        row=next(r for r in a["flagged_candidates"] if r["id"]==1)
+        self.assertEqual(row["invalid_link_count"],2)
+        self.assertEqual(row["internal_link_count"],1)
+        self.assertEqual(row["external_hosts"],{"example.org":1})
+    def test_valid_links_have_no_parse_failures(self):
+        p=post(1,"protein","Protein",'<a href="/kreatin/">Kreatin</a>')
+        a=inventory([p])
+        self.assertEqual(a["invalid_link_count"],0)
+        self.assertEqual(a["flagged_candidates"][0]["invalid_link_count"],0)
 
 if __name__=="__main__":unittest.main()
