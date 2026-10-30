@@ -22,7 +22,7 @@ jobs:
       contents: write
       pull-requests: write
     outputs:
-      can_create_pr: \${{ steps.check.outputs.can_create_pr }}
+      can_create_pr: ${{ steps.check.outputs.can_create_pr }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -30,7 +30,7 @@ jobs:
       - name: Verify ability to create a PR without using OpenAI tokens
         id: check
         env:
-          GH_TOKEN: \${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
