@@ -8,7 +8,7 @@ Updated: 2026-10-30. This supersedes the earlier Gemini CLI plan.
 - Reusable isolated coding lane: `.github/workflows/xfit-codex-lane.yml`
 - Official agent execution: `openai/codex-action@v1`, secure Responses API key proxy, `permission-profile: ":workspace"`, default `drop-sudo` hardening.
 - Four lanes execute concurrently: `ux` (issue #2), `archive` (#3), `editor` (#4), `revenue` (#5). Each reads its local `.github/agents/xfit-<lane>.agent.md`, `AGENTS.md` and `docs/EDITORIAL_STANDARD.md`.
-- Schedule: twice daily (`39 0,12 * * *` UTC), up to **8 agent coding calls per day** if there is no existing open PR. This is a deliberately cost-aware start; manual `workflow_dispatch` remains available.
+- Schedule: **six four-agent waves per day, every four hours** (`39 0,4,8,12,16,20 * * *` UTC), up to **24 agent coding calls per day** *when all four lanes are free*. An open PR blocks further paid calls in that lane until reviewed; these are scheduled opportunities, not guaranteed 24 actual paid model executions. `workflow_dispatch` remains available. Maintain API project budget alerts and evaluate value per completed PR.
 - Existing open `xfit/codex-<lane>-*` PR blocks more model calls in that lane until handled.
 - No automatic PR merge and no direct WordPress publication by Codex. The agent cannot access WP credentials, affiliate tokens, or a GitHub write token.
 - A read-only first job creates patch and runs scope and unit tests. A separate job applies the patch on an immutable source SHA, rechecks file ownership/tests and creates the PR using its limited GitHub token.
