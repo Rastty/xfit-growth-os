@@ -196,10 +196,19 @@ def main():
     }
     summary_path = out.parent / "affiliate-feed-summary.json"
     summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
-    # Print statistics only, never the secret URL or product tracking destinations.
-    print(json.dumps({"state":"private_feed_normalized", "items":len(offers),
-        "skipped":dict(skipped), "affiliate_status": report["affiliate_default_link"],
-        "public_site_modified":False}, ensure_ascii=False))
+    # Aggregated diagnostics are safe to show in public Actions logs.
+    with_category = sum(bool(o["category"]) for o in offers)
+    with_image = sum(bool(o["image_url"]) for o in offers)
+    with_ean = sum(bool(o["ean"]) for o in offers)
+    print(json.dumps({
+        "state": "private_feed_normalized", "items": len(offers),
+        "skipped": dict(skipped), "merchant_verified": report["merchant_match"],
+        "top_categories": report["categories_top"][:12],
+        "with_category": with_category, "with_image": with_image, "with_ean": with_ean,
+        "affiliate_status": report["affiliate_default_link"],
+        "product_deeplinks": "NOT_VERIFIED",
+        "public_site_modified": False
+    }, ensure_ascii=False))
     if not offers:
         raise ValueError("Feed contained no valid suitable offers")
 
