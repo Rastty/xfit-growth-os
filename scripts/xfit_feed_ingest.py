@@ -167,7 +167,7 @@ def main():
         "fetched_at_utc": datetime.now(timezone.utc).isoformat(),
         "merchant": "namaximum.cz",
         "feed_host": ALLOWED_HOST,
-        "merchant_match": bool(offers) and all(o["merchant"] == "NaMaximum.cz" for o in offers),
+        "merchant_match": bool(offers) and not skipped.get("not_namaximum_product_link"),
         "warning": "Correct merchant confirmed from item URLs. Product-specific Affial deeplink and commission tracking NOT yet verified.",
         "status": "PRIVATE_REVIEW_REQUIRED",
         "currency_assumption": "CZK; confirm source feed currency before using offers",
@@ -181,6 +181,21 @@ def main():
     out=Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    # Public GitHub Actions artifacts can be downloaded by repository visitors.
+    # Upload only a redacted summary, never the full catalog or feed access URL.
+    summary = {
+        "fetched_at_utc": report["fetched_at_utc"],
+        "merchant": report["merchant"],
+        "source_url_merchant_verified": report["merchant_match"],
+        "offers": report["offer_count"],
+        "skipped": report["skipped"],
+        "categories_top": report["categories_top"],
+        "affiliate_link_status": report["affiliate_default_link"],
+        "product_deeplinks": "NOT_VERIFIED",
+        "published_to_site": False,
+    }
+    summary_path = out.parent / "affiliate-feed-summary.json"
+    summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
     # Print statistics only, never the secret URL or product tracking destinations.
     print(json.dumps({"state":"private_feed_normalized", "items":len(offers),
         "skipped":dict(skipped), "affiliate_status": report["affiliate_default_link"],
