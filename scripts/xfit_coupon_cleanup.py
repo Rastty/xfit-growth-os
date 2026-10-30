@@ -68,43 +68,61 @@ def apply():
         after,count=stripped(before)
         if count!=e["shortcodes_removed"] or sha(after)!=e["after_sha256"]:
             raise PublishError("Preflight coupon replacement changed")
-    changed=[]
-    attempted=[]
-    try:
-        for e in entries:
-            after,_=stripped(e["original_raw"])
-            # Mark BEFORE calling the network: an API timeout can occur even
-            # after WordPress has committed the change.
-            attempted.append(e)
+    # Each article is an independent atomic action. Earlier posts with
+    # authenticated successful readback must remain fixed even if WEDOS
+    # times out later in the wave.
+    successful=[]
+    uncertain=[]
+    failed=[]
+    for e in entries:
+        after,_=stripped(e["original_raw"])
+        attempted_write=False
+        stage="prewrite"
+        try:
+            stage="write_request"
+            attempted_write=True
             response=wp_request(normalized_base(),"posts/"+str(e["id"]),payload={"content":after})
             if response.get("id")!=e["id"] or response.get("status")!="publish":
-                raise PublishError("Unexpected WP write status")
+                raise PublishError("write_response_identity")
+            stage="readback"
             check=get_post(e["id"])
             if check.get("slug")!=e["slug"] or sha((check.get("content") or {}).get("raw",""))!=e["after_sha256"]:
-                raise PublishError("Post-update readback failed")
-            changed.append(e)
-    except Exception as error:
-        rollback_failures=[]
-        for e in reversed(attempted):
+                raise PublishError("readback_hash_mismatch")
+            successful.append(e)
+        except (PublishError,OSError,ValueError,KeyError) as error:
+            # A failed POST might have committed. Always inspect its final
+            # state before deciding to retry, skip, or compensate.
             try:
                 current=get_post(e["id"])
-                current_sha=sha((current.get("content") or {}).get("raw",""))
-                if current_sha==e["before_sha256"]:
+                current_text=(current.get("content") or {}).get("raw","")
+                current_hash=sha(current_text)
+                if current.get("slug")==e["slug"] and current_hash==e["after_sha256"]:
+                    successful.append(e)
                     continue
-                if current_sha!=e["after_sha256"]:
-                    # Never revert a concurrent independent editor's changes.
-                    rollback_failures.append(e["id"])
+                if current.get("slug")==e["slug"] and current_hash==e["before_sha256"]:
+                    failed.append({"id":e["id"],"stage":stage,"state":"unchanged"})
                     continue
-                wp_request(normalized_base(),"posts/"+str(e["id"]),payload={"content":e["original_raw"]})
-                if sha((get_post(e["id"]).get("content") or {}).get("raw",""))!=e["before_sha256"]:
-                    rollback_failures.append(e["id"])
-            except Exception:rollback_failures.append(e["id"])
-        print(json.dumps({"state":"failed_rollback_attempted","confirmed_changes":len(changed),
-            "attempted":len(attempted),"rollback_failures":rollback_failures}),file=sys.stderr)
-        raise PublishError("Wave interrupted: "+type(error).__name__)
-    print(json.dumps({"state":"coupon_wave_verified","posts_changed":len(changed),
-      "shortcodes_removed":sum(e["shortcodes_removed"] for e in changed),
-      "deletes":0,"redirects":0}))
+                # Do NOT clobber concurrent editors / Wordpress transformed
+                # markup whose byte identity can no longer be trusted.
+                uncertain.append({"id":e["id"],"stage":stage,"state":"manual_review_needed"})
+            except (PublishError,OSError,ValueError,KeyError):
+                uncertain.append({"id":e["id"],"stage":stage,"state":"readback_unavailable"})
+        # Large cheap-hosting sites may throttle write/read traffic.
+        time.sleep(1.1)
+    report={"state":"coupon_wave_partial" if failed or uncertain else "coupon_wave_verified",
+        "posts_changed":len(successful),
+        "shortcodes_removed":sum(e["shortcodes_removed"] for e in successful),
+        "unchanged_failures":failed,"uncertain_posts":uncertain,
+        "deletes":0,"redirects":0}
+    print(json.dumps(report,ensure_ascii=False))
+    # Uncertain writes must remain visible as a failure to operators.
+    if uncertain:
+        raise PublishError("One or more coupon writes have unknown final state")
+    # Deterministic partial failure is not a successful batch, but previous
+    # verified changes were intentionally kept; next run may continue.
+    if failed:
+        raise PublishError("Some posts stayed unchanged; successful posts preserved")
+
 if __name__=="__main__":
     try:
         if len(sys.argv)!=2 or sys.argv[1] not in ("snapshot","apply"):raise PublishError("Select snapshot|apply")
