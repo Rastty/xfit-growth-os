@@ -14,6 +14,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -72,14 +73,26 @@ def wp_request(base, path, *, payload=None):
         data = json.dumps(payload, ensure_ascii=False).encode()
         headers["Content-Type"] = "application/json; charset=utf-8"
     req = urllib.request.Request(url, headers=headers, data=data, method="POST" if data is not None else "GET")
-    try:
-        with urllib.request.urlopen(req, timeout=25) as response:
-            return json.load(response)
-    except urllib.error.HTTPError as ex:
-        # Do not echo server response: it may contain sensitive data.
-        raise PublishError("WordPress REST API returned HTTP " + str(ex.code)) from ex
-    except (OSError, ValueError) as ex:
-        raise PublishError("WordPress REST request failed (" + type(ex).__name__ + ")") from ex
+    # Read-only GET may be retried after transient WEDOS handshake failures.
+    # Never automatically retry POST: a timed-out write may already have
+    # committed, and repeating it could create duplicate posts/redirects.
+    attempts = 3 if payload is None else 1
+    for attempt in range(attempts):
+        try:
+            with urllib.request.urlopen(req, timeout=25) as response:
+                return json.load(response)
+        except urllib.error.HTTPError as ex:
+            if payload is None and attempt < attempts - 1 and ex.code in (429, 502, 503, 504):
+                time.sleep(2 * (attempt + 1))
+                continue
+            # Do not echo server response: it may contain sensitive data.
+            raise PublishError("WordPress REST API returned HTTP " + str(ex.code)) from ex
+        except (OSError, ValueError) as ex:
+            if payload is None and attempt < attempts - 1 and isinstance(ex, OSError):
+                time.sleep(2 * (attempt + 1))
+                continue
+            raise PublishError("WordPress REST request failed (" + type(ex).__name__ + ")") from ex
+    raise PublishError("WordPress REST GET retries exhausted")
 
 
 def existing_content(post):
