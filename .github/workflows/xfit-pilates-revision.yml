@@ -1,0 +1,40 @@
+name: XFIT Pilates Existing Article Revision
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-pilates-revision.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-direct-publish
+  cancel-in-progress: false
+jobs:
+  revise:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Safety unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Make a read-only snapshot before modifying article
+        run: |
+          if [[ -z "${WP_BASE_URL:-}" ]]; then echo "WP_BASE_URL=https://xfit.cz" >> "$GITHUB_ENV"; fi
+          python -m scripts.wp_revise_pilates snapshot
+      - name: Preserve rollback backup first
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-pilates-original-wp-post-3660
+          path: reports/backups/pilates-before-revision-3660.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Update existing article only, keep canonical slug and verify public text
+        run: python -m scripts.wp_revise_pilates deploy
