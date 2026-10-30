@@ -28,6 +28,20 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Read-only feed reconnaissance
         run: python scripts/xfit_feed_ingest.py
+      - name: Evaluate creatine and protein selection candidates (read-only)
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from scripts.xfit_select import select_offers
+          data = json.loads(Path("reports/private-greenmedical-catalog.json").read_text(encoding="utf-8"))
+          for kind in ("creatine", "whey", "plant_protein"):
+              ranked = select_offers(data, kind, max_price=1500)
+              print(json.dumps({"kind": kind, "candidates_under_1500_czk": len(ranked),
+                  "affiliate_deeplinks_verified": False, "public_site_modified": False},
+                  ensure_ascii=False))
+          PY
       - name: Preserve private validation artifact
         uses: actions/upload-artifact@v4
         with:
