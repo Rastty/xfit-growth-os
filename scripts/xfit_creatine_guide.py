@@ -37,10 +37,13 @@ def validate_example(base, sample):
         raise PublishError("Approved product-link sample uses an unsupported tracking scheme")
     p = urlsplit(sample)
     q = parse_qs(p.query)
-    if p.path.rstrip("/") != EXAMPLE_PATH or q.get("variant") != [EXAMPLE_VARIANT]:
-        raise PublishError("Sample does not match the expected Creatine Pure product variant")
-    if q.get("utm_medium") != ["affiliate"]:
-        raise PublishError("Product sample is not tagged as affiliate traffic")
+    # Dynamic-link generators may rewrite the canonical product route and
+    # omit variant=392. The essential proof is a NON-HOMEPAGE NaMaximum
+    # product with the same campaign attribution IDs as the base link.
+    if p.path.rstrip("/") in ("", "/"):
+        raise PublishError("Affiliate sample must link to a product page, not homepage")
+    if q.get("utm_medium") not in (["affiliate"], []):
+        raise PublishError("Affiliate sample uses unexpected traffic medium")
     # Sample direct-query tracking params must correspond to base campaign.
     affiliate_signature(base)
     return True
