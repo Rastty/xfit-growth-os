@@ -75,7 +75,20 @@ def classify(post):
     }
 
 def inventory(posts):
-    rows=[classify(p) for p in posts]
+    # WP REST page-based pagination can repeat a post when the archive receives
+    # new entries mid-scan. A post must never create a "duplicate article"
+    # finding against itself (observed on prior audit for post 5300).
+    seen={}
+    repeated_ids=[]
+    for post in posts:
+        id=post.get("id")
+        if not isinstance(id,int) or id<=0:
+            continue
+        if id in seen:
+            repeated_ids.append(id)
+            continue
+        seen[id]=post
+    rows=[classify(p) for p in seen.values()]
     titles=defaultdict(list)
     bodies=defaultdict(list)
     for p in rows:
@@ -94,6 +107,9 @@ def inventory(posts):
       key=lambda p:(not p["suspect_spam"],not p["suspect_thin"],not p["suspect_offtopic"],p["body_chars"]))
     return {
       "scanned":len(rows),
+      "raw_page_records":len(posts),
+      "repeated_pagination_post_count":len(repeated_ids),
+      "repeated_pagination_post_ids_sample":sorted(set(repeated_ids))[:30],
       "duplicate_title_groups":len(duplicates),
       "exact_body_duplicate_groups":len(identical),
       "thin_count":sum(p["suspect_thin"] for p in rows),
@@ -113,16 +129,20 @@ def main():
     args=ap.parse_args()
     if not 1<=args.pages<=MAX_PAGE or not 1<=args.size<=MAX_SIZE:
         ap.error("Invalid page or size parameter")
-    rows=[]; failed=None; declared_total=None
+    rows=[]; failed=None; declared_total=None; pages_fetched=0; saw_short_page=False
     for page in range(1,args.pages+1):
         try:
             batch,count=fetch(page,args.size)
         except (HTTPError,URLError,TimeoutError,ValueError) as exc:
             failed={"page":page,"error_type":type(exc).__name__}
             break
+        pages_fetched += 1
         rows.extend(batch)
         if count:declared_total=count
-        if len(batch)<args.size or (count and page>=count):break
+        if len(batch)<args.size:
+            saw_short_page=True
+            break
+        if count and page>=count:break
     report=inventory(rows)
     report.update({
        "generated_at_utc":datetime.now(timezone.utc).isoformat(),
@@ -130,12 +150,17 @@ def main():
        "max_requested_pages":args.pages,
        "declared_total_pages":declared_total,
        "interrupted_at":failed,
-       "complete":failed is None and (declared_total is None or len(rows)>=min(declared_total,args.pages)*args.size-args.size),
+       "pages_fetched":pages_fetched,
+       "complete":failed is None and (
+           saw_short_page or
+           (declared_total is not None and declared_total>0 and pages_fetched>=declared_total)
+       ),
+       "pagination_warning":"Page-based WordPress enumeration is not an atomic snapshot. Changes during scan can shift records; repeated IDs are deduplicated and a complete page count does not prove zero missed IDs.",
        "mutated_wordpress":False
     })
     dest=Path(args.output);dest.parent.mkdir(parents=True,exist_ok=True)
     dest.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
-    print(json.dumps({k:report[k] for k in ("scanned","duplicate_title_groups","exact_body_duplicate_groups","thin_count","suspected_out_of_focus_count","suspected_spam_count","declared_total_pages","interrupted_at","mutated_wordpress")},ensure_ascii=False))
+    print(json.dumps({k:report[k] for k in ("scanned","repeated_pagination_post_count","complete","duplicate_title_groups","exact_body_duplicate_groups","thin_count","suspected_out_of_focus_count","suspected_spam_count","declared_total_pages","interrupted_at","mutated_wordpress")},ensure_ascii=False))
     return 2 if not rows or failed else 0
 
 if __name__=="__main__":
