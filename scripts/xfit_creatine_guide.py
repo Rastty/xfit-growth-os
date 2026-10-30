@@ -95,7 +95,7 @@ def shortlist(catalog, base, sample, budget=1500):
             next((o.get("image_url") for o in catalog["products"]
                   if str(o.get("id")) == p["id"]), ""))})
     if len(result) < 3:
-        raise PublishError("Fewer than three verified creatine monohydrate offers; abort")
+        raise PublishError("Too few comparable offers (named candidates="+str(len(eligible))+", ranked="+str(len(items))+", trackable="+str(len(result))+"); abort")
     return result[:6]
 
 def build_document(catalog, base, sample):
