@@ -46,3 +46,14 @@ A previous feed URL with a secret key was pasted in conversation. Rotate/reissue
 - scripts/xfit_select.py created for deterministic creatine / whey / plant protein candidate shortlists. At <=1,500 CZK shortlist sizes were 12 / 12 / 2; first two are capped at 12 and not total offer counts.
 - Feed authentication and affiliate base-link formatting both work. Product-level commission attribution has not yet been verified and there is no public affiliate product selector.
 - Public GitHub artifacts contain only redacted aggregate counts, never raw feed secrets or full catalog.
+
+## Product-level affiliate tracking gate
+
+The catalog and selection engines pass real-feed checks, but campaign conversion attribution cannot be inferred from the homepage URL alone.
+Owner needs to generate **one** official Affial product deeplink in Propagace > Banners & Links > Dynamický odkaz for this product:
+https://www.namaximum.cz/kategorie/kreatin/creatine-creapure?variant=392
+
+Store the generated URL only in GitHub Actions Secret: XFIT_AFFIL_SAMPLE_PRODUCT_LINK.
+Daily feed workflow validates the sample's attribution IDs and link structure without opening it or registering a click. This is a structural check, not a verified purchase/commission.
+After a valid sample, add safe vendor-matched product deeplink generation and validate it against the Affial campaign before using affiliate URLs on public pages.
+Do not use Heureka CPC URLs as affiliate links. Do not expose publisher IDs in tracked public repo commits.
