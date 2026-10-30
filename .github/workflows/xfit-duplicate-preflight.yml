@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['.github/workflows/xfit-duplicate-preflight.yml']
+    paths: ['.github/workflows/xfit-duplicate-preflight.yml', 'scripts/xfit_duplicate_preflight.py']
 permissions:
   contents: read
 jobs:
@@ -22,6 +22,7 @@ jobs:
       - name: Compare genuine exact-title -2 duplicate content, no writes
         run: python -m scripts.xfit_duplicate_preflight
       - name: Preserve comparison sources for evidence and future rollback
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: xfit-duplicate-source-review
