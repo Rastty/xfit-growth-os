@@ -20,30 +20,35 @@ class ProteinLabelRevisionTests(unittest.TestCase):
         self.assertEqual(self.source['wp_post_id'], r['wp_post_id'])
         self.assertEqual(self.source['slug'], r['slug'])
         self.assertEqual(r['operation'], 'replace_exact_once')
-        # Before release, ensure the source is the snapshot against which the
-        # proposal was authored. After applying it, the same tests must keep
-        # passing rather than blocking future unrelated WordPress publishes.
         source_content = self.source['content']
-        original_matches = source_content.count(r['original'])
-        applied_matches = source_content.count(r['replacement'])
-        self.assertIn(applied_matches, (0, 1))
-        self.assertEqual(original_matches, 1)
-        if not applied_matches:
-            self.assertEqual(hashlib.sha256(self.raw).hexdigest(), r['source_file_sha256'])
+        prefix = r['replacement'].removesuffix(r['original'])
+        self.assertTrue(prefix and r['replacement'].endswith(r['original']))
+        self.assertEqual(source_content.count(r['original']), 1)
+        if prefix in source_content:
+            # The initial revision is already present. Future independent
+            # sections may be inserted between it and the old H2 heading.
+            self.assertEqual(source_content.count(prefix), 1)
+            self.assertIn('25 g prášku', source_content)
+            self.assertTrue(check_document(self.source)['passed'])
+        else:
+            # Before the first release, require the original snapshot bytes.
+            self.assertEqual(hashlib.sha256(self.raw).hexdigest(),
+                             r['source_file_sha256'])
             self.assertEqual(hashlib.sha256(source_content.encode()).hexdigest(),
                              r['source_content_sha256'])
 
     def test_preview_passes_gate_and_can_be_rolled_back(self):
         r = self.revision
+        prefix = r['replacement'].removesuffix(r['original'])
         preview = dict(self.source)
-        if self.source['content'].count(r['replacement']) == 1:
+        if prefix in self.source['content']:
             preview['content'] = self.source['content']
-            original = preview['content'].replace(r['replacement'], r['original'], 1)
-            self.assertEqual(original.count(r['original']), 1)
+            self.assertEqual(preview['content'].count(prefix), 1)
         else:
-            preview['content'] = self.source['content'].replace(r['original'], r['replacement'], 1)
-            self.assertEqual(preview['content'].replace(r['replacement'], r['original'], 1),
-                             self.source['content'])
+            preview['content'] = self.source['content'].replace(
+                r['original'], r['replacement'], 1)
+            self.assertEqual(preview['content'].replace(
+                r['replacement'], r['original'], 1), self.source['content'])
         self.assertTrue(check_document(preview)['passed'])
         self.assertEqual(preview['slug'], self.source['slug'])
 
