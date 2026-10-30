@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GreenMedical Heureka feed reconnaissance for Xfit.
+"""NaMaximum product feed reconnaissance for Xfit (hosted on GreenMedical Venalio).
 
 Read-only: downloads a provider feed from an encrypted GitHub Actions Secret,
 validates XML, normalizes offers and writes a private Actions artifact.
@@ -19,9 +19,10 @@ from xml.etree import ElementTree as ET
 
 MAX_BYTES = 35 * 1024 * 1024
 MAX_ITEMS = 100000
-ALLOWED_HOST = "greenmedical.venalio.com"
+ALLOWED_HOST = "greenmedical.venalio.com"  # feed infrastructure, NOT the seller
+PRODUCT_HOSTS = {"namaximum.cz", "www.namaximum.cz"}
 BLOCK_TERMS = re.compile(r"(?i)\b(cbd|thc|hhc|kratom|steroid\w*|nikotin\w*|nicotine|marihuan\w*|konopn\w*\s+kv[eě]t)\b")
-DROP_QUERY_KEYS = {"secretkey", "token", "api_key", "apikey", "password", "authorization", "auth"}
+DROP_QUERY_KEYS = {"secretkey", "token", "api_key", "apikey", "password", "authorization", "auth", "gclid", "fbclid", "a_aid", "a_bid", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"}
 
 def local(tag):
     return tag.rsplit("}", 1)[-1].upper()
@@ -83,6 +84,10 @@ def parse_feed(xml_bytes):
         item_id = value(el, "ITEM_ID", "ITEMID", "ID")[:120]
         link = safe_product_url(value(el, "URL", "LINK"))
         image = safe_product_url(value(el, "IMGURL", "IMAGE", "IMGURL_ALTERNATIVE"))
+        # Merchant identity is proved by EACH item URL, not the feed hosting CDN.
+        if urllib.parse.urlsplit(link).hostname not in PRODUCT_HOSTS:
+            skipped["not_namaximum_product_link"] += 1
+            continue
         offers.append({
             "id": item_id or str(i + 1),
             "title": title[:250],
@@ -93,15 +98,17 @@ def parse_feed(xml_bytes):
             "source_url": link,
             "image_url": image,
             "stock_indicator": value(el, "DELIVERY_DATE", "AVAILABILITY")[:80],
-            "affiliate_url": None,
+            "merchant": "NaMaximum.cz",
+            "affiliate_url": None,  # Do NOT infer a commissioned product link from a Heureka CPC link.
             "publish_ready": False,
         })
     return offers, skipped
 
 def fetch_feed():
-    url = os.getenv("XFIT_GREENMEDICAL_FEED_URL", "").strip()
+    # Legacy secret alias is kept so the already-instructed configuration still works.
+    url = (os.getenv("XFIT_NAMAXIMUM_FEED_URL") or os.getenv("XFIT_GREENMEDICAL_FEED_URL") or "").strip()
     if not url:
-        raise ValueError("Set XFIT_GREENMEDICAL_FEED_URL in encrypted GitHub Actions Secrets")
+        raise ValueError("Set XFIT_NAMAXIMUM_FEED_URL (or legacy XFIT_GREENMEDICAL_FEED_URL) in GitHub Actions Secrets")
     parsed = urllib.parse.urlsplit(url)
     if parsed.scheme != "https" or parsed.hostname != ALLOWED_HOST or parsed.path != "/feeds/heureka":
         raise ValueError("Unexpected feed host/path")
@@ -124,8 +131,9 @@ def fetch_feed():
 def validate_affiliate_link(link=None):
     """Validate affiliate campaign shape without following click links.
 
-    The tracked advertiser is NaMaximum.cz via Affial (Post Affiliate Pro);
-    this is NOT the GreenMedical merchant represented by the XML feed.
+    The tracked advertiser is NaMaximum.cz via Affial (Post Affiliate Pro).
+    GreenMedical/Venalio hosts the XML, but merchant identity comes from
+    SHOPITEM/URL, not the feed infrastructure hostname.
     """
     if link is None:
         link = os.getenv("XFIT_AFFIL_DEFAULT_LINK", "").strip()
@@ -142,7 +150,7 @@ def validate_affiliate_link(link=None):
             q.get("utm_source") == ["pap"] and
             bool(q.get("a_aid")) and bool(q.get("a_bid"))
         ):
-            return "affial_namaximum_link_format_valid__greenmedical_feed_is_DIFFERENT_MERCHANT"
+            return "affial_namaximum_tracking_format_valid__product_deeplinks_unverified"
         return "namaximum_link_missing_expected_affial_parameters"
     if host in ("ehub.cz", "www.ehub.cz"):
         return "ehub_link_is_not_the_confirmed_affial_namaximum_campaign"
@@ -157,10 +165,10 @@ def main():
     offers,skipped = parse_feed(fetch_feed())
     report = {
         "fetched_at_utc": datetime.now(timezone.utc).isoformat(),
-        "merchant": "greenmedical_feed_merchant_pending_verification",
-        "affiliate_merchant": "namaximum.cz",
-        "merchant_match": False,
-        "warning": "Do not attach NaMaximum affiliate links to GreenMedical products.",
+        "merchant": "namaximum.cz",
+        "feed_host": ALLOWED_HOST,
+        "merchant_match": bool(offers) and all(o["merchant"] == "NaMaximum.cz" for o in offers),
+        "warning": "Correct merchant confirmed from item URLs. Product-specific Affial deeplink and commission tracking NOT yet verified.",
         "status": "PRIVATE_REVIEW_REQUIRED",
         "currency_assumption": "CZK; confirm source feed currency before using offers",
         "affiliate_default_link": validate_affiliate_link(),
