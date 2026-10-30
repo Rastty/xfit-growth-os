@@ -19,26 +19,63 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       actions: read
-      contents: read
+      contents: write
+      pull-requests: write
     outputs:
-      can_create_pr: ${{ steps.check.outputs.can_create_pr }}
+      can_create_pr: \${{ steps.check.outputs.can_create_pr }}
     steps:
-      - name: Check GitHub Actions PR permission BEFORE spending OpenAI tokens
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Verify ability to create a PR without using OpenAI tokens
         id: check
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: \${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
+          # A GitHub Actions token may lack access to repository admin settings.
+          # An unavailable permissions endpoint is not proof PRs are disabled.
           allowed="$(gh api "repos/$GITHUB_REPOSITORY/actions/permissions/workflow" \
             --jq '.can_approve_pull_request_reviews' 2>/dev/null || echo unavailable)"
           if [[ "$allowed" == "true" ]]; then
             echo "can_create_pr=true" >> "$GITHUB_OUTPUT"
-            echo "PR creation enabled; Codex agent wave is permitted to run." >> "$GITHUB_STEP_SUMMARY"
+            echo "PR creation enabled. No model credits spent on this preflight." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # Make a disposable PR to verify the capability that Codex needs.
+          branch="xfit/codex-permission-probe-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          probe_pr=""
+          cleanup() {
+            if [[ -n "$probe_pr" ]]; then
+              gh pr close "$probe_pr" --repo "$GITHUB_REPOSITORY" --delete-branch >/dev/null 2>&1 || true
+            fi
+            git push origin --delete "$branch" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          git config user.name "xfit-github-actions-preflight"
+          git config user.email "xfit-github-actions-preflight@users.noreply.github.com"
+          git switch -c "$branch"
+          mkdir -p docs
+          printf 'Temporary PR permission test for GitHub run %s. No development change.\n' \
+            "$GITHUB_RUN_ID" > "docs/.codex-permission-probe-$GITHUB_RUN_ID.txt"
+          git add "docs/.codex-permission-probe-$GITHUB_RUN_ID.txt"
+          git commit -m "Test GitHub Actions PR creation without Codex API" >/dev/null
+          gh auth setup-git
+          if ! git push --set-upstream origin HEAD >/dev/null 2>&1; then
+            echo "can_create_pr=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::GitHub Actions cannot push a test branch. No Codex calls."
+            exit 0
+          fi
+          if probe_pr="$(gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" \
+              --draft --title "Temporary Xfit Codex permission check" \
+              --body "Automatic PR permission probe, immediately closed. No AI used." 2>/dev/null)"; then
+            echo "can_create_pr=true" >> "$GITHUB_OUTPUT"
+            echo "PR creation smoke test passed. Probe closed/deleted; no model credits on preflight." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "can_create_pr=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::GitHub Actions cannot create PRs (or permission check unavailable). Skipping paid model calls."
-            echo "No model calls. Enable 'Allow GitHub Actions to create and approve pull requests' under repository Settings -> Actions -> General, then run the workflow again." >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::GitHub Actions cannot create PRs. No Codex model calls."
+            echo "Enable Actions PR creation in repo Settings -> Actions -> General." >> "$GITHUB_STEP_SUMMARY"
           fi
   parallel-lanes:
     needs: permission-gate
