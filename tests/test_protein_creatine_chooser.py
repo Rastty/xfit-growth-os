@@ -19,7 +19,7 @@ class ProteinOrCreatineChooserTests(unittest.TestCase):
         body=self.doc["content"]
         self.assertGreaterEqual(body.count("<details>"),6)
         self.assertIn("Nekupujte zatím nic",body)
-        self.assertIn("Alergi",body)
+        self.assertIn("alergii",body.casefold())
     def test_verified_guide_crosslinks(self):
         s=self.doc["content"]
         for target in ("/xfit-os-protein-guide/","/xfit-os-kreatin-poradce/",
