@@ -1,0 +1,38 @@
+name: XFIT Protein Physiology Editorial Upgrade
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-protein-meaning-upgrade.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-editor-protein-13734
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: All site code and content quality checks
+        run: python -m unittest discover -s tests -v
+      - name: Snapshot original after confirming source SHA and substantive editorial quality
+        run: python -m scripts.xfit_protein_meaning_upgrade snapshot
+      - name: Preserve original content backup before any edits
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-protein-meaning-13734-backup-${{ github.run_id }}
+          path: reports/backups/xfit-protein-meaning-13734-original.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Update original WordPress article and verify public URL, rollback if needed
+        run: python -m scripts.xfit_protein_meaning_upgrade deploy
