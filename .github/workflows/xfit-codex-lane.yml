@@ -1,0 +1,166 @@
+name: XFIT Codex Lane (reusable)
+on:
+  workflow_call:
+    inputs:
+      lane:
+        required: true
+        type: string
+      issue:
+        required: true
+        type: number
+    secrets:
+      OPENAI_API_KEY:
+        required: true
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  propose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    concurrency:
+      group: xfit-codex-${{ inputs.lane }}
+      cancel-in-progress: false
+    outputs:
+      changed: ${{ steps.patch.outputs.changed }}
+      base_sha: ${{ steps.base.outputs.base_sha }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Capture immutable source SHA
+        id: base
+        run: echo "base_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Check credentials and backpressure
+        id: preflight
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEY_AVAILABLE: ${{ secrets.OPENAI_API_KEY != '' }}
+          LANE: ${{ inputs.lane }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$KEY_AVAILABLE" != "true" ]]; then
+            echo "::error::Add OPENAI_API_KEY to repository Actions Secrets"
+            exit 2
+          fi
+          if [[ ! "$LANE" =~ ^(ux|archive|editor|revenue)$ ]]; then
+            echo "::error::Unrecognized Xfit lane"
+            exit 2
+          fi
+          open="$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --limit 100 --json headRefName \
+            --jq "[.[] | select(.headRefName | startswith(\"xfit/codex-$LANE-\"))] | length")"
+          if [[ "$open" != "0" ]]; then
+            echo "Open proposal already exists for $LANE; avoid duplicate spending."
+            echo "go=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=yes" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Implement one bounded improvement using Codex (no WP or GitHub write token)
+        if: steps.preflight.outputs.go == 'yes'
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          model: ${{ vars.XFIT_CODEX_MODEL || '' }}
+          effort: medium
+          permission-profile: ":workspace"
+          safety-strategy: drop-sudo
+          allow-bots: true
+          allow-bot-users: github-actions[bot]
+          prompt: |
+            Work only on this checkout of Rastty/xfit-growth-os. You are the
+            ${{ inputs.lane }} agent. Read AGENTS.md, docs/EDITORIAL_STANDARD.md,
+            .github/agents/xfit-${{ inputs.lane }}.agent.md and the local repository.
+            The tracked task is issue #${{ inputs.issue }}.
+            Make ONE substantial, testable improvement that directly helps Czech
+            fitness/supplement users and supports trustworthy monetization.
+            Respect the hard file ownership limits in scripts/xfit_agent_scope.py.
+            Editing .github/, content/ready/, .git/, secrets, production endpoints
+            or any other lane is forbidden. No fake clinical evidence, prices,
+            performance results, test claims or affiliate commissions.
+            Run targeted tests if possible. Do not deploy, publish, push, create
+            branches, merge, change secrets, or send traffic to xfit.cz.
+            The next stages independently validate the diff and create a PR.
+      - name: Validate working-tree ownership and run unit tests without write token
+        if: steps.preflight.outputs.go == 'yes'
+        id: patch
+        env:
+          LANE: ${{ inputs.lane }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -N .
+          if [[ -z "$(git diff --name-only HEAD)" ]]; then
+            echo "Codex made no changes; no PR."
+            echo "changed=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          python scripts/xfit_agent_scope.py --lane "$LANE"
+          python -m unittest discover -s tests -v
+          git diff --check
+          git diff --binary HEAD > candidate.patch
+          if [[ ! -s candidate.patch ]]; then exit 2; fi
+          echo "changed=yes" >> "$GITHUB_OUTPUT"
+      - name: Export proposed patch only
+        if: steps.patch.outputs.changed == 'yes'
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-codex-${{ inputs.lane }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: candidate.patch
+          retention-days: 3
+          if-no-files-found: error
+  open-pr:
+    needs: propose
+    if: needs.propose.outputs.changed == 'yes'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.propose.outputs.base_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: xfit-codex-${{ inputs.lane }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Apply and revalidate patch, no token in this step
+        env:
+          LANE: ${{ inputs.lane }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git apply --check candidate.patch
+          git apply candidate.patch
+          rm -f candidate.patch
+          python scripts/xfit_agent_scope.py --lane "$LANE"
+          python -m unittest discover -s tests -v
+          git diff --check
+      - name: Open proposed PR only (never merge or publish site)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LANE: ${{ inputs.lane }}
+          ISSUE: ${{ inputs.issue }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "xfit-codex-agent"
+          git config user.email "xfit-codex-agent@users.noreply.github.com"
+          branch="xfit/codex-$LANE-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          git switch -c "$branch"
+          git add -A
+          git commit -m "Xfit Codex $LANE: one scoped improvement"
+          gh auth setup-git
+          git push --set-upstream origin HEAD
+          gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" \
+            --title "Xfit Codex $LANE: user-value improvement" \
+            --body "Proposed code from #$ISSUE. Independent file-scope and tests passed. This is a reviewable PR, **not a live publication**. Verify factual/clinical correctness, accessibility and business impact before merging."
