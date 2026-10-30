@@ -3,7 +3,9 @@ const fs = require("fs");
 const checks = [
   {name:"beginner",url:"https://xfit.cz/xfit-os-doplnky-pro-zacatecniky/",expected:"Doplňky stravy pro začátečníky",minH2:6,commercial:false},
   {name:"creatine",url:"https://xfit.cz/xfit-os-kreatin-poradce/",expected:"Jak vybrat kreatin",minH2:3,commercial:true},
-  {name:"whey",url:"https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/",expected:"Srovnání syrovátkových proteinů",minH2:3,commercial:true}
+  {name:"whey",url:"https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/",expected:"Srovnání syrovátkových proteinů",minH2:3,commercial:true},
+  {name:"pilates-cardio",url:"https://xfit.cz/pilates-vs-kardio-co-je-lepsi-pro-hubnuti/",expected:"Pilates vs. kardio",minH2:6,commercial:false},
+  {name:"creatine-kidney",url:"https://xfit.cz/kreatin-a-jeho-vliv-na-ledviny-a-jatra/",expected:"Kreatin, ledviny a játra",minH2:6,commercial:false}
 ];
 fs.mkdirSync("reports/browser-qa", {recursive:true});
 (async()=>{
@@ -37,7 +39,7 @@ for(const spec of checks){
   if(!doc.hasViewportMeta)failures.push("mobile_viewport_missing");
   if(spec.commercial && !doc.merchantLinks)failures.push("merchant_links_missing");
   if(spec.commercial && doc.missingSponsored)failures.push("sponsored_rel_missing");
-  if(spec.name==="beginner" && doc.details<3)failures.push("interactive_details_missing");
+  if(["beginner","pilates-cardio","creatine-kidney"].includes(spec.name) && doc.details<3)failures.push("interactive_details_missing");
   if(doc.documentWidth>doc.viewport+12)failures.push("horizontal_overflow_"+(doc.documentWidth-doc.viewport));
   await page.screenshot({path:"reports/browser-qa/"+spec.name+"-mobile.png",fullPage:true});
   console.log(JSON.stringify({page:spec.name,state:failures.length?"FAIL":"PASS",doc,failures}));
