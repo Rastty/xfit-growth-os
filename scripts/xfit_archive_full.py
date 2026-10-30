@@ -57,18 +57,26 @@ def classify(post):
     lower=(title+" "+(post.get("slug") or "")).casefold()
     external=Counter()
     internal_link_count=0
+    invalid_link_count=0
     for link in LINKS.findall(body_html):
         href=html.unescape(link).strip()
         # In-page anchors do not connect archive pages. Resolve relative links
         # before checking the host; a hostname in a foreign URL's path is not evidence.
         if not href or href.startswith("#"):
             continue
-        p=urlsplit(urljoin("https://xfit.cz/",href))
-        if p.scheme in ("http","https") and p.hostname:
-            if p.hostname.lower() in ("xfit.cz","www.xfit.cz"):
+        try:
+            p=urlsplit(urljoin("https://xfit.cz/",href))
+            host=p.hostname
+        except ValueError:
+            # Legacy HTML may contain malformed IPv6 or Unicode netlocs.
+            # Keep auditing other links; preserve the evidence gap for review.
+            invalid_link_count+=1
+            continue
+        if p.scheme in ("http","https") and host:
+            if host.lower() in ("xfit.cz","www.xfit.cz"):
                 internal_link_count+=1
             else:
-                external[p.hostname.lower()]+=1
+                external[host.lower()]+=1
     return {
       "id":post.get("id"),"slug":post.get("slug") or "",
       "url":post.get("link") or "", "title":title,
@@ -76,6 +84,7 @@ def classify(post):
       "paragraphs":len(re.findall(r"<p\b",body_html,re.I)),
       "headings":len(re.findall(r"<h[1-6]\b",body_html,re.I)),
       "internal_link_count":internal_link_count,
+      "invalid_link_count":invalid_link_count,
       "external_hosts":dict(external.most_common(10)),
       "body_hash":hashlib.sha256(SPACE.sub(" ",body.lower()).encode("utf-8")).hexdigest() if body else "",
       "title_normalized":TITLE_NOISE.sub("",title).lower().strip(),
@@ -126,6 +135,7 @@ def inventory(posts):
       "duplicate_title_groups":len(duplicates),
       "exact_body_duplicate_groups":len(identical),
       "thin_count":sum(p["suspect_thin"] for p in rows),
+      "invalid_link_count":sum(p["invalid_link_count"] for p in rows),
       "stale_2022_promo_posts":sum(p["stale_2022_promo_mentions"]>0 for p in rows),
       "stale_2022_promo_shortcodes":sum(p["stale_2022_promo_shortcode_count"] for p in rows),
       "stale_promo_candidates":[
