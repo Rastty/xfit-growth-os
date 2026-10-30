@@ -1,0 +1,31 @@
+name: XFIT Affiliate Feed Validation
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '41 5 * * *'
+permissions:
+  contents: read
+jobs:
+  check-feed:
+    if: ${{ vars.XFIT_AFFIL_FEED_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      XFIT_GREENMEDICAL_FEED_URL: ${{ secrets.XFIT_GREENMEDICAL_FEED_URL }}
+      XFIT_EHUB_DEFAULT_LINK: ${{ secrets.XFIT_EHUB_DEFAULT_LINK }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Read-only feed reconnaissance
+        run: python scripts/xfit_feed_ingest.py
+      - name: Preserve private validation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-private-greenmedical-feed-review
+          path: reports/private-greenmedical-catalog.json
+          retention-days: 7
+          if-no-files-found: error
