@@ -1,10 +1,6 @@
 name: XFIT Codex Parallel Development
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/xfit-codex-parallel.yml'
   schedule:
     # Two independent four-agent waves daily; can increase after costs and quality are measured.
     - cron: '39 0,12 * * *'
@@ -52,6 +48,21 @@ jobs:
             echo "can_create_pr=true" >> "$GITHUB_OUTPUT"
             echo "PR creation enabled. No model credits spent on this preflight." >> "$GITHUB_STEP_SUMMARY"
             exit 0
+          fi
+          # A successful GitHub Actions-created PR is already evidence that
+          # this permission works. Re-probe at most once per week, rather than
+          # filling the repo with two dummy PRs every day.
+          proof="$(gh api "repos/$GITHUB_REPOSITORY/pulls/10" \
+            --jq '[.user.login, .state, .created_at] | join("|")' 2>/dev/null || true)"
+          IFS='|' read -r proof_user proof_state proof_created <<< "$proof"
+          if [[ "$proof_user" == "github-actions[bot]" && "$proof_state" == "closed" ]]; then
+            proof_epoch="$(date -u -d "$proof_created" +%s 2>/dev/null || echo 0)"
+            now_epoch="$(date -u +%s)"
+            if (( proof_epoch > 0 && now_epoch - proof_epoch >= 0 && now_epoch - proof_epoch < 604800 )); then
+              echo "can_create_pr=true" >> "$GITHUB_OUTPUT"
+              echo "A GitHub Actions PR was created within 7 days (#10); no dummy PR and no AI credits used on preflight." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
           fi
           # Use GitHub API directly; checkout credential helpers are not
           # guaranteed to be available to a short preflight job.
