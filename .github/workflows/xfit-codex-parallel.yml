@@ -43,38 +43,30 @@ jobs:
             echo "PR creation enabled. No model credits spent on this preflight." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          # Make a disposable PR to verify the capability that Codex needs.
+          # Use GitHub API directly; checkout credential helpers are not
+          # guaranteed to be available to a short preflight job.
           branch="xfit/codex-permission-probe-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           probe_pr=""
           cleanup() {
             if [[ -n "$probe_pr" ]]; then
-              gh pr close "$probe_pr" --repo "$GITHUB_REPOSITORY" --delete-branch >/dev/null 2>&1 || true
+              gh pr close "$probe_pr" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || true
             fi
-            git push origin --delete "$branch" >/dev/null 2>&1 || true
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/$branch" >/dev/null 2>&1 || true
           }
           trap cleanup EXIT
-          git config user.name "xfit-github-actions-preflight"
-          git config user.email "xfit-github-actions-preflight@users.noreply.github.com"
-          git switch -c "$branch"
-          mkdir -p docs
-          printf 'Temporary PR permission test for GitHub run %s. No development change.\n' \
-            "$GITHUB_RUN_ID" > "docs/.codex-permission-probe-$GITHUB_RUN_ID.txt"
-          git add "docs/.codex-permission-probe-$GITHUB_RUN_ID.txt"
-          git commit -m "Test GitHub Actions PR creation without Codex API" >/dev/null
-          gh auth setup-git
-          if ! git push --set-upstream origin HEAD >push.stdout 2>push.stderr; then
+          if ! gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/$branch" -f sha="$GITHUB_SHA" >/dev/null 2>&1; then
             echo "can_create_pr=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::GitHub Actions cannot push a test branch. No Codex calls."
-            # Only emit the class of Git error, never credentials or URL tokens.
-            if grep -qi '403\|permission denied\|write access' push.stderr; then
-              echo "::warning::Probe error category: github_permission_denied"
-            elif grep -qi 'Authentication failed\|could not read Username' push.stderr; then
-              echo "::warning::Probe error category: authentication"
-            elif grep -qi 'protected branch\|repository rules\|ruleset' push.stderr; then
-              echo "::warning::Probe error category: repository_ruleset"
-            else
-              echo "::warning::Probe error category: git_push_other"
-            fi
+            echo "::warning::Probe cannot create temporary git ref (GitHub API permission). No Codex credits used."
+            exit 0
+          fi
+          probe_content="$(printf 'Temporary Xfit PR permission test for GitHub run %s.\n' \
+            "$GITHUB_RUN_ID" | base64 -w 0)"
+          if ! gh api -X PUT "repos/$GITHUB_REPOSITORY/contents/docs/.codex-permission-probe-$GITHUB_RUN_ID.txt" \
+              -f message="No-model PR permission smoke test" \
+              -f content="$probe_content" -f branch="$branch" >/dev/null 2>&1; then
+            echo "can_create_pr=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Probe cannot write temporary test file. No Codex credits used."
             exit 0
           fi
           if probe_pr="$(gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" \
