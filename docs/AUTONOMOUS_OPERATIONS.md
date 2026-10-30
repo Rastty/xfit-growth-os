@@ -7,16 +7,18 @@ This is a separate GitHub repository with independent WordPress API secrets and 
 
 | Job | Schedule | Automatic work | Live impact |
 |---|---|---|---|
-| XFIT Affiliate Feed Validation | `17 */3 * * *` (every 3h) | Fetch NaMaximum Heureka catalog via private GitHub Secret; validate products, categories, safety filters, Affial sample and selector candidates | No; read-only, artifact summary |
-| XFIT Creatine Advisor Live | `47 */6 * * *` (every 6h) | Refresh catalog, filter comparable creatine powders, build campaign-consistent product links, update canonical creatine guide only on changes | Yes, WP post 25455 |
-| XFIT Whey Advisor Live | `7 1,7,13,19 * * *` (every 6h) | Refresh catalog, compare whey powder pack sizes/prices, update canonical whey page only on changes | Yes, WP post 25456 |
-| XFIT Read-only Audit | `23 4 * * *` (daily) | Inspect public archive, generate report | No; audit only |
+| XFIT Affiliate Feed Validation | `23 4 * * *` (daily) | Fetch NaMaximum Heureka catalog via private GitHub Secret; validate products, categories, safety filters, Affial sample and selector candidates | No; read-only, artifact summary |
+| XFIT Creatine Advisor Live | `37 5 * * *` (daily) | Refresh catalog, filter comparable creatine powders, build campaign-consistent product links, update canonical creatine guide only on changes | Yes, WP post 25455 |
+| XFIT Whey Advisor Live | `51 5 * * *` (daily) | Refresh catalog, compare whey powder pack sizes/prices, update canonical whey page only on changes | Yes, WP post 25456 |
+| XFIT Read-only Audit | `23 4 * * *` (daily) | Inspect recent public archive sample, generate report | No; audit only |
 | XFIT Code Checks | Every applicable push | Syntax, unit tests, validation | Prevent unsafe release |
 | XFIT Direct Publish | Push to `content/ready/*.json` | Verify and publish approved content with native WP API | Yes, only changed owned `xfit-os-*` pages |
 
 GitHub-hosted scheduled tasks are best effort and may be delayed, not hard real-time.
 
 ## Current live pages
+
+- https://xfit.cz/xfit-os-doplnky-pro-zacatecniky/ — evidence-led beginner supplement guide, WP ID 25458.
 
 - https://xfit.cz/xfit-os-protein-guide/ — evergreen protein selection education, WP ID 25451.
 - https://xfit.cz/xfit-os-kreatin-poradce/ — automated current creatine comparison, WP ID 25455.
@@ -52,3 +54,13 @@ GitHub-hosted scheduled tasks are best effort and may be delayed, not hard real-
 - Check https://github.com/Rastty/xfit-growth-os/actions for latest runs and any failed checks.
 - Feed artifacts are redacted counts and categories, not full product lists.
 - A failed GitHub workflow is a blocker for the corresponding operation, not proof of success; no silent retries or invented deployment states.
+
+## Updated owner policy, 2026-10-30
+
+The owner prioritizes the best Czech trustworthy fitness and supplement decision site, not article volume, and requests an aggressive clean-up of archive clutter. Live WP unpublishing uses exact traffic-backed allowlists and backup, not blind deletes. Existing site theme's mobile navigation and consent banner need UX remediation. The first comprehensive public audit covered 11,814 posts; 34 e-bike URLs with zero sessions and GSC impressions are staged for reversible draft unpublishing (must check final run receipt).
+
+Deterministic GH Actions now run feed and two commercial guide refreshes **daily**. Full-archive audit runs daily, real Chromium mobile QA twice weekly. Four-hour evidence status is posted to GitHub issue https://github.com/Rastty/xfit-growth-os/issues/1. There is **no independent ChatGPT task sending in-app reports** because the account already has 5/5 active automations; owner must subscribe to GitHub issue for GitHub notifications. Existing Prometheus/other task schedules were not altered.
+
+GitHub Actions alone are not an autonomous AI developer: major new UX/content features still require running an AI coding session or a separately provisioned development agent. Do not describe them as being invented and deployed every four hours.
+
+Quality standards: AGENTS.md and docs/EDITORIAL_STANDARD.md. Machine-readable editorial gate enforced in scripts/wp_publish.py; premium usefulness requires visual/manual reading QA too.
