@@ -11,6 +11,7 @@ import hashlib
 import json
 from pathlib import Path
 import sys
+import time
 
 from scripts.wp_publish import PublishError, normalized_base, wp_request
 
@@ -30,7 +31,22 @@ def load():
     return cfg
 
 def post_id(base,id):
-    return wp_request(base,"posts/"+str(id)+"?context=edit&_fields=id,slug,status,title,content,link,modified")
+    path="posts/"+str(id)+"?context=edit&_fields=id,slug,status,title,content,link,modified"
+    for attempt in range(5):
+        try:
+            result=wp_request(base,path)
+            # Prevent overwhelming WEDOS WordPress REST endpoint.
+            time.sleep(0.45)
+            return result
+        except PublishError as exc:
+            msg=str(exc)
+            transient=("REST request failed (URLError)" in msg or
+                       "REST request failed (TimeoutError)" in msg or
+                       "HTTP 429" in msg or "HTTP 502" in msg or "HTTP 503" in msg or "HTTP 504" in msg)
+            if not transient or attempt==4:
+                raise
+            time.sleep(min(2**attempt,8))
+    raise PublishError("WP read unavailable after retries")
 
 def content_sha(post):
     raw=(post.get("content") or {}).get("raw","")
