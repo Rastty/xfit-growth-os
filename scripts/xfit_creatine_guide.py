@@ -190,6 +190,10 @@ def build_document(catalog, base, sample):
       'Konkrétní užívání se musí řídit zdravotním stavem a informacemi '
       'na výrobku; při onemocnění ledvin nebo jiné zdravotní nejistotě '
       'je vhodné poradit se s lékařem.</p>',
+      '<p><strong>Nejste si jistí, zda zvolit kreatin, nebo protein?</strong> '
+      '<a href="https://xfit.cz/xfit-os-kreatin-nebo-protein/">'
+      'Otevřete praktický rozhodovací pomocník</a> – zahrnuje i možnost '
+      'nekoupit žádný doplněk.</p>',
       '<p><strong>Související průvodce:</strong> '
       '<a href="https://xfit.cz/xfit-os-protein-guide/">Jak vybrat protein</a>.</p>',
       '<h2>Zdroje a metodika</h2>',
