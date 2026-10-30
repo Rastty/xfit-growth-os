@@ -14,7 +14,7 @@ import re
 import sys
 from pathlib import Path
 import time
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import urlencode, urljoin, urlsplit
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
@@ -56,17 +56,26 @@ def classify(post):
     body=clean(body_html)
     lower=(title+" "+(post.get("slug") or "")).casefold()
     external=Counter()
+    internal_link_count=0
     for link in LINKS.findall(body_html):
-        p=urlsplit(html.unescape(link))
-        if p.scheme in ("http","https") and p.hostname and p.hostname.lower() not in ("xfit.cz","www.xfit.cz"):
-            external[p.hostname.lower()]+=1
+        href=html.unescape(link).strip()
+        # In-page anchors do not connect archive pages. Resolve relative links
+        # before checking the host; a hostname in a foreign URL's path is not evidence.
+        if not href or href.startswith("#"):
+            continue
+        p=urlsplit(urljoin("https://xfit.cz/",href))
+        if p.scheme in ("http","https") and p.hostname:
+            if p.hostname.lower() in ("xfit.cz","www.xfit.cz"):
+                internal_link_count+=1
+            else:
+                external[p.hostname.lower()]+=1
     return {
       "id":post.get("id"),"slug":post.get("slug") or "",
       "url":post.get("link") or "", "title":title,
       "modified":post.get("modified"),"body_chars":len(body),
       "paragraphs":len(re.findall(r"<p\b",body_html,re.I)),
       "headings":len(re.findall(r"<h[1-6]\b",body_html,re.I)),
-      "internal_link_count":sum(1 for href in LINKS.findall(body_html) if "xfit.cz/" in href),
+      "internal_link_count":internal_link_count,
       "external_hosts":dict(external.most_common(10)),
       "body_hash":hashlib.sha256(SPACE.sub(" ",body.lower()).encode("utf-8")).hexdigest() if body else "",
       "title_normalized":TITLE_NOISE.sub("",title).lower().strip(),

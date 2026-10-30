@@ -25,5 +25,23 @@ class ArchiveAuditTests(unittest.TestCase):
     def test_unknown_id_is_not_counted(self):
         p=post(None,"bad","Bad","Thin")
         self.assertEqual(inventory([p])["scanned"],0)
+    def test_internal_links_include_relative_and_case_insensitive_hosts(self):
+        links=["/kreatin/", "../protein/", "trenink/", "//www.xfit.cz/pilates/",
+               "https://XFIT.CZ/vyziva/?a=1&amp;b=2"]
+        p=post(1,"cviceni","Cvičení", "".join(
+            '<a href="'+href+'">Rada</a>' for href in links))
+        row=inventory([p])["flagged_candidates"][0]
+        self.assertEqual(row["internal_link_count"],5)
+        self.assertEqual(row["external_hosts"],{})
+    def test_foreign_urls_and_page_anchors_are_not_internal_links(self):
+        links=["https://example.org/xfit.cz/protein/",
+               "https://xfit.cz.example.org/", "https://xfit.cz@example.org/",
+               "https://example.org/?next=https://xfit.cz/", "#davkovani", "",
+               "mailto:poradna@xfit.cz", "javascript:void(0)"]
+        p=post(1,"protein","Protein", "".join(
+            '<a href="'+href+'">Odkaz</a>' for href in links))
+        row=inventory([p])["flagged_candidates"][0]
+        self.assertEqual(row["internal_link_count"],0)
+        self.assertEqual(row["external_hosts"],{"example.org":3,"xfit.cz.example.org":1})
 
 if __name__=="__main__":unittest.main()
