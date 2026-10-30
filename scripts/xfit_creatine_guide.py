@@ -149,8 +149,10 @@ def build_document(catalog, base, sample):
     for i,offer in enumerate(chosen):
         title=html.escape(offer["title"])
         href=html.escape(offer["tracked_url"],quote=True)
-        price=html.escape(str(round(offer["price_czk"])))
-        unit=html.escape(str(round(offer["price_per_100g_powder_czk"])))
+        # Preserve the selector's precision so the displayed prices explain
+        # the ranking; format decimal and thousands separators for Czech readers.
+        price=f'{offer["price_czk"]:,.2f}'.replace(",", "\u00a0").replace(".", ",")
+        unit=f'{offer["price_per_100g_powder_czk"]:,.2f}'.replace(",", "\u00a0").replace(".", ",")
         label="Nejnižší jednotková cena ve výběru" if i==0 else "Alternativa podle ceny a velikosti balení"
         image=('<p><img src="'+html.escape(offer["image"],quote=True)+
                '" alt="'+title+'" loading="lazy" width="120" height="120" style="max-width:100%;width:120px;height:120px;object-fit:contain;" /></p>'

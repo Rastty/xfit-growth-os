@@ -58,3 +58,23 @@ class CreatineGuideTests(unittest.TestCase):
               "products":[self.catalog["products"][0]]}
         with self.assertRaises(PublishError):
             build_document(data,BASE,SAMPLE)
+
+    def test_prices_preserve_cents_and_explain_rank(self):
+        # Synthetic fixtures: both unit prices used to display as 86 Kč.
+        self.catalog["products"] = [
+            item(501,"Creatine Monohydrate 500g",430.45,500),
+            item(502,"Creatine Monohydrate 250g",215.10,250),
+            item(503,"Creatine Pure Creapure 1kg",1100,1000),
+        ]
+        body=build_document(self.catalog,BASE,SAMPLE)["content"]
+        self.assertIn("Cena: 215,10 Kč",body)
+        self.assertIn("Cena: 430,45 Kč",body)
+        self.assertIn("Cena: 1\u00a0100,00 Kč",body)
+        self.assertIn("Cena za 100 g prášku: 86,04 Kč",body)
+        self.assertIn("Cena za 100 g prášku: 86,09 Kč",body)
+        self.assertIn("Cena za 100 g prášku: 110,00 Kč",body)
+        cards=body.split('<article class="xfit-product-card"')[1:]
+        self.assertEqual(len(cards),3)
+        self.assertIn("Creatine Monohydrate 250g",cards[0])
+        self.assertIn("Nejnižší jednotková cena ve výběru",cards[0])
+        self.assertIn("Creatine Monohydrate 500g",cards[1])
