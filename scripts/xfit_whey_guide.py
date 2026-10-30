@@ -11,7 +11,8 @@ import os
 import re
 import sys
 from pathlib import Path
-from scripts.xfit_creatine_guide import build_tracked_url
+from urllib.parse import urlsplit
+from scripts.xfit_creatine_guide import build_tracked_url, safe_image
 from scripts.xfit_select import select_offers
 from scripts.wp_publish import PublishError, normalized_base, MARKER, existing_content, wp_request, validate_document, publish
 
@@ -28,20 +29,29 @@ def kind_label(title):
 def build_document(catalog, base, sample):
     if catalog.get("merchant") != "namaximum.cz" or not catalog.get("merchant_match"):
         raise PublishError("Wrong merchant feed")
-    # First include all eligible whey powders; filtering is conservative.
-    candidates = select_offers(catalog, "whey", max_price=2000, min_mass_g=500, limit=20)
-    chosen=[]
+    # Use entire eligible catalog, then group flavor variants by product family
+    # and gram weight to offer actual decisions rather than six labels of one SKU.
+    candidates = select_offers(catalog, "whey", max_price=2000, min_mass_g=500, limit=150)
+    group={}
     for p in candidates:
         title=p["title"].casefold()
         if any(w in title for w in RISK_WORDS):
             continue
         try:
             deeplink=build_tracked_url(p["source_url"],base,sample)
-        except (PublishError, ValueError):
+        except (PublishError,ValueError):
             continue
-        chosen.append({**p, "affiliate_url":deeplink})
-    if len(chosen)<3:
-        raise PublishError("Insufficient consistent whey offers for public guide")
+        image=safe_image(next((o.get("image_url") for o in catalog["products"]
+            if str(o.get("id"))==p["id"]), ""))
+        key=(urlsplit(p["source_url"]).path.rstrip("/"),p["mass_g"])
+        natural=any(w in title for w in ("natural","neochucen","bez příchutě","bez prichute","unflavored"))
+        choice={**p,"affiliate_url":deeplink,"image":image}
+        if key not in group or (natural and not group[key][0]):
+            group[key]=(natural,choice)
+    chosen=[p for _,p in group.values()]
+    chosen.sort(key=lambda p:(p["price_per_100g_powder_czk"],p["price_czk"],p["title"]))
+    if len(chosen)<2:
+        raise PublishError("Not enough distinct whey product/size families")
     chosen=chosen[:6]
     parts=[
         '<p><strong>Výběr syrovátkového proteinu nemusí začínat značkou.</strong> '
@@ -55,18 +65,30 @@ def build_document(catalog, base, sample):
         '<p><em>Partnerské odkazy (Affial / NaMaximum.cz). Při nákupu přes odkaz '
         'může Xfit.cz získat provizi. Pořadí určuje jednotková cena za hmotnost '
         'prášku, nikoliv provize.</em></p>',
-        '<table><thead><tr><th>Produkt</th><th>Typ dle názvu</th><th>Balení</th>'
-        '<th>Cena</th><th>100 g prášku</th><th>Obchod</th></tr></thead><tbody>'
+        '<p><strong>Vybrané možnosti:</strong> uvádíme různé výrobky či velikosti balení, ne opakované příchutě stejného prášku.</p>',
+        '<div class="xfit-product-cards">'
     ]
-    for item in chosen:
-        parts.append('<tr><td><strong>'+html.escape(item["title"])+'</strong></td><td>'+
-            html.escape(kind_label(item["title"]))+'</td><td>'+
-            str(item["mass_g"])+' g</td><td>'+str(round(item["price_czk"]))+
-            ' Kč</td><td>'+str(round(item["price_per_100g_powder_czk"]))+
-            ' Kč</td><td><a href="'+html.escape(item["affiliate_url"],quote=True)+
-            '" rel="sponsored nofollow noopener noreferrer" target="_blank">Zobrazit</a></td></tr>')
+    for index,item in enumerate(chosen):
+        title=html.escape(item["title"])
+        kind=html.escape(kind_label(item["title"]))
+        price=str(round(item["price_czk"]))
+        unit=str(round(item["price_per_100g_powder_czk"]))
+        link=html.escape(item["affiliate_url"],quote=True)
+        img=('<p><img src="'+html.escape(item["image"],quote=True)+
+             '" alt="'+title+'" loading="lazy" width="120" height="120" /></p>'
+             if item["image"] else "")
+        label="Nejnižší jednotková cena ve výběru" if index==0 else "Další velikost nebo typ prášku"
+        parts.append('<article class="xfit-product-card" style="border:1px solid #dce5e8;'
+            'border-radius:12px;padding:16px;margin:16px 0;background:#ffffff;">'
+            '<h3>'+title+'</h3>'+img+
+            '<p><strong>'+label+'</strong></p>'
+            '<p>Typ podle názvu: '+kind+'</p>'
+            '<p><strong>Cena: '+price+' Kč</strong> · Balení: '+str(item["mass_g"])+' g</p>'
+            '<p><strong>Cena za 100 g prášku: '+unit+' Kč</strong></p>'
+            '<p><a href="'+link+'" rel="sponsored nofollow noopener noreferrer" '
+            'target="_blank">Zobrazit konkrétní balení na NaMaximum.cz</a></p></article>')
     parts += [
-      '</tbody></table>',
+      '</div>',
       '<h2>Koncentrát, izolát nebo něco jiného?</h2>',
       '<p><strong>WPC (koncentrát)</strong> bývá cenově dostupnější, ale obvykle '
       'obsahuje více laktózy než izolát. <strong>WPI (izolát)</strong> má často '
