@@ -1,11 +1,6 @@
 name: XFIT Full Archive Audit
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/xfit-archive-full.yml'
-      - 'scripts/xfit_archive_full.py'
   schedule:
     - cron: '29 3 * * 0'
 permissions:
