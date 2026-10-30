@@ -28,6 +28,14 @@ jobs:
           import json
           from scripts.wp_publish import wp_request, normalized_base, MARKER
           base = normalized_base()
+          for post_id in range(25450, 25456):
+            try:
+              post = wp_request(base, "posts/" + str(post_id) + "?context=edit&_fields=id,slug,status,title,link")
+              print(json.dumps({"post_id": post.get("id"), "slug": post.get("slug"), "status": post.get("status"), "link": post.get("link"), "title": (post.get("title") or {}).get("raw")}, ensure_ascii=False))
+            except Exception:
+              print(json.dumps({"post_id": post_id, "found": False}))
+          all_owned = wp_request(base, "posts?context=edit&status=any&slug=xfit-os-protein-guide&per_page=20&_fields=id,slug,status")
+          print("MATCHES_BY_SLUG_STATUS_ANY=" + json.dumps(all_owned, ensure_ascii=False))
           data = wp_request(base, "posts/25450?context=edit&_fields=id,slug,status,title,content,link")
           content = data.get("content", {})
           raw = content.get("raw", "") or ""
