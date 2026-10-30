@@ -12,8 +12,34 @@ permissions:
   contents: write
   pull-requests: write
 jobs:
+  permission-gate:
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      can_create_pr: ${{ steps.check.outputs.can_create_pr }}
+    steps:
+      - name: Check GitHub Actions PR permission BEFORE spending OpenAI tokens
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          allowed="$(gh api "repos/$GITHUB_REPOSITORY/actions/permissions/workflow" \
+            --jq '.can_approve_pull_request_reviews' 2>/dev/null || echo unavailable)"
+          if [[ "$allowed" == "true" ]]; then
+            echo "can_create_pr=true" >> "$GITHUB_OUTPUT"
+            echo "PR creation enabled; Codex agent wave is permitted to run." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "can_create_pr=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::GitHub Actions cannot create PRs (or permission check unavailable). Skipping paid model calls."
+            echo "No model calls. Enable 'Allow GitHub Actions to create and approve pull requests' under repository Settings -> Actions -> General, then run the workflow again." >> "$GITHUB_STEP_SUMMARY"
+          fi
   parallel-lanes:
-    if: ${{ vars.XFIT_CODEX_AGENTS_ENABLED == 'true' }}
+    needs: permission-gate
+    if: ${{ vars.XFIT_CODEX_AGENTS_ENABLED == 'true' && needs.permission-gate.outputs.can_create_pr == 'true' }}
     strategy:
       fail-fast: false
       max-parallel: 4
