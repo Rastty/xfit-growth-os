@@ -14,7 +14,7 @@ concurrency:
 jobs:
   cleanup:
     runs-on: ubuntu-24.04
-    timeout-minutes: 18
+    timeout-minutes: 25
     env:
       WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
       WP_USERNAME: ${{ secrets.WP_USERNAME }}
@@ -35,5 +35,5 @@ jobs:
           path: reports/backups/xfit-expired-coupon-wave01.json
           retention-days: 90
           if-no-files-found: error
-      - name: Remove expired coupon blocks with exact readback and rollback
+      - name: Remove expired coupon blocks; preserve independently verified wins and flag uncertainty
         run: python -m scripts.xfit_coupon_cleanup apply
