@@ -2,7 +2,7 @@ import unittest
 from scripts.xfit_coupon_cleanup import stripped,sha
 class CouponCleanupTests(unittest.TestCase):
     def test_only_explicit_2022_promo_shortcode_removed(self):
-        s=('Užitečný odstavec. '*40)+
+        s=(('Užitečný odstavec. '*40)+
           '[su_button url="https://xfit.cz/damske-obleceni" background="#2def4c"]'
           'FITNESS OBLEČENÍ V AKCI - slevový kód: 5NM2022[/su_button]'
           '<h2>Důležité informace</h2><p>Čtenářská hodnota</p>')
