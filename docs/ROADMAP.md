@@ -7,14 +7,14 @@ Kvalifikované organické návštěvy → užitečná práce s poradcem → affi
 ## P0 — základní infrastruktura
 - [x] Oddělený GitHub repozitář; funkční zápis z připojeného asistenta.
 - [x] První nativní REST API publisher, čtení public API, bezpečnostní testy a GitHub workflows jako kód.
-- [ ] WP credentials + draft smoke test + live verification.
-- [ ] Záloha WordPressu, seznam indexovaných URL, export archivu a GSC/GA4 data.
+- [x] WordPress API authentication, draft test and public release verification (live first guide).
+- [x] GSC/GA4 exports received and analyzed (private report; not committed to public repo).\n- [x] Per-article backup and in-place Pilates revision, verified live (WP post 3660).\n- [ ] Full WP archive backup and source x landing-page performance inventory before bulk cleanup.
 - [ ] Hosting deployment cesta pro poradce JS/CSS.
 
 ## P1 — obsah a SEO
 - [ ] Paginovaný audit archivu: duplicity, tenký obsah, neaktuální informace, interní odkazy, rizikové odchozí domény a kanibalizace.
 - [ ] Návrh informační architektury pro potřeby návštěvníků, nikoli pouze chronologické články.
-- [ ] Aktualizace nejlepších existujících landing pages; **žádné hromadné mazání před inventurou URL a dopadem v GSC**.
+- [x] First existing Google-opportunity Pilates article revised in place, backup stored and live-verified; see GitHub Actions run 41089083374.\n- [ ] Follow-on existing landing improvements after GA4 source/medium x landing-page report; **no bulk archive deletion**.
 
 ## P2 — první poradce
 - [ ] Protein selector: cíl, alergeny a omezení, rozpočet, cena za 100 g bílkovin, jednoduché vysvětlení volby.
@@ -36,3 +36,7 @@ Přeskočit nelze \`public verified\`. Na veřejný web jde pouze připravený o
 ## Přísné oddělení
 
 Tento repozitář a jeho workflows **nikdy** nemění ani nečtou interní plánovací dokumenty Prometheus. Žádné společné fronty, nové projekty ani sdílené produkční klíče.
+
+## Analytické priority po 30. 10. 2026
+
+Viz `docs/GROWTH_PLAN_AFTER_EXPORTS.md`. Organická návštěvnost v GA4 musí být rozlišena podle `Session source/medium` (nikoli pouze `Session manual source`); Google Search Console nepopisuje Seznam. Neuchovávat privátní exporty v tomto veřejném repozitáři.
