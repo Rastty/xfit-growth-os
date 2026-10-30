@@ -61,6 +61,23 @@ def build_document(catalog, base, sample):
         'prášku, nikoli za 100 g skutečných bílkovin. K tomu bychom potřebovali '
         'spolehlivý údaj o jejich obsahu pro každou variantu; nelze jej odhadovat '
         'jen z názvu nebo ceny. Ceny se mohou měnit.</p>',
+        '<h2>Než koupíte protein: krátký rozhodovací rozcestník</h2>',
+        '<details><summary><strong>Musím protein kupovat, abych nabral svaly?</strong></summary>'
+        '<p>Ne. Proteinový prášek je praktický způsob doplnění bílkovin, pokud je '
+        'nedokážete pohodlně získat běžným jídlem. Bez pravidelného tréninku, '
+        'celkově vhodné stravy a regenerace nedává nákup sám o sobě smysl. '
+        'Začněte <a href="https://xfit.cz/xfit-os-doplnky-pro-zacatecniky/">'
+        'nezávislým průvodcem doplňky pro začátečníky</a>.</p></details>',
+        '<details><summary><strong>WPC, nebo izolát WPI?</strong></summary>'
+        '<p>Koncentrát bývá cenově dostupnější. Izolát může mít nižší podíl laktózy '
+        'a vyšší podíl bílkovin na 100 g prášku, ale přesná čísla závisejí na '
+        'konkrétním výrobku. Dražší izolát není automaticky lepší volba. '
+        'Vždy zkontrolujte etiketu a alergeny.</p></details>',
+        '<details><summary><strong>Nesnáším mléko nebo držím veganskou stravu</strong></summary>'
+        '<p>Syrovátka pochází z mléka. Při alergii na mléčnou bílkovinu ji '
+        'nepovažujte za bezpečnou volbu; izolát není zárukou absence mléčných '
+        'alergenů. Pro veganské stravování zvažte vhodné rostlinné zdroje. '
+        'Při zdravotním omezení výběr řešte s kvalifikovaným odborníkem.</p></details>',
         '<h2>Syrovátkové proteiny – porovnání balení a ceny</h2>',
         '<p><em>Partnerské odkazy (Affial / NaMaximum.cz). Při nákupu přes odkaz '
         'může Xfit.cz získat provizi. Pořadí určuje jednotková cena za hmotnost '
