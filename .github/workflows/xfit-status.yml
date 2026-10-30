@@ -1,0 +1,29 @@
+name: XFIT Four-hour Status
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-status.yml'
+  schedule:
+    - cron: '13 */4 * * *'
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: xfit-status-comment
+  cancel-in-progress: false
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Collect evidence and post status to issue #1
+        run: python scripts/xfit_status.py
