@@ -5,7 +5,8 @@ const checks = [
   {name:"creatine",url:"https://xfit.cz/xfit-os-kreatin-poradce/",expected:"Jak vybrat kreatin",minH2:3,commercial:true},
   {name:"whey",url:"https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/",expected:"Srovnání syrovátkových proteinů",minH2:3,commercial:true},
   {name:"pilates-cardio",url:"https://xfit.cz/pilates-vs-kardio-co-je-lepsi-pro-hubnuti/",expected:"Pilates vs. kardio",minH2:6,commercial:false},
-  {name:"creatine-kidney",url:"https://xfit.cz/kreatin-a-jeho-vliv-na-ledviny-a-jatra/",expected:"Kreatin, ledviny a játra",minH2:6,commercial:false}
+  {name:"creatine-kidney",url:"https://xfit.cz/kreatin-a-jeho-vliv-na-ledviny-a-jatra/",expected:"Kreatin, ledviny a játra",minH2:6,commercial:false},
+  {name:"creatine-vs-protein",url:"https://xfit.cz/xfit-os-kreatin-nebo-protein/",expected:"Kreatin, nebo protein?",minH2:6,commercial:false}
 ];
 fs.mkdirSync("reports/browser-qa", {recursive:true});
 (async()=>{
@@ -72,7 +73,7 @@ for(const spec of checks){
   if(spec.commercial && doc.brokenProductImages)failures.push("broken_product_images_"+doc.brokenProductImages);
   if(spec.commercial && !doc.firstProductLoaded)failures.push("first_product_photo_not_loaded_after_scroll");
   if(spec.commercial && (!doc.firstCTASize || doc.firstCTASize.height<44))failures.push("merchant_cta_tap_target_under_44px");
-  if(["beginner","pilates-cardio","creatine-kidney"].includes(spec.name) && doc.details<3)failures.push("interactive_details_missing");
+  if(["beginner","pilates-cardio","creatine-kidney","creatine-vs-protein"].includes(spec.name) && doc.details<3)failures.push("interactive_details_missing");
   if(doc.documentWidth>doc.viewport+12)failures.push("horizontal_overflow_"+(doc.documentWidth-doc.viewport));
   await page.screenshot({path:"reports/browser-qa/"+spec.name+"-mobile.png",fullPage:true});
   console.log(JSON.stringify({page:spec.name,state:failures.length?"FAIL":"PASS",doc,failures}));
