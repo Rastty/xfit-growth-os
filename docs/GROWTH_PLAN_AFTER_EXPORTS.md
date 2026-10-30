@@ -43,7 +43,7 @@ WordPress API credentials already work. Need GA4 correct export, affiliate feeds
 
 ## Affiliate feed integration status
 
-- Received an eHUB default tracking URL and a private Venalio Heureka XML feed URL in chat. The feed URL contains a secret-like authorization token; it has intentionally NOT been committed, logged or attached as a repository file.
-- Installed validation-only importer in `scripts/xfit_feed_ingest.py` and GitHub workflow `.github/workflows/xfit-feed-validation.yml`. It will read secrets `XFIT_GREENMEDICAL_FEED_URL` and `XFIT_EHUB_DEFAULT_LINK`, only when variable `XFIT_AFFIL_FEED_ENABLED=true`.
-- **No actual feed product inventory, verified merchant ↔ eHUB mapping, product deep links or live affiliate page yet.** First validate feed privately, assess health-product compliance and then publish relevant selections.
+- Received a tracking URL on ehub.cz, while the user clarifies their affiliate account is with Affial.com; also received private Venalio Heureka XML URL in chat. The feed URL contains a secret-like authorization token; it has intentionally NOT been committed, logged or attached as a repository file.
+- Installed validation-only importer in `scripts/xfit_feed_ingest.py` and GitHub workflow `.github/workflows/xfit-feed-validation.yml`. It will read secrets `XFIT_GREENMEDICAL_FEED_URL` and `XFIT_AFFIL_DEFAULT_LINK`, only when variable `XFIT_AFFIL_FEED_ENABLED=true`.
+- **No actual feed product inventory, verified merchant ↔ Affial tracking mapping, product deep links or live affiliate page yet.** First validate feed privately, assess health-product compliance and then publish relevant selections.
 - Setup guide: `docs/AFFIL_ONBOARDING.md`.
