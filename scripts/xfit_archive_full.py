@@ -24,6 +24,8 @@ SPACE=re.compile(r"\s+")
 LINKS=re.compile(r'<a\b[^>]*\bhref=["\x27]([^"\x27]+)',re.I)
 TITLE_NOISE=re.compile(r"\b(aktualizace|přehled|kompletní průvodce|průvodce)\b", re.I)
 SPAM=re.compile(r"(casino|kasino|gambling|slots|betting|viagra|porn|poker|loan|levitra)",re.I)
+STALE_PROMO=re.compile(r"5NM2022|slevový kód\s*:\s*5NM2022",re.I)
+STALE_PROMO_FULL=re.compile(r'\[su_button\b[^\]]*\][^\[]*5NM2022\[/su_button\]',re.I)
 OUT_OF_FOCUS=("elektrokolo","koloběžka","skútr","casino","kasino","sázková kancelář","online automaty","půjčky")
 PRIMARY_TOPIC=("fitness","cvičení","trénink","sval","protein","kreatin","posilov","výživ","výživa","jídlo","hubnutí","pilates","jóga","sport","regenerac","zdrav","vitam","pohyb")
 FIELDS="id,modified,link,slug,title,content,excerpt,categories,date"
@@ -68,6 +70,8 @@ def classify(post):
       "external_hosts":dict(external.most_common(10)),
       "body_hash":hashlib.sha256(SPACE.sub(" ",body.lower()).encode("utf-8")).hexdigest() if body else "",
       "title_normalized":TITLE_NOISE.sub("",title).lower().strip(),
+      "stale_2022_promo_mentions":len(STALE_PROMO.findall(body_html)),
+      "stale_2022_promo_shortcode_count":len(STALE_PROMO_FULL.findall(body_html)),
       "suspect_thin":len(body)<350,
       "suspect_offtopic":any(x in lower for x in OUT_OF_FOCUS)
                 and not any(x in lower for x in PRIMARY_TOPIC),
@@ -113,6 +117,13 @@ def inventory(posts):
       "duplicate_title_groups":len(duplicates),
       "exact_body_duplicate_groups":len(identical),
       "thin_count":sum(p["suspect_thin"] for p in rows),
+      "stale_2022_promo_posts":sum(p["stale_2022_promo_mentions"]>0 for p in rows),
+      "stale_2022_promo_shortcodes":sum(p["stale_2022_promo_shortcode_count"] for p in rows),
+      "stale_promo_candidates":[
+        {"id":p["id"],"slug":p["slug"],"url":p["url"],
+         "mentions":p["stale_2022_promo_mentions"],"shortcodes":p["stale_2022_promo_shortcode_count"]}
+        for p in rows if p["stale_2022_promo_mentions"]>0
+      ][:500],
       "suspected_out_of_focus_count":sum(p["suspect_offtopic"] for p in rows),
       "suspected_spam_count":sum(p["suspect_spam"] for p in rows),
       "duplicate_titles":duplicates[:250],
@@ -160,7 +171,7 @@ def main():
     })
     dest=Path(args.output);dest.parent.mkdir(parents=True,exist_ok=True)
     dest.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
-    print(json.dumps({k:report[k] for k in ("scanned","repeated_pagination_post_count","complete","duplicate_title_groups","exact_body_duplicate_groups","thin_count","suspected_out_of_focus_count","suspected_spam_count","declared_total_pages","interrupted_at","mutated_wordpress")},ensure_ascii=False))
+    print(json.dumps({k:report[k] for k in ("scanned","repeated_pagination_post_count","complete","duplicate_title_groups","exact_body_duplicate_groups","thin_count","stale_2022_promo_posts","stale_2022_promo_shortcodes","suspected_out_of_focus_count","suspected_spam_count","declared_total_pages","interrupted_at","mutated_wordpress")},ensure_ascii=False))
     return 2 if not rows or failed else 0
 
 if __name__=="__main__":
