@@ -1,47 +1,35 @@
-# Xfit — affiliate feed onboarding (private authorization)
+# Xfit — affiliate onboarding (Affial + NaMaximum)
 
-Status: **awaiting GitHub Secrets and first real feed validation**.
-User identifies affiliate program as Affial.com. Supplied tracking URL points to ehub.cz;
-that is a PROVIDER MISMATCH needing confirmation in Affial's actual campaign UI.
-Venalio Heureka XML feed is separate and does not establish attribution.
+## Confirmed tracking structure
+The owner corrected an older erroneous eHUB link. The **current partner link is on `www.namaximum.cz`** and has the parameters `utm_medium=affiliate`, `utm_campaign=affial.com`, `utm_source=pap`, `a_aid`, `a_bid`. The exact referral IDs and URL are intentionally **not committed**.
 
-## Required GitHub configuration
+The public [Affial NaMaximum campaign](https://www.affial.com/namaximum/) offers **7.5% commission, 30-day cookie** and states that **PPC advertising is prohibited**. Confirm that this specific publisher account is approved for the campaign and verify the current terms in the dashboard before publishing.
 
-Settings > Secrets and variables > Actions > New repository secret:
-- `XFIT_GREENMEDICAL_FEED_URL`: complete HTTPS feed URL including authorization
-  query string, pasted directly into GitHub's encrypted secret (not into git).
-- `XFIT_AFFIL_DEFAULT_LINK`: the actual tracking URL generated in the approved Affial.com campaign.
-  Do not assume a URL pointing to ehub.cz belongs to Affial.
+### Store values in GitHub Secrets
+Settings → Secrets and variables → Actions → **Secrets**
 
-In **Variables** (not Secrets):
-- `XFIT_AFFIL_FEED_ENABLED` = `true`
+- `XFIT_AFFIL_DEFAULT_LINK`: paste the **corrected NaMaximum affiliate homepage URL** from the user directly into the encrypted secret. Replace any prior eHUB value; do not paste URLs with tracking IDs into issues, commits or conversations.
+- `XFIT_GREENMEDICAL_FEED_URL`: the **separate GreenMedical/Venalio Heureka XML URL** with a rotated secret key (if this *other* advertiser should be integrated). **Do not use this feed for NaMaximum links.**
+- If available later, a NaMaximum XML feed URL should use its own separate secret, e.g. `XFIT_NAMAXIMUM_FEED_URL`, and will require a dedicated parser/validator. Do not assign the GreenMedical URL to it.
 
-Run Actions → **XFIT Affiliate Feed Validation** → Run workflow. Once enabled,
-the pipeline also checks the feed daily. It fetches the XML as a private GitHub
-Actions job, validates the host and Heureka item structure, normalizes offers,
-rejects restricted/sensitive product classes, and uploads a **7-day private
-workflow artifact**. It never modifies the public WordPress site.
+The Affial portal documentation states: **Propagace → XML feedy** (if the advertiser supplies one), and **Propagace → Banners & Links → Dynamický odkaz** for product-level affiliate links:
+- https://help.affial.com/article/13-jak-zacit-s-propagaci
+- https://help.affial.com/article/28-vytvoreni-odkazu
 
-## Critical security
+### Important mismatch
+- **Affiliate merchant:** NaMaximum.cz
+- **Previously supplied feed merchant:** GreenMedical (hosted by Venalio)
+- These are **not the same store**. Never use GreenMedical product prices, images or SKUs to imply that NaMaximum sells the same offers or that its affiliate homepage URL is a product link.
+- The format of the correct referral link can be validated locally. Conversion tracking and actual affiliation are **not verified** until live referral/campaign reporting is checked.
 
-The originally supplied feed URL contains a credential-like `secretKey`
-parameter and was posted into chat. Rotate/reissue that token in the merchant
-backend if possible; paste the NEW token URL only into GitHub Secrets.
-Never log, commit, publish, or store the token URL in a public document.
-The provided click link uses an ehub.cz hostname, not affial.com. Ask the publisher
-to compare against the Affial.com administration under Propagace / Banners & Links
-and its generated tracking link. Product offers remain PRIVATE_REVIEW_REQUIRED.
+### Optional read-only GreenMedical feed validation
+If GreenMedical is independently approved and intended, set `XFIT_GREENMEDICAL_FEED_URL` and `XFIT_AFFIL_DEFAULT_LINK` (correct NaMaximum URL) as secrets. Under **Variables**, set `XFIT_AFFIL_FEED_ENABLED=true`. Then run **XFIT Affiliate Feed Validation**, which only normalizes and privately archives the GreenMedical offers; it does not publish them or combine them with NaMaximum links. Securely rotate the previously shared Venalio secretKey if possible. The workflow cannot yet import a NaMaximum feed.
 
-## Preconditions before first live affiliate page
+### Publish checklist
+1. Confirm approval of the NaMaximum Affial campaign and the real product feed.
+2. Normalize product images, merchant URLs, GTIN/SKU, prices including VAT, and availability.
+3. Generate and verify actual product-level Affial deep links for **the same merchant**.
+4. Disclose affiliate links and track outbound clicks; never present misleading or unsupported supplement claims.
+5. Verify conversion tracking in Affial dashboard before scaling.
 
-1. Real feed accessible and proper products/categories identified.
-2. Currency, price freshness, availability and image rights checked.
-3. Merchant-to-Affial campaign click redirect mapping confirmed.
-4. Product-level deeplink syntax confirmed in Affial/in advertiser UI (default
-   affiliate click is usually a store link, NOT a product-specific link).
-5. Editorial health-claim safeguards applied; do not claim that supplements
-   treat illnesses, injuries, or chronic conditions.
-6. Only then generate a relevant product guide and test live clicks.
-7. Register outbound click events and affiliate disclosure.
-
-This feed pipeline is deliberately validation-only until those gates pass.
+Do not claim a live affiliate integration until its feeds and referral links are verified and publicly deployed.
