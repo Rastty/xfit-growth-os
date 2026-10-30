@@ -1,0 +1,38 @@
+name: XFIT Pilates Cardio Editorial Upgrade
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-pilates-cardio-upgrade.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-editor-pilates-cardio
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check all Xfit unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Validate evidence-rich content and snapshot original
+        run: python -m scripts.xfit_pilates_cardio_upgrade snapshot
+      - name: Archive full original post BEFORE writing
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-pilates-cardio-original-${{ github.run_id }}
+          path: reports/backups/xfit-pilates-cardio-original.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Update canonical post and verify public article, rollback on mismatch
+        run: python -m scripts.xfit_pilates_cardio_upgrade deploy
