@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/xfit-status.yml'
+      - 'scripts/xfit_status.py'
   schedule:
     - cron: '13 */4 * * *'
 permissions:
