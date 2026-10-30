@@ -35,3 +35,14 @@ Before showing offers on xfit.cz: verify prices and currency, product availabili
 A previous feed URL with a secret key was pasted in conversation. Rotate/reissue that key if possible before adding the new URL to GitHub Secrets; never paste it in issues, git files or discussion. The public repository contains no credential values.
 
 **Note:** This repository is public; GitHub Actions artifacts must not be considered private. The workflow therefore uploads counts and category totals only, never the full feed product list, secret URL, or affiliate tracking link.
+
+## Confirmed authenticated import, 2026-10-30
+
+- Run: https://github.com/Rastty/xfit-growth-os/actions/runs/41094083014
+- Successfully normalized 1,485 offers from NaMaximum feed; excluded 6 products under restricted-products safety filter.
+- Merchant verified via each item's namaximum.cz URL, not GreenMedical feed host.
+- Top categories: Kapsle/Tablety 84, Proteiny na objem 53, Syrovátkové proteiny 51, Pánská trička 51, Pánské mikiny 49. Categories are not necessarily mutually exclusive.
+- All 1,485 included offers have image URL and EAN; 1,473 have a category.
+- scripts/xfit_select.py created for deterministic creatine / whey / plant protein candidate shortlists. At <=1,500 CZK shortlist sizes were 12 / 12 / 2; first two are capped at 12 and not total offer counts.
+- Feed authentication and affiliate base-link formatting both work. Product-level commission attribution has not yet been verified and there is no public affiliate product selector.
+- Public GitHub artifacts contain only redacted aggregate counts, never raw feed secrets or full catalog.
