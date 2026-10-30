@@ -82,23 +82,31 @@ def shortlist(catalog, base, sample, budget=1500):
         and not any(t in (o.get("title") or "").casefold() for t in BLOCK_UNCOMPARABLE)
     ]
     items = select_offers({"products": eligible}, "creatine", max_price=budget,
-                          min_mass_g=200, limit=20)
-    result = []
+                          min_mass_g=200, limit=150)
+    candidates=[]
     for p in items:
-        title = p["title"].casefold()
-        if not any(t in title for t in MONOHYDRATE_TERMS):
-            continue
-        if any(t in title for t in BLOCK_UNCOMPARABLE):
-            continue
         try:
             url = build_tracked_url(p["source_url"], base, sample)
         except (PublishError, ValueError):
             continue
-        result.append({**p, "tracked_url": url, "image": safe_image(
-            next((o.get("image_url") for o in catalog["products"]
-                  if str(o.get("id")) == p["id"]), ""))})
-    if len(result) < 3:
-        raise PublishError("Too few comparable offers (named candidates="+str(len(eligible))+", ranked="+str(len(items))+", trackable="+str(len(result))+"); abort")
+        image=safe_image(next((o.get("image_url") for o in catalog["products"]
+                               if str(o.get("id"))==p["id"]), ""))
+        candidates.append({**p, "tracked_url":url,"image":image})
+    # Group flavors of the SAME powder at the same mass.
+    # Without this, the cheapest 6 results were all 1 kg flavor variants.
+    families={}
+    for p in candidates:
+        key=(urlsplit(p["source_url"]).path.rstrip("/"),p["mass_g"])
+        natural=any(term in p["title"].casefold() for term in
+                    ("natural","neochucen","bez příchutě","bez prichute","unflavored"))
+        if key not in families:
+            families[key]=(natural,p)
+        elif natural and not families[key][0]:
+            families[key]=(natural,p)
+    result=[p for _,p in families.values()]
+    result.sort(key=lambda p:(p["price_per_100g_powder_czk"],p["price_czk"],p["title"]))
+    if len(result) < 2:
+        raise PublishError("Not enough distinct creatine product/mass families; refuse repeated flavor offers")
     return result[:6]
 
 def build_document(catalog, base, sample):
@@ -117,21 +125,30 @@ def build_document(catalog, base, sample):
       '<p><em>Obsahuje affiliate odkazy na NaMaximum.cz přes síť Affial. '
       'Pokud přes odkaz nakoupíte, Xfit.cz může získat provizi. '
       'Řazení je podle ceny za 100 g baleného prášku, nikoli výše provize.</em></p>',
-      '<table><thead><tr><th>Produkt</th><th>Balení</th><th>Cena</th>'
-      '<th>Cena za 100 g</th><th>Odkaz</th></tr></thead><tbody>'
+      '<p><strong>Vybrané možnosti:</strong> odlišné výrobky nebo gramáže, ne šest příchutí téhož balení.</p>',
+      '<div class="xfit-product-cards">'
     ]
-    for offer in chosen:
-        title = html.escape(offer["title"])
-        href = html.escape(offer["tracked_url"], quote=True)
-        price = str(round(offer["price_czk"]))
-        unit_price = str(round(offer["price_per_100g_powder_czk"]))
-        bits.append('<tr><td><strong>' + title + '</strong></td><td>' +
-            str(offer["mass_g"]) + ' g</td><td>' + price + ' Kč</td><td>' +
-            unit_price + ' Kč</td><td><a href="' + href +
-            '" rel="sponsored nofollow noopener noreferrer" target="_blank">' +
-            'Zobrazit v obchodě</a></td></tr>')
+    for i,offer in enumerate(chosen):
+        title=html.escape(offer["title"])
+        href=html.escape(offer["tracked_url"],quote=True)
+        price=html.escape(str(round(offer["price_czk"])))
+        unit=html.escape(str(round(offer["price_per_100g_powder_czk"])))
+        label="Nejnižší jednotková cena ve výběru" if i==0 else "Alternativa podle ceny a velikosti balení"
+        image=('<p><img src="'+html.escape(offer["image"],quote=True)+
+               '" alt="'+title+'" loading="lazy" width="120" height="120" /></p>'
+               if offer["image"] else "")
+        bits.append('<article class="xfit-product-card" style="border:1px solid #dce5e8;'
+            'border-radius:12px;padding:16px;margin:16px 0;background:#ffffff;">'
+            '<h3>'+title+'</h3>'+image+
+            '<p><strong>'+label+'</strong></p>'
+            '<p><strong>Cena: '+price+' Kč</strong> · Balení: '+
+            str(offer["mass_g"])+' g</p>'
+            '<p><strong>Cena za 100 g prášku: '+unit+' Kč</strong></p>'
+            '<p><a href="'+href+'" rel="sponsored nofollow noopener noreferrer" '
+            'target="_blank">Zobrazit konkrétní balení na NaMaximum.cz</a></p>'
+            '</article>')
     bits += [
-      '</tbody></table>',
+      '</div>',
       '<h2>Kdy má kreatin smysl?</h2>',
       '<p>Kreatin monohydrát patří k nejlépe prozkoumaným sportovním doplňkům. '
       'Podle odborných přehledů může při pravidelném tréninku zlepšovat výkon '
