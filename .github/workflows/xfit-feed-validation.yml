@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      XFIT_GREENMEDICAL_FEED_URL: ${{ secrets.XFIT_GREENMEDICAL_FEED_URL }}
+      XFIT_NAMAXIMUM_FEED_URL: ${{ secrets.XFIT_NAMAXIMUM_FEED_URL || secrets.XFIT_GREENMEDICAL_FEED_URL }}
       XFIT_AFFIL_DEFAULT_LINK: ${{ secrets.XFIT_AFFIL_DEFAULT_LINK }}
     steps:
       - uses: actions/checkout@v4
