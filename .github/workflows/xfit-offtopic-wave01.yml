@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/xfit-offtopic-wave01.yml'
+      - 'scripts/xfit_archive_wave01.py'
 permissions:
   contents: read
 concurrency:
