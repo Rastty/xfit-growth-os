@@ -30,8 +30,19 @@ for(const spec of checks){
     const links=[...document.querySelectorAll('a[href*="namaximum.cz"]')];
     const missingSponsored=links.filter(n=>!n.relList.contains("sponsored")).length;
     const images=[...document.querySelectorAll("img")].filter(n=>n.getBoundingClientRect().width>30 && !n.alt);
+    const productImages=[...document.querySelectorAll(".xfit-product-card img")];
+    const brokenProductImages=productImages.filter(n=>n.complete && n.naturalWidth===0);
+    const productImageStatus=productImages.slice(0,6).map(n=>({
+      host:new URL(n.currentSrc||n.src).hostname,loaded:n.complete&&n.naturalWidth>0,
+      renderedHeight:Math.round(n.getBoundingClientRect().height),
+      naturalWidth:n.naturalWidth}));
+    const themeImagesMissingAlt=images.slice(0,8).map(n=>({
+      host:new URL(n.currentSrc||n.src).hostname,
+      path:new URL(n.currentSrc||n.src).pathname.slice(0,120)}));
     return {h1,h2,titles,viewport:inner,documentWidth:full,details,summaries,
         merchantLinks:links.length,missingSponsored,imagesMissingAlt:images.length,
+        productImages:productImages.length,brokenProductImages:brokenProductImages.length,
+        productImageStatus,themeImagesMissingAlt,
         hasViewportMeta:!!document.querySelector('meta[name="viewport"]')};
   });
   if(!doc.h1.includes(spec.expected))failures.push("h1_missing_expected");
@@ -39,6 +50,7 @@ for(const spec of checks){
   if(!doc.hasViewportMeta)failures.push("mobile_viewport_missing");
   if(spec.commercial && !doc.merchantLinks)failures.push("merchant_links_missing");
   if(spec.commercial && doc.missingSponsored)failures.push("sponsored_rel_missing");
+  if(spec.commercial && doc.brokenProductImages)failures.push("broken_product_images_"+doc.brokenProductImages);
   if(["beginner","pilates-cardio","creatine-kidney"].includes(spec.name) && doc.details<3)failures.push("interactive_details_missing");
   if(doc.documentWidth>doc.viewport+12)failures.push("horizontal_overflow_"+(doc.documentWidth-doc.viewport));
   await page.screenshot({path:"reports/browser-qa/"+spec.name+"-mobile.png",fullPage:true});
