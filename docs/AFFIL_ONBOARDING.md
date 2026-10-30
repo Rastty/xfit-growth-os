@@ -18,7 +18,7 @@ Go to Settings → Secrets and variables → Actions → Secrets.
 2. `XFIT_NAMAXIMUM_FEED_URL`: the complete XML feed URL including the secret key. For backwards compatibility, the workflow also reads `XFIT_GREENMEDICAL_FEED_URL` if already configured. **Do not duplicate the secret unnecessarily.**
 3. Under Actions **Variables**, set `XFIT_AFFIL_FEED_ENABLED=true`.
 
-Once enabled, the **XFIT Affiliate Feed Validation** workflow can fetch the live feed daily and store its normalized catalog as a short-lived private GitHub Actions artifact; it does **not** yet publish offers.
+Once enabled, the **XFIT Affiliate Feed Validation** workflow can fetch the live feed daily and store only a **redacted aggregate summary** in a short-lived GitHub Actions artifact. The full catalog remains on the temporary runner and is not uploaded; the workflow does **not** publish offers.
 
 ## Important remaining step: product deep links
 
@@ -33,3 +33,5 @@ Before showing offers on xfit.cz: verify prices and currency, product availabili
 ## Security
 
 A previous feed URL with a secret key was pasted in conversation. Rotate/reissue that key if possible before adding the new URL to GitHub Secrets; never paste it in issues, git files or discussion. The public repository contains no credential values.
+
+**Note:** This repository is public; GitHub Actions artifacts must not be considered private. The workflow therefore uploads counts and category totals only, never the full feed product list, secret URL, or affiliate tracking link.
