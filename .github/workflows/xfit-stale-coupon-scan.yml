@@ -9,6 +9,9 @@ permissions:
 jobs:
   scan:
     runs-on: ubuntu-24.04
+    concurrency:
+      group: xfit-wp-heavy-reads
+      cancel-in-progress: false
     timeout-minutes: 15
     env:
       WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
