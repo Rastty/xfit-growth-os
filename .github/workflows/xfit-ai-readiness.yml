@@ -22,11 +22,17 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_ai_visibility.py' -v
       - name: Check real public crawlability, canonical, source and machine readability
         run: python -m scripts.xfit_ai_visibility
+      - name: Generate evidence-scored Xfit next-action queue
+        run: |
+          python -m unittest discover -s tests -p 'test_growth_graph.py' -v
+          python -m scripts.xfit_growth_graph
       - name: Save independent evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: xfit-ai-search-visibility
-          path: reports/xfit-ai-visibility.json
+          path: |
+            reports/xfit-ai-visibility.json
+            reports/xfit-growth-priority.json
           retention-days: 14
           if-no-files-found: ignore
