@@ -27,7 +27,8 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Make a read-only snapshot before modifying article
         run: |
-          if [[ -z "${WP_BASE_URL:-}" ]]; then echo "WP_BASE_URL=https://xfit.cz" >> "$GITHUB_ENV"; fi
+          if [[ -z "${WP_BASE_URL:-}" ]]; then export WP_BASE_URL=https://xfit.cz; fi
+          echo "WP_BASE_URL=$WP_BASE_URL" >> "$GITHUB_ENV"
           python -m scripts.wp_revise_pilates snapshot
       - name: Preserve rollback backup first
         uses: actions/upload-artifact@v4
