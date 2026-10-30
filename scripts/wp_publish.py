@@ -106,6 +106,15 @@ def verify_public(url, title):
 
 
 def publish(doc, *, live=False):
+    # Hard gate: a successful WP API call must never substitute for quality.
+    try:
+        try:
+            from scripts.xfit_editorial_gate import check_document
+        except ModuleNotFoundError:
+            from xfit_editorial_gate import check_document
+        check_document(doc)
+    except ValueError as exc:
+        raise PublishError("Editorial quality gate failed: " + str(exc)) from exc
     base = normalized_base()
     slug = doc["slug"]
     post_id = doc.get("wp_post_id")
