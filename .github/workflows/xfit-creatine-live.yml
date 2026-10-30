@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/xfit-creatine-live.yml'
       - 'scripts/xfit_creatine_guide.py'
+      - 'tests/test_creatine_guide.py'
   schedule:
     - cron: '47 */6 * * *'
 permissions:
