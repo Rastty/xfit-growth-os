@@ -1,6 +1,10 @@
 name: XFIT Affiliate Feed Validation
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-feed-validation.yml'
   schedule:
     - cron: '41 5 * * *'
 permissions:
@@ -25,7 +29,7 @@ jobs:
       - name: Preserve private validation artifact
         uses: actions/upload-artifact@v4
         with:
-          name: xfit-private-greenmedical-feed-review
-          path: reports/private-greenmedical-catalog.json
+          name: xfit-namaximum-feed-summary
+          path: reports/affiliate-feed-summary.json
           retention-days: 7
           if-no-files-found: error
