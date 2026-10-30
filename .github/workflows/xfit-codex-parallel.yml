@@ -11,6 +11,9 @@ on:
 permissions:
   contents: write
   pull-requests: write
+concurrency:
+  group: xfit-codex-wave
+  cancel-in-progress: false
 jobs:
   permission-gate:
     runs-on: ubuntu-24.04
