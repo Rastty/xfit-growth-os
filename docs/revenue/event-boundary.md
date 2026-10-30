@@ -11,6 +11,14 @@ Pomáhá připravit měření užitečnosti poradce a prokliků bez sběru jeho 
 - `affiliate_outbound_click`: navíc `partner=namaximum` a kladné celočíselné
   katalogové `product_id`. Identifikátor musí pocházet z katalogu, ne od uživatele.
 
+Proklik vyžaduje také argument `verified_product_ids`: `set` nebo `frozenset`
+kladných celočíselných ID z odděleně ověřeného katalogu partnera NaMaximum.
+Například pro katalog obsahující ID 392 volající předá
+`verified_product_ids=frozenset({392})`. Jde pouze o příklad volání, nikoli
+doklad aktuální nabídky. Chybějící seznam, neznámé ID i neplatné položky se
+odmítnou. Seznam se neposílá v parametrech události. Nesmí se vytvářet ze
+samotného kliknutí nebo vstupu uživatele; tím by ověření ztratilo význam.
+
 Souhlas musí v budoucí integraci dodat consent manager; výchozí stav nic
 nepřipraví. Jakékoli další pole se odmítne, včetně URL, odpovědí, zdravotních
 údajů, e-mailu a affiliate parametrů. Chybové zprávy neobsahují vstupní hodnoty.
@@ -20,11 +28,12 @@ Příští krok: samostatně ověřit integraci s consent managerem a skutečný
 akcemi poradce, včetně cesty „nic nekoupit“. Dokončení poradce se má zaznamenat
 i při této cestě a nesmí obsahovat zvolený výsledek. Proklik není objednávka
 ani potvrzená provize; chybějící události nejsou důkazem nulové tržby.
-Tento modul neověřuje existenci produktu, affiliate atribuci ani deduplikaci.
+Modul kontroluje členství ID v dodaném katalogu; sám neověřuje jeho původ,
+aktuálnost, skladovou dostupnost, affiliate atribuci ani deduplikaci.
 Budoucí transport musí samostatně omezit automatická metadata (URL, referrer,
 identifikátory); validátor kontroluje pouze zde sestavené parametry.
 
 Ověření: `python -m unittest tests.test_revenue_events tests.test_agent_scope`.
 Stav: připraveno lokálně; CI, nasazení, veřejná stránka a měření neověřeny.
-Prokliky/objednávky/provize: UNKNOWN. Vrácení změny: odstranit tyto tři soubory;
-žádná existující integrace se na ně zatím neodkazuje.
+Prokliky/objednávky/provize: UNKNOWN. Vrácení této úpravy: vrátit diff těchto
+tří souborů; žádná existující integrace se na ně zatím neodkazuje.

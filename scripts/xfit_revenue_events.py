@@ -8,12 +8,14 @@ EVENTS = {"advisor_start", "advisor_complete", "affiliate_outbound_click"}
 PARTNERS = {"namaximum"}
 
 
-def build_event(event_name, fields, *, analytics_consent=False):
+def build_event(event_name, fields, *, analytics_consent=False,
+                verified_product_ids=None):
     """Return minimal validated parameters, or None without explicit consent.
 
     Callers must supply actual observed actions, never synthetic conversions.
     Consent must come from the site's consent manager, not a default opt-in.
     Unknown keys fail closed: never forward quiz answers, URLs or user IDs.
+    Clicks require catalog IDs from a separately validated merchant feed.
     """
     if type(analytics_consent) is not bool:
         raise ValueError("consent must be boolean")
@@ -42,5 +44,11 @@ def build_event(event_name, fields, *, analytics_consent=False):
         # Only catalog item numbers, never free text or tracking URLs.
         if type(product_id) is not int or not 1 <= product_id <= 2**31 - 1:
             raise ValueError("product_id must be a positive catalog integer")
+        if (type(verified_product_ids) not in (set, frozenset)
+                or any(type(item) is not int or not 1 <= item <= 2**31 - 1
+                       for item in verified_product_ids)):
+            raise ValueError("verified catalog IDs must be an integer set")
+        if product_id not in verified_product_ids:
+            raise ValueError("product is not in the verified catalog")
         params.update(partner=partner, product_id=product_id)
     return {"name": event_name, "params": params}
