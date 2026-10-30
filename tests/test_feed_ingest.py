@@ -6,7 +6,7 @@ class AffiliateFeedTests(unittest.TestCase):
         result = validate_affiliate_link(
             "https://www.namaximum.cz?utm_medium=affiliate&utm_campaign=affial.com&utm_source=pap&a_aid=EXAMPLE&a_bid=EXAMPLE"
         )
-        self.assertEqual(result, "affial_namaximum_link_format_valid__greenmedical_feed_is_DIFFERENT_MERCHANT")
+        self.assertEqual(result, "affial_namaximum_tracking_format_valid__product_deeplinks_unverified")
 
     def test_reject_namaximum_without_tracking_ids(self):
         self.assertEqual(
@@ -20,11 +20,33 @@ class AffiliateFeedTests(unittest.TestCase):
             "ehub_link_is_not_the_confirmed_affial_namaximum_campaign"
         )
 
+    def test_namaximum_creapure_feed_sample(self):
+        sample=b"""<SHOP><SHOPITEM><ITEM_ID>392</ITEM_ID>
+        <PRODUCTNAME>Creatine Pure - Creapure Natural 1kg</PRODUCTNAME>
+        <EAN>8586017480698</EAN><PRICE_VAT>999</PRICE_VAT>
+        <URL>https://www.namaximum.cz/kategorie/kreatin/creatine-creapure?variant=392&amp;utm_source=heureka&amp;utm_medium=cpc</URL>
+        <IMGURL>https://greenmedical.bwcdn.net/media/2020/06/2/1/creatine-pure-2014.jpg</IMGURL>
+        </SHOPITEM></SHOP>"""
+        offers, skipped = parse_feed(sample)
+        self.assertEqual(len(offers), 1)
+        self.assertEqual(offers[0]["merchant"], "NaMaximum.cz")
+        self.assertEqual(offers[0]["id"], "392")
+        self.assertEqual(offers[0]["ean"], "8586017480698")
+        self.assertEqual(offers[0]["source_url"], "https://www.namaximum.cz/kategorie/kreatin/creatine-creapure?variant=392")
+        self.assertIsNone(offers[0]["affiliate_url"])
+        self.assertFalse(offers[0]["publish_ready"])
+
+    def test_foreign_merchant_url_skipped(self):
+        sample=b"<SHOP><SHOPITEM><PRODUCTNAME>Protein</PRODUCTNAME><PRICE_VAT>299</PRICE_VAT><URL>https://other-shop.example/p</URL></SHOPITEM></SHOP>"
+        offers, skipped=parse_feed(sample)
+        self.assertEqual(len(offers), 0)
+        self.assertEqual(skipped["not_namaximum_product_link"], 1)
+
     def test_heureka_items(self):
         sample=b"""<?xml version="1.0" encoding="UTF-8"?>
         <SHOP><SHOPITEM><ITEM_ID>123</ITEM_ID><PRODUCTNAME>Protein A</PRODUCTNAME>
         <CATEGORYTEXT>Sport a fitness</CATEGORYTEXT><PRICE_VAT>299.90</PRICE_VAT>
-        <URL>https://shop.example.com/p/a?secretKey=hidden&amp;variant=1</URL>
+        <URL>https://www.namaximum.cz/p/a?secretKey=hidden&amp;variant=1</URL>
         </SHOPITEM></SHOP>"""
         items, skipped=parse_feed(sample)
         self.assertEqual(len(items), 1)
