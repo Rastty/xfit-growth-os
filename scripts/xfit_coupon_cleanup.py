@@ -5,7 +5,7 @@ from pathlib import Path
 from urllib.parse import urlencode,urlsplit
 from scripts.wp_publish import PublishError,normalized_base,wp_request
 
-MAX_COUNT=12
+MAX_COUNT=3
 BACKUP=Path("reports/backups/xfit-expired-coupon-wave01.json")
 PROMO=re.compile(r"\[su_button\b[^\]]{0,1200}\][^\[]*?5NM2022\[/su_button\]",re.I|re.S)
 def sha(s):return hashlib.sha256(s.encode("utf-8")).hexdigest()
