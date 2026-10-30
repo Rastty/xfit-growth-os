@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 10
     env:
       XFIT_GREENMEDICAL_FEED_URL: ${{ secrets.XFIT_GREENMEDICAL_FEED_URL }}
-      XFIT_EHUB_DEFAULT_LINK: ${{ secrets.XFIT_EHUB_DEFAULT_LINK }}
+      XFIT_AFFIL_DEFAULT_LINK: ${{ secrets.XFIT_AFFIL_DEFAULT_LINK }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
