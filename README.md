@@ -8,18 +8,18 @@
 |---|---|
 | Independent GitHub repository | ✅ Connected, write access |
 | Safety tests and CI | ✅ [XFIT Code Checks](../../actions/workflows/xfit-checks.yml) |
-| WordPress native API publisher | ✅ Implemented — NOT authenticated to live site yet |
+| WordPress native API publisher | ✅ Authenticated via Actions Secrets; verified draft and live release |
 | Scheduled read-only sample audit | ✅ [Workflow installed](../../actions/workflows/xfit-audit.yml); first live audit not yet verified |
 | Direct publish on ready-content change | ✅ [Workflow installed](../../actions/workflows/xfit-publish.yml), inactive until WP Secrets configured |
-| Live site deployment verified | ⏳ Not yet |
+| Live site deployment verified | ✅ [Protein selection guide](https://xfit.cz/xfit-os-protein-guide/) — WP post 25451, automated public verification |
 | Affiliate feeds and IDs | ⏳ Not yet provided |
 | Interactive on-site engine | ⏳ Planned — frontend deployment method not established |
 
 **GitHub commit ≠ published web page.** Do not claim live release before REST write and public URL verification.
 
-## First action to unlock publishing
+## Publication now active
 
-1. In WordPress create a separate **Editor** account for Xfit automation and an **Application Password** in its Profile.
+1. Completed: separate WordPress Application Password is stored in GitHub Actions Secrets.
 2. In this repo open **Settings → Secrets and variables → Actions**. Add:
    - \`WP_USERNAME\`: the WordPress automation user's login
    - \`WP_APP_PASSWORD\`: the newly generated *Application Password*
@@ -27,7 +27,9 @@
 3. Run [XFIT Direct Publish](../../actions/workflows/xfit-publish.yml) in **draft** mode with slug \`xfit-os-protein-guide\`. First validate write and read-back.
 4. Once successful, publish the same page in **publish** mode, check the resulting public URL. Future content changed under \`content/ready/\` will publish automatically on push.
 
-**Never put secrets in a chat message, GitHub commit, pull request or issue.** Set them in encrypted GitHub Actions Secrets.
+**Never put secrets in a chat message, GitHub commit, pull request or issue.** Keep them in encrypted GitHub Actions Secrets.
+
+Read-only archive audit completed successfully on 150 public posts (sample, not the entire archive). Scheduled daily audit remains enabled. Affiliate feed IDs, GSC/GA4 insights and a safe hosting deployment channel for interactive JS/CSS remain outstanding.
 
 ## Architecture
 
