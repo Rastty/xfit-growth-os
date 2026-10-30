@@ -121,6 +121,24 @@ def build_document(catalog, base, sample):
       'velikost balení a celkovou cenu. Nezaměňujte cenu za 100 g výrobku '
       's přesnou cenou za 100 g čistého kreatinu – čistotu konkrétních '
       'výrobků ověřujte na obalu. Ceny a dostupnost se mohou měnit.</p>',
+      '<h2>Než koupíte kreatin: tři rychlé otázky</h2>',
+      '<details><summary><strong>Začínám cvičit. Potřebuji ho hned?</strong></summary>'
+      '<p>Ne. Pravidelný trénink, dostatek jídla, spánek a realistický plán mají přednost. '
+      'Pokud zatím nevíte, co vám schází, začněte průvodcem '
+      '<a href="https://xfit.cz/xfit-os-doplnky-pro-zacatecniky/">doplňky stravy pro začátečníky</a>. '
+      'Úplně dobrá volba je dnes nekoupit nic.</p></details>',
+      '<details><summary><strong>Trénuji silově a chci vybrat jednoduchý produkt</strong></summary>'
+      '<p>Pokud jste zdravý dospělý a kreatin pro vás dává smysl, '
+      'porovnejte monohydrát podle skutečného složení, ceny a velikosti balení. '
+      'Zde jsou produkty seřazené podle ceny za 100 g baleného prášku, '
+      'nikoli podle výše provize.</p></details>',
+      '<details><summary><strong>Mám obavy o ledviny, játra nebo krevní testy</strong></summary>'
+      '<p>Nejdříve si ověřte, co se skutečně ví. '
+      '<a href="https://xfit.cz/kreatin-a-jeho-vliv-na-ledviny-a-jatra/">'
+      'Průvodce kreatinem, ledvinami a játry</a> vysvětluje rozdíl mezi '
+      'kreatinem a kreatininem, výsledky studií a kdy řešit nález s lékařem. '
+      'Při známém onemocnění ledvin či jater nebo nejasných testech vybírejte '
+      'doplněk až po individuální zdravotní konzultaci.</p></details>',
       '<h2>Kreatin monohydrát – přehled ověřených produktových nabídek</h2>',
       '<p><em>Obsahuje affiliate odkazy na NaMaximum.cz přes síť Affial. '
       'Pokud přes odkaz nakoupíte, Xfit.cz může získat provizi. '
