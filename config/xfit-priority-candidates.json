@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0",
+  "data_class": "heuristic_not_money",
+  "opportunities": [
+    {
+      "id": "UX-PRODUCT-PATH",
+      "lane": "ux",
+      "title": "Mobilní výběr doplňku v 3 krocích",
+      "source": "observed_browser_qa_mobile_and_live_advisors",
+      "reader_benefit": 5,
+      "user_demand_evidence": 3,
+      "effort": 3,
+      "risk": 2,
+      "verified_revenue_czk": null,
+      "blockers": []
+    },
+    {
+      "id": "REVENUE-ATTRIBUTION",
+      "lane": "revenue",
+      "title": "Ověřitelné affiliate prokliky a provize",
+      "source": "GA4_export_lacked_key_events",
+      "reader_benefit": 4,
+      "user_demand_evidence": 4,
+      "effort": 2,
+      "risk": 1,
+      "verified_revenue_czk": null,
+      "blockers": [
+        "Affial_order_report_not_connected"
+      ]
+    },
+    {
+      "id": "ARCHIVE-INTENT",
+      "lane": "archive",
+      "title": "Zredukovat duplicitní obsah v ověřených tematických skupinách",
+      "source": "full_archive_public_wordpress_audit_11814",
+      "reader_benefit": 4,
+      "user_demand_evidence": 4,
+      "effort": 3,
+      "risk": 3,
+      "verified_revenue_czk": null,
+      "blockers": []
+    },
+    {
+      "id": "EDITOR-SUPPLEMENT-HUB",
+      "lane": "editor",
+      "title": "Upgrade existujícího kvalitního suplementového rozcestníku",
+      "source": "verified_beginner_guide_live",
+      "reader_benefit": 5,
+      "user_demand_evidence": 3,
+      "effort": 3,
+      "risk": 2,
+      "verified_revenue_czk": null,
+      "blockers": []
+    },
+    {
+      "id": "AI-SEARCH-ACCESSIBILITY",
+      "lane": "ux",
+      "title": "Opravit prokazatelné nedostatky pro mobilní a AI vyhledávání",
+      "source": "xfit_ai_visibility_live_audit_pending",
+      "reader_benefit": 4,
+      "user_demand_evidence": 2,
+      "effort": 2,
+      "risk": 1,
+      "verified_revenue_czk": null,
+      "blockers": [
+        "live_audit_pending"
+      ]
+    }
+  ]
+}
