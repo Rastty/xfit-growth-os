@@ -122,10 +122,10 @@ def fetch_feed():
     return data
 
 def validate_affiliate_link(link=None):
-    """Format-only check. Never assume the feed and click link share a merchant.
+    """Validate affiliate campaign shape without following click links.
 
-    In particular, an ehub.cz click hostname is NOT evidence that
-    an Affial.com campaign is associated with the same publisher ID.
+    The tracked advertiser is NaMaximum.cz via Affial (Post Affiliate Pro);
+    this is NOT the GreenMedical merchant represented by the XML feed.
     """
     if link is None:
         link = os.getenv("XFIT_AFFIL_DEFAULT_LINK", "").strip()
@@ -135,14 +135,20 @@ def validate_affiliate_link(link=None):
     if p.scheme != "https" or not p.hostname or p.username or p.password:
         return "invalid_https_tracking_url"
     host = p.hostname.lower()
-    qs = urllib.parse.parse_qs(p.query)
-    has_click_ids = bool(qs.get("a_aid") and qs.get("a_bid"))
-    known_click_path = p.path in ("/system/scripts/click.php", "/scripts/click.php")
+    q = urllib.parse.parse_qs(p.query)
+    if host in ("namaximum.cz", "www.namaximum.cz"):
+        if (
+            q.get("utm_campaign") == ["affial.com"] and
+            q.get("utm_source") == ["pap"] and
+            bool(q.get("a_aid")) and bool(q.get("a_bid"))
+        ):
+            return "affial_namaximum_link_format_valid__greenmedical_feed_is_DIFFERENT_MERCHANT"
+        return "namaximum_link_missing_expected_affial_parameters"
     if host in ("ehub.cz", "www.ehub.cz"):
-        return "ehub_host_NOT_VERIFIED_for_affial_program" if has_click_ids and known_click_path else "ehub_link_format_needs_review"
+        return "ehub_link_is_not_the_confirmed_affial_namaximum_campaign"
     if host in ("affial.com", "www.affial.com"):
-        return "affial_host_link_requires_campaign_and_deeplink_review"
-    return "other_tracking_host_manual_verification_required"
+        return "affial_network_link_requires_campaign_review"
+    return "unrecognized_affiliate_link_needs_manual_review"
 
 def main():
     ap = argparse.ArgumentParser()
@@ -151,7 +157,10 @@ def main():
     offers,skipped = parse_feed(fetch_feed())
     report = {
         "fetched_at_utc": datetime.now(timezone.utc).isoformat(),
-        "merchant": "greenmedical_feed_unverified_match",
+        "merchant": "greenmedical_feed_merchant_pending_verification",
+        "affiliate_merchant": "namaximum.cz",
+        "merchant_match": False,
+        "warning": "Do not attach NaMaximum affiliate links to GreenMedical products.",
         "status": "PRIVATE_REVIEW_REQUIRED",
         "currency_assumption": "CZK; confirm source feed currency before using offers",
         "affiliate_default_link": validate_affiliate_link(),
