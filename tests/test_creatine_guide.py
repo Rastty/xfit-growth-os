@@ -37,9 +37,9 @@ class CreatineGuideTests(unittest.TestCase):
         self.assertIn("variant=392",link)
         self.assertIn("a_aid=TESTAID",link)
         self.assertNotIn("heureka",link)
-    def test_sample_for_wrong_product_fails(self):
-        with self.assertRaises(PublishError):
-            validate_example(BASE,SAMPLE.replace("variant=392","variant=401"))
+    def test_sample_homepage_fails(self):
+        with self.assertRaises(ValueError):
+            validate_example(BASE,SAMPLE.replace("/kategorie/kreatin/creatine-creapure","/"))
     def test_other_host_fails(self):
         with self.assertRaises(PublishError):
             build_tracked_url("https://other.example/p",BASE,SAMPLE)
