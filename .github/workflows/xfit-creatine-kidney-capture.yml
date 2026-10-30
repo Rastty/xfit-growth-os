@@ -1,0 +1,31 @@
+name: XFIT Creatine Kidney Source Capture
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-creatine-kidney-capture.yml'
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Snapshot original page source (no writes)
+        run: python -m scripts.xfit_kidney_capture
+      - name: Store immutable original before any revision
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-kidney-original
+          path: reports/backups/xfit-creatine-kidney-original.json
+          retention-days: 90
+          if-no-files-found: error
