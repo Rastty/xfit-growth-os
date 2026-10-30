@@ -139,7 +139,7 @@ def build_document(catalog, base, sample):
       'kreatinem a kreatininem, výsledky studií a kdy řešit nález s lékařem. '
       'Při známém onemocnění ledvin či jater nebo nejasných testech vybírejte '
       'doplněk až po individuální zdravotní konzultaci.</p></details>',
-      '<h2>Kreatin monohydrát – přehled ověřených produktových nabídek</h2>',
+      '<h2 id="xfit-offers">Kreatin monohydrát – přehled ověřených produktových nabídek</h2>',
       '<p><em>Obsahuje affiliate odkazy na NaMaximum.cz přes síť Affial. '
       'Pokud přes odkaz nakoupíte, Xfit.cz může získat provizi. '
       'Řazení je podle ceny za 100 g baleného prášku, nikoli výše provize.</em></p>',
@@ -153,7 +153,7 @@ def build_document(catalog, base, sample):
         unit=html.escape(str(round(offer["price_per_100g_powder_czk"])))
         label="Nejnižší jednotková cena ve výběru" if i==0 else "Alternativa podle ceny a velikosti balení"
         image=('<p><img src="'+html.escape(offer["image"],quote=True)+
-               '" alt="'+title+'" loading="lazy" width="120" height="120" /></p>'
+               '" alt="'+title+'" loading="lazy" width="120" height="120" style="max-width:100%;width:120px;height:120px;object-fit:contain;" /></p>'
                if offer["image"] else "")
         bits.append('<article class="xfit-product-card" style="border:1px solid #dce5e8;'
             'border-radius:12px;padding:16px;margin:16px 0;background:#ffffff;">'
@@ -163,7 +163,9 @@ def build_document(catalog, base, sample):
             str(offer["mass_g"])+' g</p>'
             '<p><strong>Cena za 100 g prášku: '+unit+' Kč</strong></p>'
             '<p><a href="'+href+'" rel="sponsored nofollow noopener noreferrer" '
-            'target="_blank">Zobrazit konkrétní balení na NaMaximum.cz</a></p>'
+            'target="_blank" style="display:inline-block;padding:12px 16px;min-height:44px;box-sizing:border-box;'
+            'background-color:#116a70;color:#ffffff;text-decoration:none;font-weight:700;'
+            'border-radius:8px;">Zobrazit konkrétní balení na NaMaximum.cz</a></p>'
             '</article>')
     bits += [
       '</div>',
