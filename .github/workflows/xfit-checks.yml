@@ -1,0 +1,33 @@
+name: XFIT Code Checks
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/**'
+      - 'tests/**'
+      - 'content/**'
+      - '.github/workflows/**'
+  pull_request:
+    paths:
+      - 'scripts/**'
+      - 'tests/**'
+      - 'content/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check Python syntax
+        run: python -m compileall -q scripts tests
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Validate sample without remote writes
+        run: python scripts/wp_publish.py --file content/ready/xfit-os-protein-guide.json --dry-run
