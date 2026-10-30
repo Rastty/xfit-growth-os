@@ -1,0 +1,13 @@
+{
+  "status": "editorial_proposal_not_deployed",
+  "issue": 4,
+  "wp_post_id": 25451,
+  "slug": "xfit-os-protein-guide",
+  "source_file": "content/ready/xfit-os-protein-guide.json",
+  "source_file_sha256": "8ef67bb42f4567ed226cf828fd80e39093477ca50e57f388f97ece0bf7699bcb",
+  "source_content_sha256": "480d68f202701d1e1a1ee94284a4f6ee2127aaa15488ed06a5ffdb37c35187a0",
+  "operation": "replace_exact_once",
+  "original": "<h2>4. Jak číst etiketu za jednu minutu</h2>",
+  "replacement": "<h3>Je cena „za porci“ opravdu srovnatelná?</h3>\n<p>Výrobci mohou používat různé velikosti porcí. Pro srovnání nákladů zvolte u obou výrobků stejné množství bílkovin, nikoli stejný počet odměrek. <strong>Cena za zvolené množství bílkovin = cena balení × zvolené bílkoviny v g ÷ (hmotnost prášku v balení v g × bílkoviny na 100 g prášku ÷ 100).</strong> Dopravu posuďte zvlášť podle skutečné objednávky.</p>\n<p>Čistě početní příklad bez cen: pro stejných 20 g bílkovin potřebujete u prášku s 80 g bílkovin na 100 g celkem 25 g prášku, u prášku s 60 g na 100 g přibližně 33,3 g. Stejná cena za 30 g prášku tedy neznamená stejnou cenu za bílkoviny. Nejde o doporučenou dávku ani o ověřené výrobky. Bez hmotnosti balení a etikety konkrétní varianty náklady neodhadujte. Pokud potřebu pokryjete běžným jídlem, protein nemusíte kupovat.</p>\n<h2>4. Jak číst etiketu za jednu minutu</h2>",
+  "evidence": "Nutrition-label arithmetic only; no new clinical claim, price, verified product or recommended intake."
+}
