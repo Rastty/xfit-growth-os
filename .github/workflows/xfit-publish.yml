@@ -1,0 +1,75 @@
+name: XFIT Direct Publish
+on:
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: "Owned xfit-os-* slug in content/ready (without .json)"
+        required: true
+        default: "xfit-os-protein-guide"
+        type: string
+      mode:
+        description: "Draft smoke test first; publish makes article public"
+        required: true
+        default: "draft"
+        type: choice
+        options:
+          - draft
+          - publish
+  push:
+    branches: [main]
+    paths:
+      - 'content/ready/*.json'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-direct-publish
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+      XFIT_SLUG: ${{ inputs.slug }}
+      XFIT_MODE: ${{ inputs.mode }}
+      EVENT_NAME: ${{ github.event_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run safety tests
+        run: python -m unittest discover -s tests -v
+      - name: Publish ready items and verify writeback
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${WP_BASE_URL:-}" ]]; then export WP_BASE_URL="https://xfit.cz"; fi
+          if [[ -z "${WP_USERNAME:-}" || -z "${WP_APP_PASSWORD:-}" ]]; then
+            echo "::error::WP_USERNAME and WP_APP_PASSWORD GitHub Action secrets are missing; no writes attempted."
+            exit 2
+          fi
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            if [[ ! "$XFIT_SLUG" =~ ^xfit-os-[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+              echo "::error::Invalid owned slug"; exit 2
+            fi
+            file="content/ready/${XFIT_SLUG}.json"
+            test -f "$file" || { echo "::error::Missing ready content"; exit 2; }
+            python scripts/wp_publish.py --file "$file" --dry-run
+            if [[ "$XFIT_MODE" == "publish" ]]; then
+              python scripts/wp_publish.py --file "$file" --publish
+            else
+              python scripts/wp_publish.py --file "$file"
+            fi
+          else
+            # On push, publish ONLY changed ready files, never the whole directory.
+            while IFS= read -r file; do
+              [[ -z "$file" || ! -f "$file" ]] && continue
+              python scripts/wp_publish.py --file "$file" --dry-run
+              python scripts/wp_publish.py --file "$file" --publish
+            done < <(git diff --name-only HEAD^ HEAD -- 'content/ready/*.json')
+          fi
