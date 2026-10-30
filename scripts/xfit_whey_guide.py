@@ -78,7 +78,7 @@ def build_document(catalog, base, sample):
         'nepovažujte za bezpečnou volbu; izolát není zárukou absence mléčných '
         'alergenů. Pro veganské stravování zvažte vhodné rostlinné zdroje. '
         'Při zdravotním omezení výběr řešte s kvalifikovaným odborníkem.</p></details>',
-        '<h2>Syrovátkové proteiny – porovnání balení a ceny</h2>',
+        '<h2 id="xfit-offers">Syrovátkové proteiny – porovnání balení a ceny</h2>',
         '<p><em>Partnerské odkazy (Affial / NaMaximum.cz). Při nákupu přes odkaz '
         'může Xfit.cz získat provizi. Pořadí určuje jednotková cena za hmotnost '
         'prášku, nikoliv provize.</em></p>',
@@ -92,7 +92,7 @@ def build_document(catalog, base, sample):
         unit=str(round(item["price_per_100g_powder_czk"]))
         link=html.escape(item["affiliate_url"],quote=True)
         img=('<p><img src="'+html.escape(item["image"],quote=True)+
-             '" alt="'+title+'" loading="lazy" width="120" height="120" /></p>'
+             '" alt="'+title+'" loading="lazy" width="120" height="120" style="max-width:100%;width:120px;height:120px;object-fit:contain;" /></p>'
              if item["image"] else "")
         label="Nejnižší jednotková cena ve výběru" if index==0 else "Další velikost nebo typ prášku"
         parts.append('<article class="xfit-product-card" style="border:1px solid #dce5e8;'
@@ -103,7 +103,9 @@ def build_document(catalog, base, sample):
             '<p><strong>Cena: '+price+' Kč</strong> · Balení: '+str(item["mass_g"])+' g</p>'
             '<p><strong>Cena za 100 g prášku: '+unit+' Kč</strong></p>'
             '<p><a href="'+link+'" rel="sponsored nofollow noopener noreferrer" '
-            'target="_blank">Zobrazit konkrétní balení na NaMaximum.cz</a></p></article>')
+            'target="_blank" style="display:inline-block;padding:12px 16px;min-height:44px;box-sizing:border-box;'
+            'background-color:#116a70;color:#ffffff;text-decoration:none;font-weight:700;'
+            'border-radius:8px;">Zobrazit konkrétní balení na NaMaximum.cz</a></p></article>')
     parts += [
       '</div>',
       '<h2>Koncentrát, izolát nebo něco jiného?</h2>',
