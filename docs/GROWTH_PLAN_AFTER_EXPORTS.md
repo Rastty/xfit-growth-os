@@ -47,3 +47,10 @@ WordPress API credentials already work. Need GA4 correct export, affiliate feeds
 - Installed validation-only importer in `scripts/xfit_feed_ingest.py` and GitHub workflow `.github/workflows/xfit-feed-validation.yml`. It will read secrets `XFIT_GREENMEDICAL_FEED_URL` and `XFIT_AFFIL_DEFAULT_LINK`, only when variable `XFIT_AFFIL_FEED_ENABLED=true`.
 - **No actual feed product inventory, verified merchant ↔ Affial tracking mapping, product deep links or live affiliate page yet.** First validate feed privately, assess health-product compliance and then publish relevant selections.
 - Setup guide: `docs/AFFIL_ONBOARDING.md`.
+
+## Affiliate correction: 2026-10-30
+
+- Publisher clarified that the initial ehub.cz referral URL was wrong. Correct tracking structure targets `www.namaximum.cz` with Affial/PAP UTM parameters plus `a_aid` and `a_bid` IDs (not stored here).
+- Do NOT pair the separately provided `greenmedical.venalio.com` XML feed with NaMaximum product offers; they are different merchants. Request the NaMaximum XML feed via Affial → Propagace → XML feedy and store in separate GitHub Secret.
+- Official Affial NaMaximum campaign lists 7.5% commission, 30-day cookies and prohibits PPC. Double-check publisher approval and current terms before live use.
+- The validation script now distinguishes NaMaximum Affial link format from the former incorrect eHUB URL; it does not generate unapproved product deeplinks.
