@@ -1,7 +1,17 @@
 import unittest
-from scripts.xfit_feed_ingest import parse_feed, safe_product_url, parse_price
+from scripts.xfit_feed_ingest import parse_feed, safe_product_url, parse_price, validate_affiliate_link
 
 class AffiliateFeedTests(unittest.TestCase):
+    def test_affiliate_network_host_is_not_assumed(self):
+        self.assertEqual(
+            validate_affiliate_link("https://ehub.cz/system/scripts/click.php?a_aid=example&a_bid=campaign"),
+            "ehub_host_NOT_VERIFIED_for_affial_program"
+        )
+        self.assertEqual(
+            validate_affiliate_link("https://affial.com/system/scripts/click.php?a_aid=example&a_bid=campaign"),
+            "affial_host_link_requires_campaign_and_deeplink_review"
+        )
+
     def test_heureka_items(self):
         sample=b"""<?xml version="1.0" encoding="UTF-8"?>
         <SHOP><SHOPITEM><ITEM_ID>123</ITEM_ID><PRODUCTNAME>Protein A</PRODUCTNAME>
