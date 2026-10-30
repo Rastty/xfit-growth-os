@@ -28,6 +28,7 @@ LANE_PATHS={
  ],
 }
 NO_EDIT_PREFIXES=(".github/workflows/",".github/agents/",".git/",".gemini/","content/ready/")
+IMMUTABLE_EVIDENCE={"scripts/xfit_archive_wave01.py","config/xfit-offtopic-wave01.json"}
 DANGEROUS_PATTERNS=(
   re.compile(r"(?:sk|ghp|gho|github_pat)_[A-Za-z0-9_-]{18,}"),
   re.compile(r"secretKey\s*=\s*[A-Za-z0-9_-]{20,}",re.I),
@@ -41,7 +42,7 @@ def verify(lane, paths):
   p=p.strip().replace("\\","/")
   if not p or p.startswith("/") or "../" in p or p.startswith("../"):
    forbidden.append(p);continue
-  if any(p.startswith(prefix) for prefix in NO_EDIT_PREFIXES):
+  if p in IMMUTABLE_EVIDENCE or any(p.startswith(prefix) for prefix in NO_EDIT_PREFIXES):
    forbidden.append(p);continue
   if not any(fnmatchcase(p,pattern) for pattern in LANE_PATHS[lane]):
    forbidden.append(p);continue
