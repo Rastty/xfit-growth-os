@@ -1,0 +1,30 @@
+name: XFIT Codex Parallel Development
+on:
+  workflow_dispatch:
+  schedule:
+    # Two independent four-agent waves daily; can increase after costs and quality are measured.
+    - cron: '39 0,12 * * *'
+permissions:
+  contents: read
+jobs:
+  parallel-lanes:
+    if: ${{ vars.XFIT_CODEX_AGENTS_ENABLED == 'true' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - lane: ux
+            issue: 2
+          - lane: archive
+            issue: 3
+          - lane: editor
+            issue: 4
+          - lane: revenue
+            issue: 5
+    uses: ./.github/workflows/xfit-codex-lane.yml
+    with:
+      lane: ${{ matrix.lane }}
+      issue: ${{ matrix.issue }}
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
