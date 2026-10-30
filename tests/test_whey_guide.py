@@ -29,6 +29,21 @@ class WheyTests(unittest.TestCase):
     def test_type_labels(self):
         self.assertIn("izolát",kind_label("Whey WPI").lower())
         self.assertIn("koncentrát",kind_label("Whey WPC").lower())
+    def test_prices_preserve_cents_and_explain_rank(self):
+        # Synthetic prices: both unit prices previously displayed as 70 Kč.
+        self.catalog["products"] = [
+            offer(21,"Whey WPC 1kg",695.40),
+            offer(22,"Whey WPC 500g",347.55),
+            offer(23,"Whey Isolate 750g",1100),
+        ]
+        body=build_document(self.catalog,BASE,SAMPLE)["content"]
+        self.assertIn("Cena: 347,55 Kč",body)
+        self.assertIn("Cena: 695,40 Kč",body)
+        self.assertIn("Cena: 1\u00a0100,00 Kč",body)
+        self.assertIn("Cena za 100 g prášku: 69,51 Kč",body)
+        self.assertIn("Cena za 100 g prášku: 69,54 Kč",body)
+        self.assertIn("Cena za 100 g prášku: 146,67 Kč",body)
+        self.assertLess(body.index("Cena: 347,55 Kč"),body.index("Cena: 695,40 Kč"))
     def test_insufficient_catalog(self):
         with self.assertRaises(PublishError):
             build_document({"merchant":"namaximum.cz","merchant_match":True,"products":[]},BASE,SAMPLE)
