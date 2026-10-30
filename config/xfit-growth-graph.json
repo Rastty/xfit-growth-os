@@ -1,0 +1,151 @@
+{
+  "schema_version": "1.0",
+  "name": "XFIT Independent Growth Graph",
+  "north_star": "Trustworthy Czech fitness/nutrition/supplement decision service: visitor benefit first; affiliate profit as consequence",
+  "source_pattern": "adapted, not copied, from Rastty/prometheus-growth-os/ARCHITECTURE.md + PROMETHEUS-MULTI-AGENT-BEST-PRACTICES-01.md",
+  "governance": {
+    "single_architecture_owner": true,
+    "four_parallel_readonly_lanes": [
+      "ux",
+      "archive",
+      "editor",
+      "revenue"
+    ],
+    "one_writer_per_file_set": true,
+    "manual_or_guarded_merge_required": true,
+    "no_ai_direct_wordpress_secrets": true
+  },
+  "nodes": [
+    {
+      "id": "observe",
+      "then": [
+        "audit",
+        "attribute"
+      ]
+    },
+    {
+      "id": "audit",
+      "then": [
+        "prioritize"
+      ],
+      "outputs": [
+        "real_public_html",
+        "ga4_gsc_evidence",
+        "affiliate_health",
+        "content_inventory"
+      ]
+    },
+    {
+      "id": "attribute",
+      "then": [
+        "prioritize"
+      ],
+      "invariant": "unknown revenue is not zero revenue"
+    },
+    {
+      "id": "prioritize",
+      "then": [
+        "ux",
+        "archive",
+        "editor",
+        "revenue"
+      ],
+      "ranking": "heuristic reader benefit + problem demand + evidence confidence + delivery effort, no invented revenue"
+    },
+    {
+      "id": "ux",
+      "then": [
+        "quality"
+      ]
+    },
+    {
+      "id": "archive",
+      "then": [
+        "quality"
+      ],
+      "invariant": "no bulk deletion without backup/verified intent"
+    },
+    {
+      "id": "editor",
+      "then": [
+        "quality"
+      ],
+      "invariant": "source and health claim review before release"
+    },
+    {
+      "id": "revenue",
+      "then": [
+        "quality"
+      ],
+      "invariant": "merchant and actual affiliate attribution must match"
+    },
+    {
+      "id": "quality",
+      "then": [
+        "release"
+      ],
+      "checks": [
+        "unit",
+        "editorial",
+        "mobile_browser",
+        "agent_file_scope",
+        "no_secret_leaks"
+      ]
+    },
+    {
+      "id": "release",
+      "then": [
+        "verify"
+      ],
+      "mode": "only through existing WordPress guarded release"
+    },
+    {
+      "id": "verify",
+      "then": [
+        "measure"
+      ],
+      "evidence": [
+        "authenticated_WP_readback",
+        "public_link_readback",
+        "rollback"
+      ]
+    },
+    {
+      "id": "measure",
+      "then": [
+        "learn"
+      ],
+      "signals": [
+        "source_medium_x_landing",
+        "outbound_clicks",
+        "verified_affiliate_orders",
+        "engagement"
+      ]
+    },
+    {
+      "id": "learn",
+      "then": [
+        "prioritize"
+      ],
+      "rule": "observed profit rank only when attributed; otherwise user value first"
+    }
+  ],
+  "selection_rule": {
+    "value_weights": {
+      "reader_benefit": 5,
+      "verified_user_demand": 3,
+      "economic_potential_if_evidenced": 1
+    },
+    "effort_penalty": 2,
+    "risk_penalty": 3,
+    "unknown_value": "UNKNOWN_not_zero"
+  },
+  "guardrails": [
+    "No vanity article quotas",
+    "No user-health data in GA4",
+    "No unsupported medical claims",
+    "No guessing merchant commission",
+    "No automatic merge of untrusted model edits"
+  ],
+  "last_reviewed": "2026-10-30"
+}
