@@ -14,20 +14,29 @@ class EqualProteinPortionsTests(unittest.TestCase):
         ).read_text(encoding='utf-8'))
         raw = Path(revision['source_file']).read_bytes()
         source = json.loads(raw)
-        self.assertEqual(hashlib.sha256(raw).hexdigest(), revision['source_file_sha256'])
-        self.assertEqual(hashlib.sha256(source['content'].encode()).hexdigest(),
+        applied = source['content'].count(revision['replacement']) == 1
+        original_content = (source['content'].replace(
+            revision['replacement'], revision['original'], 1)
+            if applied else source['content'])
+        self.assertEqual(hashlib.sha256(original_content.encode()).hexdigest(),
                          revision['source_content_sha256'])
+        if not applied:
+            self.assertEqual(hashlib.sha256(raw).hexdigest(),
+                             revision['source_file_sha256'])
         for field in ('wp_post_id', 'slug'):
             self.assertEqual(source[field], revision[field])
         self.assertEqual(revision['operation'], 'replace_exact_once')
         self.assertEqual(source['content'].count(revision['original']), 1)
-        self.assertNotIn(revision['replacement'], source['content'])
         preview = dict(source)
-        preview['content'] = source['content'].replace(
-            revision['original'], revision['replacement'], 1)
+        if applied:
+            preview['content'] = source['content']
+            self.assertEqual(source['content'].count(revision['replacement']), 1)
+        else:
+            preview['content'] = source['content'].replace(
+                revision['original'], revision['replacement'], 1)
         self.assertTrue(check_document(preview)['passed'])
         self.assertEqual(preview['content'].replace(
-            revision['replacement'], revision['original'], 1), source['content'])
+            revision['replacement'], revision['original'], 1), original_content)
 
     def test_equal_protein_comparison(self):
         # Equal powder portions deliver unequal protein; normalize by protein.
