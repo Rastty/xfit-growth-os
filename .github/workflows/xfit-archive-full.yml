@@ -7,11 +7,11 @@ on:
       - '.github/workflows/xfit-archive-full.yml'
       - 'scripts/xfit_archive_full.py'
   schedule:
-    - cron: '29 3 * * *'
+    - cron: '29 3 * * 0'
 permissions:
   contents: read
 concurrency:
-  group: xfit-public-archive-audit
+  group: xfit-wp-heavy-reads
   cancel-in-progress: false
 jobs:
   inventory:
