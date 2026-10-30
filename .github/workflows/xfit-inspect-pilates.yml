@@ -1,0 +1,25 @@
+name: XFIT Existing Article Inspect
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/xfit-inspect-pilates.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Inspect existing Pilates article (no writes)
+        run: |
+          if [[ -z "${WP_BASE_URL:-}" ]]; then export WP_BASE_URL=https://xfit.cz; fi
+          python -m scripts.wp_inspect_article --slug jaky-je-rozdil-mezi-klasickym-pilates-a-power-pilates
