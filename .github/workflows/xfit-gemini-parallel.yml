@@ -72,7 +72,7 @@ jobs:
         uses: google-github-actions/run-gemini-cli@v1
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          gemini_model: gemini-2.5-flash
+          gemini_model: ${{ vars.XFIT_GEMINI_MODEL || 'gemini-3.8-flash' }}
           prompt: |
             You are a coding agent for the independent Czech site Xfit.cz.
             Read AGENTS.md, docs/EDITORIAL_STANDARD.md,
