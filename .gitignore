@@ -10,3 +10,7 @@ __pycache__/
 .pytest_cache/
 *.pyc
 .DS_Store
+
+# Google Gemini agent ephemeral session and authentication artifacts
+.gemini/
+gha-creds-*.json
