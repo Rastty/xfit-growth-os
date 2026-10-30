@@ -1,0 +1,43 @@
+name: XFIT Off-topic Cleanup Wave 01
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-offtopic-wave01.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-direct-publish
+  cancel-in-progress: false
+jobs:
+  reversible-cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Safety unit tests and WordPress config
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -v
+          if [[ -z "${WP_BASE_URL:-}" ]]; then echo "WP_BASE_URL=https://xfit.cz" >> "$GITHUB_ENV"; fi
+          if [[ -z "${WP_USERNAME:-}" || -z "${WP_APP_PASSWORD:-}" ]]; then exit 2; fi
+      - name: Preflight all 34 zero-traffic URLs and create rollback snapshot (read-only)
+        run: python -m scripts.xfit_archive_wave01 snapshot
+      - name: Save complete original post content backup BEFORE any unpublish
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-offtopic-wave01-pre-cleanup-backup
+          path: reports/backups/xfit-offtopic-wave01-backup.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Bulk unpublish only exact allowlisted URLs (reversible draft), verify readback
+        run: python -m scripts.xfit_archive_wave01 apply
