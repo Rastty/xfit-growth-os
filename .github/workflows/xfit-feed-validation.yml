@@ -8,7 +8,7 @@ on:
       - '.github/workflows/xfit-feed-validation.yml'
       - 'scripts/xfit_feed_ingest.py'
   schedule:
-    - cron: '17 */3 * * *'
+    - cron: '23 4 * * *'
 permissions:
   contents: read
 jobs:
