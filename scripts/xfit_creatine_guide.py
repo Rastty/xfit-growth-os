@@ -70,7 +70,16 @@ def safe_image(src):
     return None
 
 def shortlist(catalog, base, sample, budget=1500):
-    items = select_offers(catalog, "creatine", max_price=budget, min_mass_g=200, limit=20)
+    # Filter the entire feed for comparable monohydrate products BEFORE ranking.
+    # Previously the cheapest twenty general creatine offers could crowd out
+    # relevant powder variants and falsely yield an empty selection.
+    eligible = [
+        o for o in catalog.get("products", [])
+        if any(t in (o.get("title") or "").casefold() for t in MONOHYDRATE_TERMS)
+        and not any(t in (o.get("title") or "").casefold() for t in BLOCK_UNCOMPARABLE)
+    ]
+    items = select_offers({"products": eligible}, "creatine", max_price=budget,
+                          min_mass_g=200, limit=20)
     result = []
     for p in items:
         title = p["title"].casefold()
