@@ -12,7 +12,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: xfit-direct-publish
+  group: xfit-creatine-live-release
   cancel-in-progress: false
 jobs:
   deploy:
