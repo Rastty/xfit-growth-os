@@ -32,3 +32,18 @@ Do not bulk delete, redirect, or noindex existing URLs until GSC and source-leve
 
 ## Remaining access
 WordPress API credentials already work. Need GA4 correct export, affiliate feeds and eventual hosting asset deployment path for interactive JS/CSS.
+
+## Update — second GA4 landing-page export, 2026-10-30
+
+- A landing-page-only GA4 export was received (2026-08-01 to 2026-10-29). It contains 3,873 unique paths across 7,309 sessions, many one-session long-tail entries. This is descriptive baseline, not proof of traffic quality per source.
+- 2,204 paths had one session; 3,183 had one or two sessions. No key events are recorded in the exported landing-page table, so conversions cannot yet be attributed.
+- The highest-traffic content areas include muscle-related pain/recovery, hamstring injury, exercise and creatine; some off-topic electric-bike pages also have traffic. **Do not delete unrelated but visited pages without checking attribution and index performance.**
+- The export does **not** contain source/medium breakdown: still need GA4 session source/medium x landing-page cross-tab.
+- Prioritize consolidating near-duplicate hamstring / injury pages into clear medically responsible content hubs while preserving useful URLs and reviewing crosslinks first.
+
+## Affiliate feed integration status
+
+- Received an eHUB default tracking URL and a private Venalio Heureka XML feed URL in chat. The feed URL contains a secret-like authorization token; it has intentionally NOT been committed, logged or attached as a repository file.
+- Installed validation-only importer in `scripts/xfit_feed_ingest.py` and GitHub workflow `.github/workflows/xfit-feed-validation.yml`. It will read secrets `XFIT_GREENMEDICAL_FEED_URL` and `XFIT_EHUB_DEFAULT_LINK`, only when variable `XFIT_AFFIL_FEED_ENABLED=true`.
+- **No actual feed product inventory, verified merchant ↔ eHUB mapping, product deep links or live affiliate page yet.** First validate feed privately, assess health-product compliance and then publish relevant selections.
+- Setup guide: `docs/AFFIL_ONBOARDING.md`.
