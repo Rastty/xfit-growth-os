@@ -1,0 +1,40 @@
+name: XFIT WordPress Draft Connection Test
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-connection-test.yml'
+permissions:
+  contents: read
+jobs:
+  safe-draft-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test publisher code
+        run: python -m unittest discover -s tests -v
+      - name: Check required configuration (no credentials in logs)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${WP_USERNAME:-}" || -z "${WP_APP_PASSWORD:-}" ]]; then
+            echo "::error::Required GitHub Secrets WP_USERNAME and/or WP_APP_PASSWORD not present. No WordPress write attempted."
+            exit 2
+          fi
+          if [[ -z "${WP_BASE_URL:-}" ]]; then
+            echo "WP_BASE_URL is not set; using https://xfit.cz"
+            echo "WP_BASE_URL=https://xfit.cz" >> "$GITHUB_ENV"
+          fi
+      - name: Validate draft content
+        run: python scripts/wp_publish.py --file content/ready/xfit-os-protein-guide.json --dry-run
+      - name: Create or update PRIVATE DRAFT and verify authenticated read-back
+        run: python scripts/wp_publish.py --file content/ready/xfit-os-protein-guide.json
