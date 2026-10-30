@@ -17,7 +17,7 @@ permissions:
 jobs:
   propose:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 16
     concurrency:
       group: xfit-codex-${{ inputs.lane }}
       cancel-in-progress: false
@@ -66,7 +66,7 @@ jobs:
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           model: ${{ vars.XFIT_CODEX_MODEL || '' }}
-          effort: medium
+          effort: low
           permission-profile: ":workspace"
           safety-strategy: drop-sudo
           allow-bots: true
@@ -76,7 +76,7 @@ jobs:
             ${{ inputs.lane }} agent. Read AGENTS.md, docs/EDITORIAL_STANDARD.md,
             .github/agents/xfit-${{ inputs.lane }}.agent.md and the local repository.
             The tracked task is issue #${{ inputs.issue }}.
-            Make ONE substantial, testable improvement that directly helps Czech
+            Make ONE SMALL but substantive, testable improvement that directly helps Czech
             fitness/supplement users and supports trustworthy monetization.
             Respect the hard file ownership limits in scripts/xfit_agent_scope.py.
             Editing .github/, content/ready/, .git/, secrets, production endpoints
@@ -84,7 +84,7 @@ jobs:
             performance results, test claims or affiliate commissions.
             Run targeted tests if possible. Do not deploy, publish, push, create
             branches, merge, change secrets, or send traffic to xfit.cz.
-            The next stages independently validate the diff and create a PR.
+            Stay within a small patch (at most 3 files, under 200 changed lines); do not\n            scan the entire 11k-post archive or browse the web. Prioritize existing\n            high-signal issues and tests. If no safe evidence-backed change is\n            possible, do not edit anything. Then stop.\n            The next stages independently validate the diff and create a PR.
       - name: Validate working-tree ownership and run unit tests without write token
         if: steps.preflight.outputs.go == 'yes'
         id: patch
