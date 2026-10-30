@@ -15,11 +15,13 @@ from urllib.error import HTTPError, URLError
 ISSUE=1
 SLUGS=[
     ("xfit-os-protein-guide","Průvodce proteinem"),
+    ("xfit-os-doplnky-pro-zacatecniky","Doplňky pro začátečníky"),
     ("xfit-os-kreatin-poradce","Výběr kreatinu"),
     ("xfit-os-syrovatkovy-protein-porovnani","Porovnání syrovátkových proteinů"),
     ("jaky-je-rozdil-mezi-klasickym-pilates-a-power-pilates","Pilates přehled")
 ]
 EXPECTED_REPO="Rastty/xfit-growth-os"
+LANES={2:"UX a poradci",3:"SEO archiv",4:"Redakční kvalita",5:"Affiliate a měření"}
 
 def get_json(url, token=None, method="GET", payload=None):
     data=json.dumps(payload).encode() if payload is not None else None
@@ -67,7 +69,24 @@ def github_activity(token, since):
             items.append(r)
     return items
 
-def render(runs, states, now):
+def github_lanes(token):
+    """Display coding assignment truth; a prepared issue is not an active agent."""
+    results=[]
+    for number,label in LANES.items():
+        try:
+            issue=get_json("https://api.github.com/repos/"+EXPECTED_REPO+"/issues/"+str(number),token)
+            if issue.get("pull_request"):
+                results.append((number,label,"issue_neplatné",""))
+                continue
+            assignees=[x.get("login","") for x in issue.get("assignees",[])]
+            agents=[n for n in assignees if "copilot" in n.lower() or "codex" in n.lower() or "claude" in n.lower()]
+            mode="AI agent přiřazen; čeká na ověření PR" if agents else "připravené zadání; žádný AI agent není přiřazen"
+            results.append((number,label,mode,issue.get("html_url","")))
+        except (HTTPError,URLError,TimeoutError,ValueError,KeyError):
+            results.append((number,label,"stav nepodařilo se ověřit",""))
+    return results
+
+def render(runs, states, now, lanes=None):
     successes=[x for x in runs if x.get("conclusion")=="success"]
     failures=[x for x in runs if x.get("conclusion") in ("failure","timed_out","cancelled")]
     ongoing=[x for x in runs if x.get("status")!="completed"]
@@ -92,6 +111,10 @@ def render(runs, states, now):
         latest=successes[:5]
         lines.append("- Poslední úspěchy: "+", ".join(
             "["+x.get("name","?")+"]("+x.get("html_url","")+")" for x in latest))
+    if lanes:
+        lines += ["", "**Pracovní větve pro paralelní vývoj:**"]
+        for number,label,state,url in lanes:
+            lines.append("- "+("["+label+" #"+str(number)+"]("+url+")" if url else label+" #"+str(number))+" — "+state)
     lines += [
         "",
         "**Hranice důkazů:** Publikovaný stav ve WP REST je jiný než test vzhledu, připsaná affiliate objednávka nebo skutečný příjem. Bez přístupu k Affial a GA4 konverzím zde žádný prodej netvrdíme.",
@@ -110,7 +133,8 @@ def main():
     now=datetime.now(timezone.utc)
     runs=github_activity(token, now-timedelta(hours=4))
     states=wordpress_state()
-    body=render(runs,states,now)
+    lanes=github_lanes(token)
+    body=render(runs,states,now,lanes)
     summary=os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary,"a",encoding="utf-8") as f:f.write(body+"\n")
