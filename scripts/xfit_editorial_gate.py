@@ -23,7 +23,7 @@ class EditorialError(ValueError):
 class Inspector(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
-        self.headers=[];self.paragraphs=[];self.links=[];self.images=[];self.tables=0
+        self.headers=[];self.paragraphs=[];self.links=[];self.images=[];self.tables=0;self.product_cards=0
         self._capture=None;self._buf=[]
         self.visible=[]
     def handle_starttag(self, tag, attrs):
@@ -33,6 +33,7 @@ class Inspector(HTMLParser):
         if tag=="a":self.links.append((a.get("href",""),a.get("rel","")))
         if tag=="img":self.images.append(a)
         if tag=="table":self.tables+=1
+        if tag=="article" and "xfit-product-card" in (a.get("class") or "").split():self.product_cards+=1
     def handle_data(self,data):
         self.visible.append(data)
         if self._capture:self._buf.append(data)
@@ -93,10 +94,10 @@ def check_document(doc, commercial=None):
         raise EditorialError("Commercial article has no tracked real merchant links")
     if is_commercial and "provizi" not in text.casefold() and "affiliate" not in text.casefold():
         raise EditorialError("Commercial content lacks plain-language affiliate disclosure")
-    if is_commercial and p.tables==0:
-        raise EditorialError("Comparison without accessible comparable table")
+    if is_commercial and p.tables==0 and p.product_cards<2:
+        raise EditorialError("Comparison lacks tabular results or multiple accessible product cards")
     return {
         "passed":True,"word_count":words,"h2_count":sum(k=="h2" for k,_ in p.headers),
         "source_hosts":sorted(evidence_hosts),"image_count":len(p.images),
-        "commerce":is_commercial
+        "commerce":is_commercial,"product_cards":p.product_cards
     }
