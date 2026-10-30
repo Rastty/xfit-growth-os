@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: xfit-coupon-cleanup
+  group: xfit-wp-heavy-reads
   cancel-in-progress: false
 jobs:
   cleanup:
