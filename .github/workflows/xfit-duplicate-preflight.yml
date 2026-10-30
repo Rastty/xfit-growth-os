@@ -1,0 +1,30 @@
+name: XFIT Duplicate 301 Preflight
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/xfit-duplicate-preflight.yml']
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compare genuine exact-title -2 duplicate content, no writes
+        run: python -m scripts.xfit_duplicate_preflight
+      - name: Preserve comparison sources for evidence and future rollback
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-duplicate-source-review
+          path: reports/backups/xfit-duplicates-candidate-audit.json
+          retention-days: 60
+          if-no-files-found: error
