@@ -14,7 +14,7 @@ concurrency:
 jobs:
   cleanup:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 30
     env:
       WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
       WP_USERNAME: ${{ secrets.WP_USERNAME }}
@@ -26,7 +26,7 @@ jobs:
           python-version: '3.12'
       - name: Repository tests
         run: python -m unittest discover -s tests -v
-      - name: Read-only exact coupon preview and backup
+      - name: Read-only preview and backup of up to eight obsolete coupon posts
         run: python -m scripts.xfit_coupon_cleanup snapshot
       - name: Backup artifact is mandatory before any WordPress writes
         uses: actions/upload-artifact@v4
