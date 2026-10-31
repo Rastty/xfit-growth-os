@@ -1,0 +1,13 @@
+{
+  "status": "editorial_proposal_not_deployed",
+  "issue": 4,
+  "wp_post_id": 25451,
+  "slug": "xfit-os-protein-guide",
+  "source_file": "content/ready/xfit-os-protein-guide.json",
+  "source_file_sha256": "bef752e44534dd3cffef24f8f703a213d9f9024d1ed3a229afe5bab6a0402f58",
+  "source_content_sha256": "46810fac0512352ab26814978c7a4213038417c5c9465f7a614f7aec7deff0d3",
+  "operation": "replace_exact_once",
+  "original": "<p><strong><a href=\"https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/\">Porovnat proteiny podle ceny a balení</a></strong>. Propojili jsme průvodce s výběrem reálných produktů NaMaximum.cz. V přehledu je uvedena cena za 100 g celého proteinového prášku, nikoli cena za 100 g čistých bílkovin. Ta vyžaduje přesný ověřený údaj z etikety každého výrobku. Affiliate odkazy jsou označené a výše provize nemění pořadí.</p>",
+  "replacement": "<p><strong><a href=\"https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/\">Porovnat ceny a balení syrovátkového prášku</a></strong>. Přehled produktů NaMaximum.cz uvádí cenu za 100 g prášku, nikoli za 100 g bílkovin. <strong>Nejnižší cena prášku proto sama neurčuje nejlevnější zdroj bílkovin.</strong></p>\n<p>Před nákupem ověřte etiketu konkrétní varianty, přepočítejte cenu podle obsahu bílkovin postupem v části 3 a zohledněte dopravu i alergeny. Pokud údaj o bílkovinách chybí, cenu za bílkoviny nelze spolehlivě porovnat; vyžádejte si etiketu od prodejce. Jestli příjem pokryjete běžným jídlem, protein nemusíte kupovat. Affiliate odkazy ve srovnání jsou označené a výše provize nemění pořadí.</p>",
+  "evidence": "Existing local guide documents powder-price comparison limits and label-based protein-cost calculation. No new clinical claim, product, price or commission claim."
+}
