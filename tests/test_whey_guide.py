@@ -1,4 +1,6 @@
 import unittest
+from html.parser import HTMLParser
+from urllib.parse import parse_qs, urlsplit
 from scripts.xfit_whey_guide import build_document, kind_label
 from scripts.wp_publish import PublishError
 
@@ -29,6 +31,32 @@ class WheyTests(unittest.TestCase):
     def test_type_labels(self):
         self.assertIn("izolát",kind_label("Whey WPI").lower())
         self.assertIn("koncentrát",kind_label("Whey WPC").lower())
+    def test_purchase_links_identify_product_and_new_tab(self):
+        # Synthetic title checks attribute escaping as well as link context.
+        self.catalog["products"][0]["title"] = 'Whey WPC "Natural" & kakao 1kg'
+        links = []
+
+        class Links(HTMLParser):
+            def handle_starttag(self, tag, attrs):
+                attrs = dict(attrs)
+                if tag == "a" and "sponsored" in attrs.get("rel", "").split():
+                    links.append(attrs)
+
+        body = build_document(self.catalog, BASE, SAMPLE)["content"]
+        Links().feed(body)
+        products = self.catalog["products"][:3]
+        self.assertEqual(len(links), len(products))
+        self.assertEqual(len({link["aria-label"] for link in links}), len(products))
+        by_variant = {product["id"]: product for product in products}
+        for link in links:
+            variant = parse_qs(urlsplit(link["href"]).query)["variant"][0]
+            self.assertEqual(link["aria-label"],
+                "Zobrazit konkrétní balení na NaMaximum.cz: "
+                + by_variant[variant]["title"] + " (nová karta)")
+            self.assertEqual(link["target"], "_blank")
+            self.assertIn("noopener", link["rel"].split())
+        self.assertEqual(body.count(
+            '>Zobrazit konkrétní balení na NaMaximum.cz (nová karta)</a>'), len(products))
     def test_prices_preserve_cents_and_explain_rank(self):
         # Synthetic prices: both unit prices previously displayed as 70 Kč.
         self.catalog["products"] = [
