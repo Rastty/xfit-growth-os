@@ -18,7 +18,17 @@ class EqualProteinPortionsTests(unittest.TestCase):
         original_content = (source['content'].replace(
             revision['replacement'], revision['original'], 1)
             if applied else source['content'])
-        self.assertEqual(hashlib.sha256(original_content.encode()).hexdigest(),
+        # This earlier approved revision predates the later price-free comparison.
+        # Roll back that exact fragment in memory before validating old SHA.
+        newer = json.loads(Path(
+            'content/revisions/editor-protein-price-free-comparison.json'
+        ).read_text(encoding='utf-8'))
+        baseline_content = original_content
+        if newer['replacement'] in baseline_content:
+            self.assertEqual(baseline_content.count(newer['replacement']), 1)
+            baseline_content = baseline_content.replace(
+                newer['replacement'], newer['original'], 1)
+        self.assertEqual(hashlib.sha256(baseline_content.encode()).hexdigest(),
                          revision['source_content_sha256'])
         if not applied:
             self.assertEqual(hashlib.sha256(raw).hexdigest(),
