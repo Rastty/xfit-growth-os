@@ -9,6 +9,7 @@ from collections import Counter, defaultdict
 from datetime import datetime, timezone
 import hashlib
 import html
+from html.parser import HTMLParser
 import json
 import re
 import sys
@@ -21,7 +22,6 @@ from urllib.error import HTTPError, URLError
 BASE="https://xfit.cz/wp-json/wp/v2/posts"
 TAG=re.compile(r"<[^>]*>")
 SPACE=re.compile(r"\s+")
-LINKS=re.compile(r'<a\b[^>]*\bhref=["\x27]([^"\x27]+)',re.I)
 TITLE_NOISE=re.compile(r"\b(aktualizace|přehled|kompletní průvodce|průvodce)\b", re.I)
 SPAM=re.compile(r"(casino|kasino|gambling|slots|betting|viagra|porn|poker|loan|levitra)",re.I)
 STALE_PROMO=re.compile(r"5NM2022|slevový kód\s*:\s*5NM2022",re.I)
@@ -31,6 +31,21 @@ PRIMARY_TOPIC=("fitness","cvičení","trénink","sval","protein","kreatin","posi
 FIELDS="id,modified,link,slug,title,content,excerpt,categories,date"
 MAX_PAGE=250
 MAX_SIZE=100
+
+class AnchorLinks(HTMLParser):
+    """Collect actual anchor destinations, not data attributes or commented HTML."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.links=[]
+
+    def handle_starttag(self,tag,attrs):
+        if tag=="a":
+            for name,value in attrs:
+                if name=="href":
+                    self.links.append(value or "")
+                    break
+
+    handle_startendtag=handle_starttag
 
 def clean(text):
     return SPACE.sub(" ",html.unescape(TAG.sub(" ",text or ""))).strip()
@@ -58,8 +73,11 @@ def classify(post):
     external=Counter()
     internal_link_count=0
     invalid_link_count=0
-    for link in LINKS.findall(body_html):
-        href=html.unescape(link).strip()
+    anchors=AnchorLinks()
+    anchors.feed(body_html)
+    for link in anchors.links:
+        # HTMLParser already decodes character references in attribute values.
+        href=link.strip()
         # In-page anchors do not connect archive pages. Resolve relative links
         # before checking the host; a hostname in a foreign URL's path is not evidence.
         if not href or href.startswith("#"):
