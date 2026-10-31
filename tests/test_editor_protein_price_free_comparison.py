@@ -14,28 +14,36 @@ class PriceFreeComparisonTests(unittest.TestCase):
         ).read_text(encoding='utf-8'))
         raw = Path(revision['source_file']).read_bytes()
         source = json.loads(raw)
-        self.assertEqual(hashlib.sha256(raw).hexdigest(),
-                         revision['source_file_sha256'])
-        self.assertEqual(hashlib.sha256(source['content'].encode()).hexdigest(),
-                         revision['source_content_sha256'])
         for field in ('wp_post_id', 'slug'):
             self.assertEqual(source[field], revision[field])
         self.assertEqual(revision['operation'], 'replace_exact_once')
-        self.assertEqual(source['content'].count(revision['original']), 1)
+        current = source['content']
+        # Guard both the pre-release source and the approved, published revision.
+        if current.count(revision['original']) == 1:
+            self.assertEqual(current.count(revision['replacement']), 0)
+            self.assertEqual(hashlib.sha256(raw).hexdigest(),
+                             revision['source_file_sha256'])
+            before = current
+        else:
+            self.assertEqual(current.count(revision['original']), 0)
+            self.assertEqual(current.count(revision['replacement']), 1)
+            before = current.replace(revision['replacement'], revision['original'], 1)
+        self.assertEqual(hashlib.sha256(before.encode()).hexdigest(),
+                         revision['source_content_sha256'])
         preview = dict(source)
-        preview['content'] = source['content'].replace(
-            revision['original'], revision['replacement'], 1)
+        preview['content'] = before.replace(revision['original'], revision['replacement'], 1)
         self.assertTrue(check_document(preview)['passed'])
         self.assertNotIn('899 Kč', preview['content'])
         self.assertNotIn('999 Kč', preview['content'])
         self.assertEqual(preview['content'].replace(
-            revision['replacement'], revision['original'], 1), source['content'])
-        # Preserve every existing link, including the comparison next step.
+            revision['replacement'], revision['original'], 1), before)
+        self.assertIn(current, (before, preview['content']))
+        # Existing navigation and affiliate link destinations remain unchanged.
         from scripts.xfit_editorial_gate import Inspector
-        before, after = Inspector(), Inspector()
-        before.feed(source['content'])
-        after.feed(preview['content'])
-        self.assertEqual(before.links, after.links)
+        before_links, after_links = Inspector(), Inspector()
+        before_links.feed(before)
+        after_links.feed(preview['content'])
+        self.assertEqual(before_links.links, after_links.links)
 
     def test_break_even_arithmetic_and_boundaries(self):
         revision = json.loads(Path(
