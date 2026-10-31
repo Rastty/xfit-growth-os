@@ -1,0 +1,13 @@
+{
+  "status": "editorial_proposal_not_deployed",
+  "issue": 4,
+  "wp_post_id": 25451,
+  "slug": "xfit-os-protein-guide",
+  "source_file": "content/ready/xfit-os-protein-guide.json",
+  "source_file_sha256": "743cf188430fe72da2cdf62621ed2d52c5e4943e415b9d5049364a5bb9e77a64",
+  "source_content_sha256": "f663556f43b110b08ac60bcf2025a4b0465d7dfda5649dd7a72c82ff38a9a528",
+  "operation": "replace_exact_once",
+  "original": "<table><thead><tr><th>Ukázkový výrobek</th><th>Balení</th><th>Bílkoviny</th><th>Cena</th><th>Cena za 100 g bílkovin</th></tr></thead><tbody>\n<tr><td>Model A</td><td>900 g</td><td>72 g / 100 g</td><td>899 Kč</td><td>139 Kč</td></tr>\n<tr><td>Model B</td><td>1 000 g</td><td>80 g / 100 g</td><td>999 Kč</td><td>125 Kč</td></tr>\n</tbody></table>\n<p><em>Čísla v tabulce jsou ilustrační, nejde o existující nabídky. Při nákupu započítejte také dopravu a případné rozdíly ve složení.</em></p>",
+  "replacement": "<p><strong>Srovnání bez smyšlených cen:</strong> modelové balení A s 900 g prášku a 72 g bílkovin na 100 g obsahuje 648 g bílkovin. Modelové balení B s 1 000 g prášku a 80 g bílkovin na 100 g obsahuje 800 g bílkovin. Nejde o ověřené výrobky ani nabídky.</p>\n<p>Balení B tedy obsahuje přibližně o 23,5 % více bílkovin (800 ÷ 648 − 1). <strong>Za samotné bílkoviny vychází B levněji, pokud jeho cena je nižší než cena A × 800 ÷ 648.</strong> Při přesném poměru 800 ÷ 648 vycházejí stejně; nad ním je levnější A. Použijte skutečné ceny a etikety konkrétních variant, dopravu zohledněte zvlášť podle objednávky. Výpočet nehodnotí chuť, alergeny ani kvalitu a neurčuje vhodnou dávku. Pokud příjem pokryjete běžným jídlem, protein nemusíte kupovat.</p>",
+  "evidence": "Nutrition-label arithmetic only; model pack sizes and concentrations, no invented prices, verified products or new clinical claims."
+}
