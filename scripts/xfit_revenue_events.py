@@ -52,3 +52,31 @@ def build_event(event_name, fields, *, analytics_consent=False,
             raise ValueError("product is not in the verified catalog")
         params.update(partner=partner, product_id=product_id)
     return {"name": event_name, "params": params}
+
+
+def summarize_funnel(events, *, analytics_consent=False,
+                     verified_product_ids=None):
+    """Count observed actions per advisor, never infer people or earnings.
+
+    Revalidate every record instead of trusting a previously built payload.
+    Denied consent must not consume the input (which may be a lazy iterator).
+    """
+    if type(analytics_consent) is not bool:
+        raise ValueError("consent must be boolean")
+    if not analytics_consent:
+        return None
+    counts = {page: {name: 0 for name in sorted(EVENTS)} for page in PAGES}
+    for event in events:
+        if not isinstance(event, dict) or set(event) != {"name", "params"}:
+            raise ValueError("unsupported event record")
+        validated = build_event(
+            event["name"], event["params"], analytics_consent=True,
+            verified_product_ids=verified_product_ids,
+        )
+        counts[validated["params"]["page"]][validated["name"]] += 1
+    return {
+        "action_counts": counts,
+        "unique_visitors": "UNKNOWN",
+        "orders": "UNKNOWN",
+        "commission": "UNKNOWN",
+    }
