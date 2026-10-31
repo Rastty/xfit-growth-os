@@ -1,11 +1,42 @@
 import unittest
-from scripts.xfit_archive_full import AnchorLinks, inventory
+import json
+from pathlib import Path
+import tempfile
+from unittest.mock import patch
+from urllib.error import HTTPError
+from scripts.xfit_archive_full import AnchorLinks, fetch, inventory, main
 
 def post(i,slug,title,body):
     return {"id":i,"slug":slug,"link":"https://xfit.cz/"+slug+"/",
        "modified":"2026-01-01T00:00:00","title":{"rendered":title},
        "content":{"rendered":"<p>"+body+"</p>"}}
 class ArchiveAuditTests(unittest.TestCase):
+    def test_rejected_page_is_not_an_empty_successful_page(self):
+        error=HTTPError("https://example.invalid/",400,"Bad Request",{},None)
+        with patch("scripts.xfit_archive_full.urlopen",side_effect=error) as request:
+            with self.assertRaises(HTTPError):
+                fetch(2,1)
+        self.assertEqual(request.call_count,1)
+
+    def test_rejected_later_page_preserves_partial_report_as_incomplete(self):
+        error=HTTPError("https://example.invalid/",400,"Bad Request",{},None)
+        first=post(1,"kreatin","Kreatin","Praktické informace.")
+        with tempfile.TemporaryDirectory() as directory:
+            output=Path(directory)/"audit.json"
+            with patch("sys.argv",["audit","--pages","3","--size","1",
+                                   "--output",str(output)]), \
+                 patch("scripts.xfit_archive_full.fetch",
+                       side_effect=[([first],3),error]), \
+                 patch("builtins.print"):
+                self.assertEqual(main(),2)
+            report=json.loads(output.read_text(encoding="utf-8"))
+        self.assertFalse(report["complete"])
+        self.assertEqual(report["scanned"],1)
+        self.assertEqual(report["pages_fetched"],1)
+        self.assertEqual(report["interrupted_at"],
+                         {"page":2,"error_type":"HTTPError"})
+        self.assertFalse(report["mutated_wordpress"])
+
     def test_same_id_repeated_is_not_duplicate(self):
         p=post(5300,"ovesne-vlocky","Ovesné vločky", "Recept s ovesnými vločkami.")
         a=inventory([p,p])

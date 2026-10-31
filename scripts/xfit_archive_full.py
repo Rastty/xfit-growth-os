@@ -58,7 +58,8 @@ def fetch(page,size):
             with urlopen(req,timeout=35) as response:
                 return json.load(response),int(response.headers.get("X-WP-TotalPages","0"))
         except HTTPError as e:
-            if e.code==400 and page>1: return [],0
+            # A rejected page is not evidence of the end of the archive.
+            # Let main record the interruption instead of claiming completeness.
             if e.code not in (429,500,502,503,504) or attempt==2:raise
         except (URLError,TimeoutError):
             if attempt==2:raise
