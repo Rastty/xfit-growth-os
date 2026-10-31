@@ -1,5 +1,5 @@
 import unittest
-from scripts.xfit_archive_full import inventory
+from scripts.xfit_archive_full import AnchorLinks, inventory
 
 def post(i,slug,title,body):
     return {"id":i,"slug":slug,"link":"https://xfit.cz/"+slug+"/",
@@ -60,5 +60,28 @@ class ArchiveAuditTests(unittest.TestCase):
         a=inventory([p])
         self.assertEqual(a["invalid_link_count"],0)
         self.assertEqual(a["flagged_candidates"][0]["invalid_link_count"],0)
+
+    def test_html_anchor_attribute_syntax_is_supported(self):
+        body='''<A HREF = '/kreatin/'>Kreatin</A>
+            <a href=/protein/>Protein</a>
+            <a href = "https://example.org/vyziva/">Zdroj</a>'''
+        row=inventory([post(1,"vyziva","Výživa",body)])["flagged_candidates"][0]
+        self.assertEqual(row["internal_link_count"],2)
+        self.assertEqual(row["external_hosts"],{"example.org":1})
+
+    def test_inactive_markup_and_data_attributes_are_not_links(self):
+        body='''<!-- <a href="/skryty/">Komentář</a> -->
+            <script>const template = '<a href="/sablona/">Text</a>';</script>
+            <a data-href="https://casino.example/">Bez odkazu</a>
+            <a data-href="/odlozeny/" href="/protein/">Protein</a>'''
+        row=inventory([post(1,"vyziva","Výživa",body)])["flagged_candidates"][0]
+        self.assertEqual(row["internal_link_count"],1)
+        self.assertEqual(row["external_hosts"],{})
+        self.assertFalse(row["suspect_spam"])
+
+    def test_attribute_entities_are_decoded_only_once(self):
+        anchors=AnchorLinks()
+        anchors.feed('<a href="/protein/?a=1&amp;b=&amp;sol;">Protein</a>')
+        self.assertEqual(anchors.links,["/protein/?a=1&b=&sol;"])
 
 if __name__=="__main__":unittest.main()
