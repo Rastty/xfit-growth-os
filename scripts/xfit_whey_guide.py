@@ -105,9 +105,10 @@ def build_document(catalog, base, sample):
             '<p><strong>Cena: '+price+' Kč</strong> · Balení: '+str(item["mass_g"])+' g</p>'
             '<p><strong>Cena za 100 g prášku: '+unit+' Kč</strong></p>'
             '<p><a href="'+link+'" rel="sponsored nofollow noopener noreferrer" '
+            'aria-label="Zobrazit konkrétní balení na NaMaximum.cz: '+html.escape(item["title"],quote=True)+' (nová karta)" '
             'target="_blank" style="display:inline-block;padding:12px 16px;min-height:44px;box-sizing:border-box;'
             'background-color:#116a70;color:#ffffff;text-decoration:none;font-weight:700;'
-            'border-radius:8px;">Zobrazit konkrétní balení na NaMaximum.cz</a></p></article>')
+            'border-radius:8px;">Zobrazit konkrétní balení na NaMaximum.cz (nová karta)</a></p></article>')
     parts += [
       '</div>',
       '<h2>Koncentrát, izolát nebo něco jiného?</h2>',
