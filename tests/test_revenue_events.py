@@ -1,6 +1,6 @@
 import unittest
 
-from scripts.xfit_revenue_events import build_event
+from scripts.xfit_revenue_events import build_event, summarize_funnel
 
 
 class RevenueEventTests(unittest.TestCase):
@@ -72,3 +72,67 @@ class RevenueEventTests(unittest.TestCase):
         for name in ("purchase", "commission", "health_answer", None):
             with self.subTest(name=name), self.assertRaises(ValueError):
                 build_event(name, self.fields, analytics_consent=True)
+
+
+class RevenueFunnelTests(unittest.TestCase):
+    def test_counts_actions_separately_without_inventing_conversions(self):
+        creatine = {"page": "xfit-os-kreatin-poradce",
+                    "selection_engine": "creatine"}
+        whey = {"page": "xfit-os-syrovatkovy-protein-porovnani",
+                "selection_engine": "whey"}
+        # Completion also covers a reader who decides to buy nothing.
+        events = [
+            {"name": "advisor_start", "params": creatine},
+            {"name": "advisor_complete", "params": creatine},
+            {"name": "advisor_complete", "params": whey},
+        ]
+        click = {"name": "affiliate_outbound_click",
+                 "params": dict(creatine, partner="namaximum", product_id=392)}
+        events.extend([click, click])
+        result = summarize_funnel(iter(events), analytics_consent=True,
+                                  verified_product_ids={392})
+        self.assertEqual(result["action_counts"][creatine["page"]], {
+            "advisor_start": 1, "advisor_complete": 1,
+            "affiliate_outbound_click": 2,
+        })
+        self.assertEqual(result["action_counts"][whey["page"]], {
+            "advisor_start": 0, "advisor_complete": 1,
+            "affiliate_outbound_click": 0,
+        })
+        for key in ("unique_visitors", "orders", "commission"):
+            self.assertEqual(result[key], "UNKNOWN")
+
+    def test_empty_input_is_not_proof_of_zero_revenue(self):
+        result = summarize_funnel([], analytics_consent=True)
+        self.assertEqual(result["orders"], "UNKNOWN")
+        self.assertEqual(result["commission"], "UNKNOWN")
+        self.assertTrue(all(value == 0 for page in result["action_counts"].values()
+                            for value in page.values()))
+
+    def test_requires_explicit_consent_without_consuming_input(self):
+        def unreadable():
+            raise AssertionError("input consumed without consent")
+            yield
+        for consent in (False,):
+            self.assertIsNone(summarize_funnel(unreadable(),
+                                             analytics_consent=consent))
+        self.assertIsNone(summarize_funnel(unreadable()))
+        for consent in (1, "yes", None):
+            with self.subTest(consent=consent), self.assertRaises(ValueError):
+                summarize_funnel(unreadable(), analytics_consent=consent)
+
+    def test_revalidates_records_and_catalog_before_returning_summary(self):
+        fields = {"page": "xfit-os-kreatin-poradce",
+                  "selection_engine": "creatine"}
+        invalid = [
+            {"name": "advisor_complete", "params": dict(fields, health="private")},
+            {"name": "advisor_start", "params": fields, "user_id": "private"},
+            {"name": "purchase", "params": fields},
+            {"name": "affiliate_outbound_click",
+             "params": dict(fields, partner="namaximum", product_id=999)},
+            None,
+        ]
+        for event in invalid:
+            with self.subTest(event=event), self.assertRaises(ValueError):
+                summarize_funnel([event], analytics_consent=True,
+                                 verified_product_ids={392})

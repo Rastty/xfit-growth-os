@@ -33,6 +33,19 @@ aktuálnost, skladovou dostupnost, affiliate atribuci ani deduplikaci.
 Budoucí transport musí samostatně omezit automatická metadata (URL, referrer,
 identifikátory); validátor kontroluje pouze zde sestavené parametry.
 
+`summarize_funnel(events, analytics_consent=True, verified_product_ids=...)`
+lokálně shrne pozorované události ve formátu `{"name": ..., "params": ...}`.
+Každý záznam znovu ověří stejnou validační hranicí; při neplatném záznamu
+odmítne celý souhrn. Bez výslovného souhlasu ani nezačne číst vstup.
+`action_counts` obsahuje počty akcí odděleně pro oba poradce, včetně nulových
+počtů. Dokončení bez nákupu má stejnou váhu jako jiné dokončení. Opakované
+prokliky se počítají jednotlivě: nejde o unikátní lidi, spárované návštěvy ani
+konverzní poměr. Nula znamená pouze žádnou takovou akci v dodaných záznamech;
+nepotvrzuje funkční měření. `unique_visitors`, `orders` a `commission` vždy
+vracejí `UNKNOWN`. Souhrn neobsahuje produktová ID a nic neodesílá ani neukládá.
+Před použitím pro rozhodování je nutné ověřit úplnost a období vstupu i
+skutečnou integraci; tento nástroj je sám nedokládá.
+
 Ověření: `python -m unittest tests.test_revenue_events tests.test_agent_scope`.
 Stav: připraveno lokálně; CI, nasazení, veřejná stránka a měření neověřeny.
 Prokliky/objednávky/provize: UNKNOWN. Vrácení této úpravy: vrátit diff těchto
