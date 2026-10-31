@@ -76,6 +76,12 @@ def summarize_funnel(events, *, analytics_consent=False,
         counts[validated["params"]["page"]][validated["name"]] += 1
     return {
         "action_counts": counts,
+        # No records for an advisor do not establish working instrumentation
+        # or zero reader interest. Observed actions do not prove completeness.
+        "action_data_status": {
+            page: "OBSERVED_ACTIONS" if any(actions.values()) else "UNKNOWN"
+            for page, actions in counts.items()
+        },
         "unique_visitors": "UNKNOWN",
         "orders": "UNKNOWN",
         "commission": "UNKNOWN",
