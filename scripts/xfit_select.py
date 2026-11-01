@@ -98,6 +98,21 @@ def select_offers(catalog, kind, max_price=None, min_mass_g=100, limit=12):
     choices.sort(key=lambda x: (x["price_per_100g_powder_czk"], x["price_czk"], x["title"]))
     return choices[:limit]
 
+def choose_price_scenarios(offers, limit=6):
+    """Preserve both best per-100g price and lowest eligible upfront cost."""
+    if not 2 <= limit <= 12 or len(offers) < 2:
+        raise ValueError("Need at least two eligible products and a bounded shortlist")
+    unit = lambda o: (o["price_per_100g_powder_czk"], o["price_czk"], o["title"], o["id"])
+    upfront = lambda o: (o["price_czk"], o["price_per_100g_powder_czk"], o["title"], o["id"])
+    ranked = sorted(offers, key=unit)
+    cheapest = min(offers, key=upfront)
+    selected = ranked[:limit]
+    if cheapest not in selected:
+        selected[-1] = cheapest
+        selected.sort(key=unit)
+    return selected, 0, selected.index(cheapest)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--catalog", default="reports/private-greenmedical-catalog.json")

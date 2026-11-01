@@ -15,7 +15,7 @@ from pathlib import Path
 from urllib.parse import parse_qsl, parse_qs, urlencode, urlsplit, urlunsplit
 
 from scripts.xfit_affil_deeplink import affiliate_signature, classify_product_link
-from scripts.xfit_select import select_offers
+from scripts.xfit_select import select_offers, choose_price_scenarios
 from scripts.wp_publish import (MARKER, PublishError, normalized_base, plain,
                                 publish, verify_public, wp_request, existing_content)
 
@@ -107,10 +107,11 @@ def shortlist(catalog, base, sample, budget=1500):
     result.sort(key=lambda p:(p["price_per_100g_powder_czk"],p["price_czk"],p["title"]))
     if len(result) < 2:
         raise PublishError("Not enough distinct creatine product/mass families; refuse repeated flavor offers")
-    return result[:6]
+    return choose_price_scenarios(result, limit=6)[0]
 
 def build_document(catalog, base, sample):
     chosen = shortlist(catalog, base, sample)
+    budget_i = min(range(len(chosen)), key=lambda i: (chosen[i]['price_czk'], chosen[i]['price_per_100g_powder_czk']))
     bits = [
       '<p><strong>Jak vybrat kreatin bez zbytečného přeplácení?</strong> '
       'Pro většinu zdravých dospělých, kteří pravidelně silově nebo intenzivně trénují, '
@@ -139,6 +140,16 @@ def build_document(catalog, base, sample):
       'kreatinem a kreatininem, výsledky studií a kdy řešit nález s lékařem. '
       'Při známém onemocnění ledvin či jater nebo nejasných testech vybírejte '
       'doplněk až po individuální zdravotní konzultaci.</p></details>',
+      '<h2>Dvě cesty k výběru podle ceny</h2>',
+      '<p><strong>Nejnižší výdaj při nákupu:</strong> '
+      f'<a href="#xfit-offer-{budget_i + 1}">zobrazit balení s nejnižší celkovou cenou v tomto výběru</a>. '
+      'To nemusí být nejvýhodnější cena za 100 g.</p>',
+      '<p><strong>Nejnižší cena za 100 g prášku:</strong> '
+      '<a href="#xfit-offer-1">zobrazit variantu s nejnižší jednotkovou cenou v tomto výběru</a>. '
+      'Tato volba může vyžadovat větší jednorázovou útratu.</p>',
+      '<p><small>Tyto dvě volby vycházejí pouze z gramáže a ceny ověřených nabídek '
+      'kreatinu monohydrátu. Nejde o srovnání celého trhu ani důkaz čistoty nebo vhodnosti produktu. '
+      'Před nákupem zkontrolujte etiketu; pokud doplněk nepotřebujete, nekupujte jej.</small></p>',
       '<h2 id="xfit-offers">Kreatin monohydrát – přehled ověřených produktových nabídek</h2>',
       '<p><em>Obsahuje affiliate odkazy na NaMaximum.cz přes síť Affial. '
       'Pokud přes odkaz nakoupíte, Xfit.cz může získat provizi. '
@@ -157,7 +168,7 @@ def build_document(catalog, base, sample):
         image=('<p><img src="'+html.escape(offer["image"],quote=True)+
                '" alt="'+title+'" loading="lazy" width="120" height="120" style="max-width:100%;width:120px;height:120px;object-fit:contain;" /></p>'
                if offer["image"] else "")
-        bits.append('<article class="xfit-product-card" style="border:1px solid #dce5e8;'
+        bits.append('<article id="xfit-offer-'+str(i+1)+'" class="xfit-product-card" style="border:1px solid #dce5e8;'
             'border-radius:12px;padding:16px;margin:16px 0;background:#ffffff;">'
             '<h3>'+title+'</h3>'+image+
             '<p><strong>'+label+'</strong></p>'

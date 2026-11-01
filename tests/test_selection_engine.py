@@ -49,6 +49,30 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(len(ranked),1)
         self.assertEqual(ranked[0]["id"],"1")
 
+    def test_scenario_shortlist_keeps_cheapest_upfront_even_if_not_in_unit_top_six(self):
+        from scripts.xfit_select import choose_price_scenarios
+        offers = [
+            {"id":str(i),"title":f"Option {i}","price_czk":900+i,
+             "price_per_100g_powder_czk":45+i} for i in range(7)
+        ]
+        offers.append({"id":"8","title":"Entry package","price_czk":299,
+                       "price_per_100g_powder_czk":59.8})
+        selected, value_i, budget_i = choose_price_scenarios(offers)
+        self.assertEqual(len(selected),6)
+        self.assertEqual(selected[value_i]["id"],"0")
+        self.assertEqual(selected[budget_i]["id"],"8")
+        self.assertEqual(len({o["id"] for o in selected}),6)
+
+    def test_scenario_shortlist_handles_same_value_and_budget_pick(self):
+        from scripts.xfit_select import choose_price_scenarios
+        products = [
+            {"id":"1","title":"A","price_czk":100,"price_per_100g_powder_czk":20},
+            {"id":"2","title":"B","price_czk":200,"price_per_100g_powder_czk":30},
+        ]
+        selected, value_i, budget_i = choose_price_scenarios(products)
+        self.assertEqual((value_i,budget_i),(0,0))
+        self.assertEqual(len(selected),2)
+
     def test_invalid_controls(self):
         with self.assertRaises(ValueError):
             select_offers({"products":[]},"unknown")

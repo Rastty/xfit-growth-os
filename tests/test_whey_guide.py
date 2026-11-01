@@ -72,6 +72,29 @@ class WheyTests(unittest.TestCase):
         self.assertIn("Cena za 100 g prášku: 69,54 Kč",body)
         self.assertIn("Cena za 100 g prášku: 146,67 Kč",body)
         self.assertLess(body.index("Cena: 347,55 Kč"),body.index("Cena: 695,40 Kč"))
+    def test_price_priority_links_resolve_to_two_valid_product_cards(self):
+        from html.parser import HTMLParser
+        class PickParser(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.ids = set()
+                self.priorities = []
+            def handle_starttag(self, tag, attrs):
+                values = dict(attrs)
+                if tag == "article" and values.get("id"):
+                    self.ids.add(values["id"])
+                if tag == "a" and values.get("href","").startswith("#xfit-offer-"):
+                    self.priorities.append(values["href"][1:])
+        rendered = build_document(self.catalog,BASE,SAMPLE)["content"]
+        parser = PickParser()
+        parser.feed(rendered)
+        self.assertEqual(len(parser.priorities),2)
+        self.assertTrue(all(anchor in parser.ids for anchor in parser.priorities))
+        self.assertIn("Nejnižší výdaj při nákupu",rendered)
+        self.assertIn("Nejnižší cena za 100 g prášku",rendered)
+        self.assertIn("pokud doplněk nepotřebujete",rendered)
+        self.assertNotIn("nejlevnější na trhu",rendered)
+
     def test_insufficient_catalog(self):
         with self.assertRaises(PublishError):
             build_document({"merchant":"namaximum.cz","merchant_match":True,"products":[]},BASE,SAMPLE)
