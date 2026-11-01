@@ -41,6 +41,13 @@ SLUG = re.compile(r"(?:xfit-os-)?[a-z0-9]+(?:-[a-z0-9]+)+\Z")
 MARKER_RE = re.compile(r"xfit-ai-[a-z0-9-]{9,75}\Z")
 
 
+ALLOWED_TAGS = {
+    "section", "h2", "h3", "p", "strong", "em", "ol", "ul", "li",
+    "table", "caption", "thead", "tbody", "tr", "th", "td",
+    "blockquote", "small", "a", "code", "br",
+}
+
+
 class Links(HTMLParser):
     def __init__(self):
         super().__init__()
@@ -48,10 +55,19 @@ class Links(HTMLParser):
         self.active = False
 
     def handle_starttag(self, tag, attrs):
-        if tag in ("script", "iframe", "style", "form", "svg", "input", "img", "object", "embed"):
+        if tag not in ALLOWED_TAGS:
             self.active = True
+        names = [name for name, _ in attrs]
+        if len(names) != len(set(names)):
+            self.active = True
+        allowed = (
+            {"data-xfit-ai-edit", "data-xfit-ai-create"} if tag == "section"
+            else {"href"} if tag == "a"
+            else {"scope"} if tag == "th"
+            else set()
+        )
         for name, value in attrs:
-            if name.lower().startswith("on"):
+            if name not in allowed or value is None:
                 self.active = True
             if tag == "a" and name == "href":
                 self.urls.append(value)
