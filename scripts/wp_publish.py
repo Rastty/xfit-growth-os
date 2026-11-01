@@ -19,6 +19,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from html.parser import HTMLParser
 
 MARKER = "<!-- xfit-growth-os:v1 -->"
 SLUG_RE = re.compile(r"xfit-os-[a-z0-9]+(?:-[a-z0-9]+)*\Z")
@@ -104,18 +105,93 @@ def plain(text):
     return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", text))).strip().lower()
 
 
-def verify_public(url, title):
+# Public source freshness: the title alone can match a stale cached release.
+# Extract rendered text from all meaningful editorial blocks, preserving inline
+# links/strong elements, and check it against a real public HTML readback.
+class VisibleArticle(HTMLParser):
+    BLOCKS = {"p", "li", "h2", "h3", "h4", "blockquote", "td", "th", "caption"}
+    IGNORED = {"script", "style", "noscript", "template"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts = []
+        self.segments = []
+        self.capture = []
+        self.ignore_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in self.IGNORED:
+            self.ignore_depth += 1
+        elif not self.ignore_depth and tag in self.BLOCKS:
+            self.parts.append(" ")
+            self.capture.append((tag, []))
+
+    def handle_data(self, data):
+        if self.ignore_depth:
+            return
+        self.parts.append(data)
+        for _tag, buffer in self.capture:
+            buffer.append(data)
+
+    def handle_endtag(self, tag):
+        if tag in self.IGNORED:
+            self.ignore_depth = max(0, self.ignore_depth - 1)
+            return
+        if self.ignore_depth or tag not in self.BLOCKS:
+            return
+        self.parts.append(" ")
+        if self.capture and self.capture[-1][0] == tag:
+            _, buffer = self.capture.pop()
+            segment = normalize_visible("".join(buffer))
+            if len(segment) >= 32:
+                self.segments.append(segment)
+
+
+def normalize_visible(value):
+    # Unescape entities and unify NBSP/formatting differences without
+    # accepting missing, reordered or outdated article text.
+    return " ".join(html.unescape(value).casefold().split())
+
+
+def article_visible(source):
+    parser = VisibleArticle()
+    parser.feed(source)
+    return normalize_visible("".join(parser.parts)), parser.segments
+
+
+def verify_public(url, title, expected_content):
     parsed = urllib.parse.urlsplit(url)
     if parsed.scheme != "https" or parsed.hostname not in ("xfit.cz", "www.xfit.cz"):
         raise PublishError("Unexpected public URL host; refusing verification")
-    req = urllib.request.Request(url, headers={"User-Agent": "XfitGrowthOS/0.1"})
-    try:
-        with urllib.request.urlopen(req, timeout=25) as r:
-            page = r.read(2_000_000).decode("utf-8", errors="replace")
-    except (OSError, ValueError) as ex:
-        raise PublishError("Public verification failed (" + type(ex).__name__ + ")") from ex
-    if plain(title) not in plain(page):
-        raise PublishError("Public URL loads but expected article title is not visible")
+    expected_text, segments = article_visible(expected_content)
+    if len(expected_text) < 250 or len(segments) < 3:
+        raise PublishError("No usable editorial body evidence for public freshness check")
+    expected_title = normalize_visible(title)
+    # New text must be verifiable, not just an old page with the same title.
+    for attempt in range(3):
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "XfitGrowthOS/0.2",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+        })
+        try:
+            with urllib.request.urlopen(req, timeout=25) as response:
+                target = urllib.parse.urlsplit(response.geturl())
+                if (response.status != 200 or target.scheme != "https"
+                        or target.hostname not in ("xfit.cz", "www.xfit.cz")):
+                    raise PublishError("Public verification redirected outside approved XFIT page")
+                public_html = response.read(2_000_000).decode("utf-8", errors="replace")
+        except (OSError, ValueError) as ex:
+            if attempt == 2:
+                raise PublishError("Public verification failed (" + type(ex).__name__ + ")") from ex
+            time.sleep(2)
+            continue
+        public_text, _ = article_visible(public_html)
+        if expected_title in public_text and all(chunk in public_text for chunk in segments):
+            return True
+        if attempt < 2:
+            time.sleep(2)
+    raise PublishError("Public page still shows old/incomplete article body; cache or renderer stale")
 
 
 def publish(doc, *, live=False):
@@ -162,13 +238,16 @@ def publish(doc, *, live=False):
     read = wp_request(base, "posts/" + str(post_id) + "?context=edit&_fields=id,slug,status,content,link")
     if read.get("slug") != slug or read.get("status") != status or MARKER not in existing_content(read):
         raise PublishError("WP write was accepted but draft/publish read-back verification FAILED")
+    raw = read.get("content", {}).get("raw") if isinstance(read.get("content"), dict) else None
+    if not isinstance(raw, str) or article_visible(raw)[0] != article_visible(doc["content"])[0]:
+        raise PublishError("WP edit-context raw body differs from approved published text")
     link = read.get("link")
     result = {"state": "api_accepted", "post_id": post_id, "slug": slug, "status": status, "url": link}
     print(json.dumps(result, ensure_ascii=False))
     if live:
         if not isinstance(link, str):
             raise PublishError("Public URL missing")
-        verify_public(link, doc["title"])
+        verify_public(link, doc["title"], doc["content"])
         result["state"] = "live_verified"
     else:
         result["state"] = "draft_verified"
