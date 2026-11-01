@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "site": "https://xfit.cz",
+  "policy": "one_pinned_educational_post_per_run",
+  "articles": [
+    {
+      "slug": "xfit-os-cena-proteinu-podle-etikety",
+      "path": "content/auto-ready/xfit-os-cena-proteinu-podle-etikety.json",
+      "git_blob_sha": "a55fb605e81a133fe8df632e23c46982ddafe871",
+      "marker": "protein-price-label-guide-v1"
+    }
+  ]
+}
