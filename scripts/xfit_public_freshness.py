@@ -11,6 +11,7 @@ import sys
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from html.parser import HTMLParser
 
 from scripts.wp_publish import PublishError, normalized_base, wp_request
 
@@ -34,6 +35,47 @@ def owns_public_url(url, slug):
 def visible_has(html_source, phrase):
     text = html.unescape(re.sub(r"<[^>]+>", " ", html_source))
     return " ".join(phrase.casefold().split()) in " ".join(text.casefold().split())
+
+
+class ProductCards(HTMLParser):
+    """Capture visible card copy including actual unit prices, not only a heading."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.depth = 0
+        self.buffer = []
+        self.cards = []
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        if tag == "article":
+            if self.depth:
+                self.depth += 1
+            elif "xfit-product-card" in (a.get("class") or "").split():
+                self.depth = 1
+                self.buffer = []
+        elif self.depth and tag in ("h3","p","strong","a","li"):
+            self.buffer.append(" ")
+
+    def handle_data(self, value):
+        if self.depth:
+            self.buffer.append(value)
+
+    def handle_endtag(self, tag):
+        if not self.depth:
+            return
+        if tag == "article":
+            self.depth -= 1
+            if not self.depth:
+                text = " ".join(html.unescape("".join(self.buffer)).casefold().split())
+                self.cards.append(text)
+        elif tag in ("h3","p","strong","a","li"):
+            self.buffer.append(" ")
+
+
+def product_card_texts(value):
+    parsed = ProductCards()
+    parsed.feed(value)
+    return parsed.cards
 
 
 def public_get(url):
@@ -72,12 +114,18 @@ def probe(target, *, read_post=None, read_public=None):
         return {"slug": slug, "post_id": post_id, "status": "PUBLIC_READ_ERROR",
                 "wp_source_has_target": source_has, "reason": type(exc).__name__}
     public_has = visible_has(page, marker)
-    status = ("PUBLIC_FRESH" if source_has and public_has
-              else "SOURCE_NOT_UPDATED" if not source_has
+    product = slug in {"xfit-os-kreatin-poradce", "xfit-os-syrovatkovy-protein-porovnani"}
+    source_cards = product_card_texts(raw) if product else []
+    public_cards = product_card_texts(page) if product else []
+    cards_match = (len(source_cards) >= 2 and source_cards == public_cards) if product else True
+    status = ("SOURCE_NOT_UPDATED" if not source_has
+              else "WP_SOURCE_INCOMPLETE" if product and len(source_cards) < 2
+              else "PUBLIC_FRESH" if public_has and cards_match
               else "PUBLIC_STALE_OR_RENDERED_DIFFERENTLY")
     return {"slug": slug, "post_id": post_id, "status": status,
             "wp_source_has_target": source_has, "public_has_target": public_has,
-            "cache_headers": headers}
+            "wp_product_cards": len(source_cards), "public_product_cards": len(public_cards),
+            "product_cards_match": cards_match, "cache_headers": headers}
 
 
 def main():

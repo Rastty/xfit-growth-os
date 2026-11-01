@@ -1,11 +1,15 @@
 import unittest
-from scripts.xfit_public_freshness import TARGETS, owns_public_url, visible_has, probe
+from scripts.xfit_public_freshness import TARGETS, owns_public_url, visible_has, probe, product_card_texts
 from scripts.wp_publish import PublishError
 
 
 def post(slug, post_id, marker):
+    source = "<!-- xfit-growth-os:v1 -->\n<h2>" + marker + "</h2>"
+    if slug in ("xfit-os-kreatin-poradce", "xfit-os-syrovatkovy-protein-porovnani"):
+        source += ("<article class='xfit-product-card'><h3>Produkt A</h3><p>Cena: 200,00 Kč</p></article>"
+                   "<article class='xfit-product-card'><h3>Produkt B</h3><p>Cena: 300,00 Kč</p></article>")
     return {"id":post_id, "slug":slug, "status":"publish",
-            "content":{"raw":"<!-- xfit-growth-os:v1 -->\n<h2>"+marker+"</h2>"},
+            "content":{"raw":source},
             "link":"https://xfit.cz/"+slug+"/"}
 
 
@@ -19,13 +23,32 @@ class PublicFreshnessTests(unittest.TestCase):
         target = TARGETS[2]
         original = post(*target)
         success = probe(target, read_post=lambda _:original,
-                        read_public=lambda url:("<html><h1>Jak vybrat kreatin</h1><h2>Dvě cesty k výběru podle ceny</h2></html>",{"Age":"0"}))
+                        read_public=lambda url:("<html><h1>Jak vybrat kreatin</h1>"+original["content"]["raw"]+"</html>",{"Age":"0"}))
         self.assertEqual(success["status"],"PUBLIC_FRESH")
         stale = probe(target, read_post=lambda _:original,
                       read_public=lambda url:("<html><h1>Jak vybrat kreatin</h1><p>Starý obsah</p></html>",{"Age":"720"}))
         self.assertEqual(stale["status"],"PUBLIC_STALE_OR_RENDERED_DIFFERENTLY")
         self.assertTrue(stale["wp_source_has_target"])
         self.assertFalse(stale["public_has_target"])
+
+    def test_stale_pricing_cards_fail_even_if_new_heading_is_already_visible(self):
+        target = TARGETS[3]
+        fresh_post = post(*target)
+        changed_prices = fresh_post["content"]["raw"].replace("200,00 Kč", "999,00 Kč")
+        report = probe(target, read_post=lambda _:fresh_post,
+                       read_public=lambda _:("<html>"+changed_prices+"</html>",{}))
+        self.assertEqual(report["status"],"PUBLIC_STALE_OR_RENDERED_DIFFERENTLY")
+        self.assertTrue(report["public_has_target"])
+        self.assertFalse(report["product_cards_match"])
+        self.assertEqual(report["wp_product_cards"],2)
+        self.assertEqual(report["public_product_cards"],2)
+
+    def test_product_parser_ignores_unrelated_outer_articles(self):
+        cards = product_card_texts(
+            "<article><h3>Theme shell</h3><article class='xfit-product-card'>"
+            "<h3>Whey A</h3><p>Cena: <strong>900&nbsp;Kč</strong></p>"
+            "</article></article>")
+        self.assertEqual(cards, ["whey a cena: 900 kč"])
 
     def test_source_missing_is_not_mistaken_for_cache_staleness(self):
         slug, ident, marker = TARGETS[3]
