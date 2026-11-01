@@ -92,6 +92,8 @@ def prepare_queue(manifest_path=MANIFEST, root=Path(".")):
         if len(raw) > 40000 or blob_sha(raw) != expected:
             raise PublishError("Pinned article Git blob SHA mismatch")
         source = json.loads(raw)
+        if not isinstance(source, dict):
+            raise PublishError("Pinned article must be an object")
         if set(source) - {"slug", "title", "excerpt", "content"}:
             raise PublishError("Autonomous release cannot use pinned legacy WP IDs or extra fields")
         doc = validate_document(source)
