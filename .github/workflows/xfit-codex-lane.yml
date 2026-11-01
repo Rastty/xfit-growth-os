@@ -126,6 +126,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      actions: write  # workflow_dispatch only; Code Checks is read-only
     steps:
       - uses: actions/checkout@v5
         with:
@@ -151,6 +152,7 @@ jobs:
           python -m unittest discover -s tests -v
           git diff --check
       - name: Open proposed PR only (never merge or publish site)
+        id: open_pr
         env:
           GH_TOKEN: ${{ github.token }}
           LANE: ${{ inputs.lane }}
@@ -169,3 +171,23 @@ jobs:
           gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" \
             --title "Xfit Codex $LANE: user-value improvement" \
             --body "Proposed code from #$ISSUE. Independent file-scope and tests passed. This is a reviewable PR, **not a live publication**. Verify factual/clinical correctness, accessibility and business impact before merging."
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+      - name: Request independent read-only Code Checks on approved bot branch
+        if: steps.open_pr.outputs.branch != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_BRANCH: ${{ steps.open_pr.outputs.branch }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # GITHUB_TOKEN-generated pull_request events can require approval.
+          # workflow_dispatch is an explicitly supported GITHUB_TOKEN exception.
+          # Strictly dispatch ONLY the existing, secrets-free Code Checks workflow
+          # for a validated branch created in the same successful open_pr job.
+          if [[ ! "$PR_BRANCH" =~ ^xfit/codex-(ux|archive|editor|revenue)-[0-9]+-[0-9]+$ ]]; then
+            echo "::error::Invalid agent-owned PR branch; refusing CI dispatch"
+            exit 2
+          fi
+          gh workflow run xfit-checks.yml --repo "$GITHUB_REPOSITORY" --ref "$PR_BRANCH"
+          echo "Requested independent read-only XFIT Code Checks on $PR_BRANCH."
+          echo "Human review and explicit merge decision still required."
