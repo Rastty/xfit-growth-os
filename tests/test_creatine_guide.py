@@ -1,4 +1,6 @@
 import unittest
+from html.parser import HTMLParser
+from urllib.parse import parse_qs, urlsplit
 from scripts.xfit_creatine_guide import (
     build_document, build_tracked_url, shortlist, validate_example,
 )
@@ -58,6 +60,34 @@ class CreatineGuideTests(unittest.TestCase):
               "products":[self.catalog["products"][0]]}
         with self.assertRaises(PublishError):
             build_document(data,BASE,SAMPLE)
+
+    def test_purchase_links_identify_product_and_new_tab(self):
+        # Synthetic fixture exercises escaping without using a live feed.
+        self.catalog["products"][0]["title"] = 'Creatine Creapure "Natural" & čistý 1kg'
+        links = []
+
+        class Links(HTMLParser):
+            def handle_starttag(self, tag, attrs):
+                attrs = dict(attrs)
+                if tag == "a" and "sponsored" in attrs.get("rel", "").split():
+                    links.append(attrs)
+
+        body = build_document(self.catalog, BASE, SAMPLE)["content"]
+        Links().feed(body)
+        chosen = shortlist(self.catalog, BASE, SAMPLE)
+        self.assertEqual(len(links), len(chosen))
+        self.assertEqual(len({link["aria-label"] for link in links}), len(chosen))
+        by_variant = {product["id"]: product for product in chosen}
+        for link in links:
+            variant = parse_qs(urlsplit(link["href"]).query)["variant"][0]
+            self.assertEqual(link["aria-label"],
+                "Zobrazit konkrétní balení na NaMaximum.cz: "
+                + by_variant[variant]["title"] + " (nová karta)")
+            self.assertEqual(link["target"], "_blank")
+            self.assertIn("noopener", link["rel"].split())
+            self.assertIn("nofollow", link["rel"].split())
+        self.assertEqual(body.count(
+            '>Zobrazit konkrétní balení na NaMaximum.cz (nová karta)</a>'), len(chosen))
 
     def test_prices_preserve_cents_and_explain_rank(self):
         # Synthetic fixtures: both unit prices used to display as 86 Kč.
