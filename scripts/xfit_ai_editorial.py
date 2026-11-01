@@ -283,7 +283,7 @@ def validate_proposal(target=None):
         check_document(doc)
         if "<h2" not in body or "<li" not in body:
             raise PublishError("AI article needs structured practical steps")
-        if not any(u.startswith("https://food.ec.europa.eu/") or u.startswith("https://ods.od.nih.gov/") for u in parser.urls):
+        if not any(u.startswith("https://food.ec.europa.eu/") or u.startswith("https://ods.od.nih.gov/") or u.startswith("https://commission.europa.eu/topics/business-and-industry/product-safety_en") for u in parser.urls):
             raise PublishError("No independent trusted source")
     return proposal
 

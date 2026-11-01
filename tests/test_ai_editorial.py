@@ -77,8 +77,23 @@ class EditorialEngineTests(unittest.TestCase):
         return temp, target, content
 
     def test_exact_policy_and_existing_source_identity(self):
-        self.assertEqual(len(self.policy), 5)
+        self.assertEqual(len(self.policy), 7)
         self.assertEqual(e.digest(self.base), self.target["source_sha256"])
+
+    def test_distinct_home_fitness_buying_targets_have_official_safety_source(self):
+        slugs = [x["slug"] for x in self.policy]
+        self.assertEqual(len(slugs), len(set(slugs)))
+        self.assertEqual(slugs[-2:], [
+            "xfit-os-vyber-odporove-gumy",
+            "xfit-os-vyber-jednorucek-na-doma",
+        ])
+        for item in self.policy[-2:]:
+            self.assertEqual(item["kind"], "create")
+            self.assertGreaterEqual(item["min_words"], 550)
+            self.assertIn(
+                "https://commission.europa.eu/topics/business-and-industry/product-safety_en",
+                item["allowed_links"],
+            )
 
     def test_read_only_selects_existing_article_before_new(self):
         with tempfile.TemporaryDirectory() as tmp:

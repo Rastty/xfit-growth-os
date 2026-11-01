@@ -10,7 +10,7 @@ from html.parser import HTMLParser
 import re
 from urllib.parse import urlsplit, parse_qs
 
-TRUSTED_EVIDENCE=("ods.od.nih.gov","pmc.ncbi.nlm.nih.gov","pubmed.ncbi.nlm.nih.gov",
+TRUSTED_EVIDENCE=("commission.europa.eu","ods.od.nih.gov","pmc.ncbi.nlm.nih.gov","pubmed.ncbi.nlm.nih.gov",
                   "efsa.europa.eu","food.ec.europa.eu","knowledge-for-policy.ec.europa.eu",
                   "who.int","acsm.org")
 FORBIDDEN=re.compile(r"(garantovaně\s+(vyléčí|odstraní)|100\s*%\s*(vyléčí|účinnost)|jediný\s+zázračný|klikni zde|nejlepší na světě)",re.I)

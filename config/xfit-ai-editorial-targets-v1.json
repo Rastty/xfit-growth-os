@@ -61,6 +61,30 @@
         "https://ods.od.nih.gov/factsheets/ExerciseAndAthleticPerformance-HealthProfessional/"
       ],
       "min_words": 550
+    },
+    {
+      "kind": "create",
+      "slug": "xfit-os-vyber-odporove-gumy",
+      "marker": "xfit-ai-resistance-band-decision-v1",
+      "brief": "Připrav opravdu užitečný český nákupní návod na odporové gumy pro domácí cvičení: rozliš dlouhou smyčku, miniband a gumu s držadly podle konkrétního cviku, místa a způsobu uchycení. Praktická rozhodovací tabulka, jak číst interval odporu a změny síly při natažení, proč barvy různých výrobců nelze považovat za jednotnou stupnici, jak ověřit stav materiálu, bezpečné ukotvení a návod od výrobce, co měřit při nákupu. Neslibuj zdravotní/rehabilitační účinky, nepředepisuj jednotlivé cviky ani zátěž. Bez fiktivních značek, cen, osobních testů a affiliate produktů. Uveď i situace, kdy guma není potřeba, a zdroj Evropské komise k bezpečnosti výrobků.",
+      "allowed_links": [
+        "https://commission.europa.eu/topics/business-and-industry/product-safety_en",
+        "https://xfit.cz/jaky-je-rozdil-mezi-klasickym-pilates-a-power-pilates/",
+        "https://xfit.cz/xfit-os-vyber-podlozky-na-cviceni/"
+      ],
+      "min_words": 550
+    },
+    {
+      "kind": "create",
+      "slug": "xfit-os-vyber-jednorucek-na-doma",
+      "marker": "xfit-ai-home-dumbbells-choice-v1",
+      "brief": "Připrav praktického českého nákupního poradce pro výběr jednoručních činek do domácnosti. Rozhodovací tabulka pevné vs. nakládací vs. nastavitelné jednoručky podle prostoru, rozsahu možných změn zátěže, skladování, doby výměny kotoučů a ověřitelného zajištění závaží. Vysvětli, jak porovnat celkovou cenu za použitelné varianty bez uvádění fiktivních nabídek, co ověřit u držadla, pojistky, návodu a povrchu podlahy. Neuváděj konkrétní doporučenou hmotnost cvičence, zdravotní nároky ani nezaručené výsledky; zdůrazni možnost začít bez nákupu a bezpečnost výrobků podle Evropské komise. Konkrétní checklist a nejčastější chyby.",
+      "allowed_links": [
+        "https://commission.europa.eu/topics/business-and-industry/product-safety_en",
+        "https://xfit.cz/xfit-os-vyber-podlozky-na-cviceni/",
+        "https://xfit.cz/xfit-os-doplnky-pro-zacatecniky/"
+      ],
+      "min_words": 550
     }
   ]
 }
