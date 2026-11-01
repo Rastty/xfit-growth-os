@@ -28,6 +28,21 @@ class WheyTests(unittest.TestCase):
         self.assertIn("Ceny se mohou měnit",doc["content"])
         self.assertIn('rel="sponsored nofollow noopener noreferrer"',doc["content"])
         self.assertNotIn("Whey gainer",doc["content"])
+    def test_collagen_creatine_and_electrolyte_whey_blends_are_not_ranked_as_plain_whey(self):
+        # These are synthetically cheap examples, so a unit-price-only
+        # ranking would incorrectly elevate them above comparable whey powders.
+        for name in ("Daily Whey Protein +Collagen +Elektrolyty +Kreatin 1kg",
+                     "Whey Protein with Creatine 1kg",
+                     "Whey Protein Kolagen 1kg"):
+            self.catalog["products"].append(offer(150+len(self.catalog["products"]),name,199))
+        body = build_document(self.catalog, BASE, SAMPLE)["content"]
+        self.assertIn("Whey WPC 1kg", body)
+        self.assertIn("Whey Isolate 750g", body)
+        self.assertNotIn("Daily Whey Protein +Collagen", body)
+        self.assertNotIn("Whey Protein with Creatine", body)
+        self.assertNotIn("Whey Protein Kolagen", body)
+        self.assertIn("směsi s kolagenem, kreatinem nebo elektrolyty", body)
+
     def test_type_labels(self):
         self.assertIn("izolát",kind_label("Whey WPI").lower())
         self.assertIn("koncentrát",kind_label("Whey WPC").lower())

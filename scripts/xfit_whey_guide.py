@@ -17,7 +17,8 @@ from scripts.xfit_select import select_offers, choose_price_scenarios
 from scripts.wp_publish import PublishError, normalized_base, MARKER, existing_content, wp_request, validate_document, publish, verify_public
 
 SLUG = "xfit-os-syrovatkovy-protein-porovnani"
-RISK_WORDS = ("mass gainer", "gain mass", "gainer", "kapsl", "tablet", "capsule", "protein bar", "tycink", "tyčink")
+RISK_WORDS = ("mass gainer", "gain mass", "gainer", "kapsl", "tablet", "capsule", "protein bar", "tycink", "tyčink",
+              "collagen", "kolagen", "creatine", "kreatin", "electrolyt", "elektrolyt", "pre-workout", "pre workout")
 def kind_label(title):
     lower=title.casefold()
     if any(w in lower for w in ("isolate", "isolat", "izolat", "izolát", "wpi")):
@@ -150,7 +151,7 @@ def build_document(catalog, base, sample):
       'ISSN Position Stand: Protein and exercise</a> a '
       '<a href="https://ods.od.nih.gov/factsheets/ExerciseAndAthleticPerformance-HealthProfessional/">'
       'NIH Office of Dietary Supplements</a>. Produkty a ceny pocházejí z '
-      'XML feedu NaMaximum.cz. Vyřazujeme tyčinky, gainery a produkty bez '
+      'XML feedu NaMaximum.cz. Vyřazujeme tyčinky, gainery, směsi s kolagenem, kreatinem nebo elektrolyty a produkty bez '
       'spolehlivě rozpoznané gramáže. Cena za 100 g prášku není totéž '
       'co cena za 100 g čistých bílkovin.</p>',
       '<p><small>Informace slouží zdravým dospělým. '
