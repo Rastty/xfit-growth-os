@@ -95,6 +95,39 @@ class WheyTests(unittest.TestCase):
         self.assertIn("pokud doplněk nepotřebujete",rendered)
         self.assertNotIn("nejlevnější na trhu",rendered)
 
+    def test_unchanged_wp_post_requires_public_source_freshness(self):
+        from unittest.mock import patch
+        from scripts.xfit_whey_guide import deploy
+        from scripts.wp_publish import MARKER
+        doc = build_document(self.catalog, BASE, SAMPLE)
+        post = {"id":25456,"slug":doc["slug"],"status":"publish",
+                "content":{"raw":MARKER+"\\n"+doc["content"]},
+                "link":"https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/"}
+        with patch("scripts.xfit_whey_guide.normalized_base",return_value="https://xfit.cz"), \
+             patch("scripts.xfit_whey_guide.wp_request",return_value=[post]), \
+             patch("scripts.xfit_whey_guide.verify_public",return_value=True) as public, \
+             patch("scripts.xfit_whey_guide.publish") as writer:
+            result = deploy(doc)
+        self.assertEqual(result["state"],"unchanged_public_verified")
+        public.assert_called_once_with(post["link"],doc["title"],MARKER+"\\n"+doc["content"])
+        writer.assert_not_called()
+
+    def test_stale_whey_public_html_does_not_rewrite_or_claim_success(self):
+        from unittest.mock import patch
+        from scripts.xfit_whey_guide import deploy
+        from scripts.wp_publish import MARKER
+        doc = build_document(self.catalog, BASE, SAMPLE)
+        post = {"id":25456,"slug":doc["slug"],"status":"publish",
+                "content":{"raw":MARKER+"\\n"+doc["content"]},
+                "link":"https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/"}
+        with patch("scripts.xfit_whey_guide.normalized_base",return_value="https://xfit.cz"), \
+             patch("scripts.xfit_whey_guide.wp_request",return_value=[post]), \
+             patch("scripts.xfit_whey_guide.verify_public",side_effect=PublishError("cached older version")), \
+             patch("scripts.xfit_whey_guide.publish") as writer:
+            with self.assertRaisesRegex(PublishError,"cached older version"):
+                deploy(doc)
+        writer.assert_not_called()
+
     def test_insufficient_catalog(self):
         with self.assertRaises(PublishError):
             build_document({"merchant":"namaximum.cz","merchant_match":True,"products":[]},BASE,SAMPLE)

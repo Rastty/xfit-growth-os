@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 from scripts.xfit_creatine_guide import build_tracked_url, safe_image
 from scripts.xfit_select import select_offers, choose_price_scenarios
-from scripts.wp_publish import PublishError, normalized_base, MARKER, existing_content, wp_request, validate_document, publish
+from scripts.wp_publish import PublishError, normalized_base, MARKER, existing_content, wp_request, validate_document, publish, verify_public
 
 SLUG = "xfit-os-syrovatkovy-protein-porovnani"
 RISK_WORDS = ("mass gainer", "gain mass", "gainer", "kapsl", "tablet", "capsule", "protein bar", "tycink", "tyčink")
@@ -178,7 +178,8 @@ def deploy(doc):
             raise PublishError("Ownership marker not found")
         raw=(p.get("content") or {}).get("raw","")
         if p.get("status")=="publish" and raw.strip()==(MARKER+"\n"+doc["content"]).strip():
-            return {"state":"unchanged_no_write","url":p.get("link"),"post_id":p.get("id")}
+            verify_public(p.get("link", ""), doc["title"], MARKER+"\n"+doc["content"])
+            return {"state":"unchanged_public_verified","url":p.get("link"),"post_id":p.get("id")}
     return publish(validate_document(doc),live=True)
 
 def main():
@@ -196,7 +197,7 @@ def main():
         return
     r=deploy(doc)
     print(json.dumps({"state":r["state"],"url":r.get("url"),"post_id":r.get("post_id"),
-          "public_site_modified":r["state"]!="unchanged_no_write"},ensure_ascii=False))
+          "public_site_modified":r["state"]=="live_verified"},ensure_ascii=False))
 
 if __name__=="__main__":
     try:main()

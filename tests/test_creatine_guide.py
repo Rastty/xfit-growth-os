@@ -78,6 +78,39 @@ class CreatineGuideTests(unittest.TestCase):
         self.assertIn("pokud doplněk nepotřebujete",rendered)
         self.assertNotIn("nejlevnější na trhu",rendered)
 
+    def test_unchanged_wp_post_requires_fresh_public_body(self):
+        from unittest.mock import patch
+        from scripts.xfit_creatine_guide import publish_if_changed
+        from scripts.wp_publish import MARKER
+        doc = build_document(self.catalog, BASE, SAMPLE)
+        post = {"id":25455,"slug":doc["slug"],"status":"publish",
+                "content":{"raw":MARKER+"\\n"+doc["content"]},
+                "link":"https://xfit.cz/xfit-os-kreatin-poradce/"}
+        with patch("scripts.xfit_creatine_guide.normalized_base",return_value="https://xfit.cz"), \
+             patch("scripts.xfit_creatine_guide.wp_request",return_value=[post]), \
+             patch("scripts.xfit_creatine_guide.verify_public",return_value=True) as public, \
+             patch("scripts.xfit_creatine_guide.publish") as writer:
+            result = publish_if_changed(doc)
+        self.assertEqual(result["state"],"unchanged_public_verified")
+        public.assert_called_once_with(post["link"],doc["title"],MARKER+"\\n"+doc["content"])
+        writer.assert_not_called()
+
+    def test_stale_cached_public_body_never_reports_unchanged_success(self):
+        from unittest.mock import patch
+        from scripts.xfit_creatine_guide import publish_if_changed
+        from scripts.wp_publish import MARKER
+        doc = build_document(self.catalog, BASE, SAMPLE)
+        post = {"id":25455,"slug":doc["slug"],"status":"publish",
+                "content":{"raw":MARKER+"\\n"+doc["content"]},
+                "link":"https://xfit.cz/xfit-os-kreatin-poradce/"}
+        with patch("scripts.xfit_creatine_guide.normalized_base",return_value="https://xfit.cz"), \
+             patch("scripts.xfit_creatine_guide.wp_request",return_value=[post]), \
+             patch("scripts.xfit_creatine_guide.verify_public",side_effect=PublishError("cached older version")), \
+             patch("scripts.xfit_creatine_guide.publish") as writer:
+            with self.assertRaisesRegex(PublishError,"cached older version"):
+                publish_if_changed(doc)
+        writer.assert_not_called()
+
     def test_insufficient_offers_stop_release(self):
         data={"merchant":"namaximum.cz","merchant_match":True,
               "products":[self.catalog["products"][0]]}

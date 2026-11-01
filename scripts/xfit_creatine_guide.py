@@ -246,7 +246,10 @@ def publish_if_changed(doc):
             raise PublishError("Existing article does not belong to Xfit Growth OS")
         raw=(p.get("content") or {}).get("raw","")
         if p.get("status")=="publish" and raw.strip()==full_content.strip():
-            return {"state":"unchanged_no_write","url":p.get("link"),"post_id":p.get("id")}
+            # A previous POST can have succeeded while public cache stayed stale.
+            # No new WP write here, but ALWAYS prove the public body is current.
+            verify_public(p.get("link", ""), doc["title"], full_content)
+            return {"state":"unchanged_public_verified","url":p.get("link"),"post_id":p.get("id")}
     from scripts.wp_publish import validate_document
     result=publish(validate_document(doc),live=True)
     return result
@@ -270,7 +273,7 @@ def main():
         return
     result=publish_if_changed(doc)
     print(json.dumps({"state":result["state"],"url":result.get("url"),
-        "post_id":result.get("post_id"),"public_site_modified":result["state"]!="unchanged_no_write"},
+        "post_id":result.get("post_id"),"public_site_modified":result["state"]=="live_verified"},
         ensure_ascii=False))
 
 if __name__=="__main__":
