@@ -2,7 +2,7 @@ name: XFIT AI Author and Source-Bound Live Publisher
 
 on:
   schedule:
-    - cron: '21 6,12,18 * * *'
+    - cron: '21 0,4,8,12,16,20 * * *'
   push:
     branches: [main]
     paths:

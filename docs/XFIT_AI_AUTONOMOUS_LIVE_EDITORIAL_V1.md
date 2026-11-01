@@ -2,7 +2,7 @@
 
 ## Co poběží bez ručního „schvaluji“
 
-Každý plánovaný běh (třikrát denně) zvolí **jeden** dosud nevyřízený přesně určený úkol z `config/xfit-ai-editorial-targets-v1.json`. Pokud je fronta vyčerpaná, **neutrácí žádný token** a neprovádí žádný WordPress zápis. U vybraného úkolu pak proběhnou tyto oddělené fáze:
+Každý plánovaný běh (šestkrát denně, nejvýše jedno publikování za běh) zvolí **jeden** dosud nevyřízený přesně určený úkol z `config/xfit-ai-editorial-targets-v1.json`. Pokud je fronta vyčerpaná, **neutrácí žádný token** a neprovádí žádný WordPress zápis. U vybraného úkolu pak proběhnou tyto oddělené fáze:
 
 1. **Výběr / WP kontrola (read-only):** autentizované REST API zjistí přesné ID, slug, původní surový obsah a čas poslední editace; do další fáze se předá pouze SHA-256, ověřená identita, stručný kontext a redakční zadání. WP heslo se nepředává.
 2. **AI autor:** oficiální `openai/codex-action@v1` vytvoří pouze **jeden JSON návrh**; nemá WP credentials, GitHub write token ani oprávnění přepsat řídicí skript. Přímé síťové vyhledávání a použití neověřených produktů nejsou součástí této verze.
@@ -16,7 +16,7 @@ Veškeré činnosti se zastavují, pokud nestačí důkazy k bezpečné publikac
 
 - **Zlepšení existujících:** vlastní kalkulační průvodce o ceně proteinu (WP ID 25541), následně přesně pinovaný článek o Pilates (WP ID 3660). Žádné plošné přepisování 12 tisíc původních článků, žádné změny titulku, slugů, kanonických URL, kategorií či redirectů.
 - **Nové články:** přesné výpočty a spotřebitelské rozhodování z fixního seznamu, např. porovnání proteinových tyčinek, ceny připraveného nápoje a výběr podložky.
-- **Maximálně 1 obsahový zásah za běh**, 3 možnosti denně. Tím je limitována škoda při chybě i spotřeba API.
+- **Maximálně 1 obsahový zásah za běh**, 6 možností denně. Tím je limitována škoda při chybě i spotřeba API.
 - **Nepodporované:** komplexní medicínské rady a léčba, personalizovaná výživa, automatické převzetí zdravotních tvrzení z e-shopů, produktové recenze bez testů, feed ceny bez validace, SEO mass-delete, automatický merge jakýchkoli Codex PR.
 
 ## Proč dvě různé AI větve
