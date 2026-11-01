@@ -204,5 +204,113 @@ class EditorialEngineTests(unittest.TestCase):
             self.assertTrue(e.list_by_slug(target["slug"]))
 
 
+class AIOriginalArticleTests(unittest.TestCase):
+    def setUp(self):
+        self.target = dict(e.config_targets()[2], status="READY_FOR_RESTRICTED_AI_AUTHOR")
+        marker = 'data-xfit-ai-create="' + self.target["marker"] + '"'
+        paragraphs = []
+        for i in range(1, 7):
+            paragraphs.append(
+                f'<h2>{i}. Kontrola porovnání tyčinek v konkrétní situaci</h2>'
+                '<p>Základní porovnání výrobků musí vycházet z konkrétní etikety,'
+                ' nikoli ze sloganu na krabici. Rozdílné velikosti balení'
+                ' mohou vyvolat mylný dojem o ceně skutečně deklarovaných'
+                ' bílkovin. Nejprve je potřeba přepočítat jednotku'
+                ' a pak porovnat přesně stejnou veličinu. Když údaje'
+                ' chybějí, čísla neodhadujeme a raději nevyvozujeme'
+                ' výhodnost jedné nebo druhé varianty. U obou tyčinek'
+                ' ověřte, že tabulka patří ke stejné hmotnosti a příchuti.'
+                f' Tento kontrolní krok má v situaci {i} zvláštní význam'
+                ' pro srovnání čitelné etikety a konečné ceny.</p>'
+            )
+        content = (
+            '<section ' + marker + '>'
+            '<p>Nejdříve porovnejte skutečné údaje o bílkovinách'
+            ' na sto gramů a cenu celé tyčinky. Jde o práci s čísly'
+            ' uvedenými výrobcem, nikoli o automatické doporučení nákupu.'
+            ' Pokud žádnou takovou svačinu nepotřebujete, nekupujte ji.</p>'
+            + "".join(paragraphs)
+            + '<ul><li>Zapište gramáž tyčinky.</li>'
+            '<li>Zkontrolujte množství bílkovin na sto gramů.</li>'
+            '<li>Přepočítejte jednotkovou cenu.</li>'
+            '<li>Vezměte v úvahu alergeny a deklarované složení.</li>'
+            '<li>Nákup je volitelný, ne povinný.</li></ul>'
+            '<p>Legislativní rámec informací na obalu poskytuje'
+            ' <a href="' + self.target["allowed_links"][0] + '">'
+            'Evropská komise</a>. Doplňující metodiku pro jiné'
+            ' proteinové výrobky najdete ve'
+            ' <a href="' + self.target["allowed_links"][1] + '">'
+            'vzdělávacím průvodci XFIT</a>.</p>'
+            '</section>'
+        )
+        self.proposal = {
+            "kind": "create", "slug": self.target["slug"],
+            "marker": self.target["marker"],
+            "title": "Jak porovnat proteinové tyčinky podle etikety a ceny",
+            "excerpt": ("Srovnání proteinových tyčinek podle údajů na etiketě, "
+                        "gramáže balení a jednotkové ceny v praktických krocích."),
+            "content": content,
+        }
+
+    def _artifacts(self, proposal=None):
+        temp = tempfile.TemporaryDirectory()
+        root = Path(temp.name)
+        target_path = root / "target.json"
+        proposal_path = root / "proposal.json"
+        target_path.write_text(json.dumps(self.target, ensure_ascii=False), encoding="utf-8")
+        proposal_path.write_text(json.dumps(self.proposal if proposal is None else proposal,
+                                            ensure_ascii=False), encoding="utf-8")
+        return temp, target_path, proposal_path
+
+    def test_new_article_passes_strict_independent_editorial_review(self):
+        temp, target_path, proposal_path = self._artifacts()
+        with temp, patch.object(e, "TARGET", target_path), \
+             patch.object(e, "PROPOSAL", proposal_path):
+            result = e.validate_proposal()
+            self.assertEqual(result["kind"], "create")
+            self.assertEqual(result["slug"], self.target["slug"])
+
+    def test_brand_new_article_can_publish_once_with_public_proof(self):
+        temp, target_path, proposal_path = self._artifacts()
+        with temp, patch.object(e, "TARGET", target_path), \
+             patch.object(e, "PROPOSAL", proposal_path), \
+             patch.object(e, "list_by_slug", return_value=[]), \
+             patch.object(e, "publish", return_value={
+                 "state": "live_verified", "slug": self.target["slug"],
+                 "post_id": 90001, "url": "https://xfit.cz/" + self.target["slug"] + "/",
+             }) as writer, \
+             patch.object(e, "public_proof", return_value=True) as proof:
+            receipt = e.publish_target()
+            self.assertEqual(receipt["status"], "PUBLIC_VERIFIED_NEW_AI_ARTICLE")
+            self.assertEqual(receipt["writes"], 1)
+            writer.assert_called_once()
+            self.assertTrue(writer.call_args.kwargs["live"])
+            proof.assert_called_once()
+
+    def test_slug_collision_stops_without_any_new_post(self):
+        temp, target_path, proposal_path = self._artifacts()
+        with temp, patch.object(e, "TARGET", target_path), \
+             patch.object(e, "PROPOSAL", proposal_path), \
+             patch.object(e, "list_by_slug", return_value=[{"id": 1}]), \
+             patch.object(e, "publish") as writer:
+            with self.assertRaisesRegex(PublishError, "no duplicate publish"):
+                e.publish_target()
+            writer.assert_not_called()
+
+    def test_title_and_excerpt_cannot_contain_markup_or_untrusted_urls(self):
+        for field, attack in [
+            ("title", "<script>alert(1)</script> Jak vybrat tyčinku"),
+            ("excerpt", "https://untrusted.example/sales " + "Než koupíte, zvažte možnosti. " * 3),
+            ("title", "Jak předepsat léčbu podle tyčinky každému čtenáři"),
+        ]:
+            with self.subTest(field=field):
+                proposal = dict(self.proposal, **{field: attack})
+                temp, target_path, proposal_path = self._artifacts(proposal)
+                with temp, patch.object(e, "TARGET", target_path), \
+                     patch.object(e, "PROPOSAL", proposal_path):
+                    with self.assertRaises(PublishError):
+                        e.validate_proposal()
+
+
 if __name__ == "__main__":
     unittest.main()
