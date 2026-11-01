@@ -101,7 +101,7 @@ class WheyTests(unittest.TestCase):
         from scripts.wp_publish import MARKER
         doc = build_document(self.catalog, BASE, SAMPLE)
         post = {"id":25456,"slug":doc["slug"],"status":"publish",
-                "content":{"raw":MARKER+"\\n"+doc["content"]},
+                "content":{"raw":MARKER+"\n"+doc["content"]},
                 "link":"https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/"}
         with patch("scripts.xfit_whey_guide.normalized_base",return_value="https://xfit.cz"), \
              patch("scripts.xfit_whey_guide.wp_request",return_value=[post]), \
@@ -109,7 +109,7 @@ class WheyTests(unittest.TestCase):
              patch("scripts.xfit_whey_guide.publish") as writer:
             result = deploy(doc)
         self.assertEqual(result["state"],"unchanged_public_verified")
-        public.assert_called_once_with(post["link"],doc["title"],MARKER+"\\n"+doc["content"])
+        public.assert_called_once_with(post["link"],doc["title"],MARKER+"\n"+doc["content"])
         writer.assert_not_called()
 
     def test_stale_whey_public_html_does_not_rewrite_or_claim_success(self):
@@ -118,7 +118,7 @@ class WheyTests(unittest.TestCase):
         from scripts.wp_publish import MARKER
         doc = build_document(self.catalog, BASE, SAMPLE)
         post = {"id":25456,"slug":doc["slug"],"status":"publish",
-                "content":{"raw":MARKER+"\\n"+doc["content"]},
+                "content":{"raw":MARKER+"\n"+doc["content"]},
                 "link":"https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/"}
         with patch("scripts.xfit_whey_guide.normalized_base",return_value="https://xfit.cz"), \
              patch("scripts.xfit_whey_guide.wp_request",return_value=[post]), \

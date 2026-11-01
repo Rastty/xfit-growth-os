@@ -84,7 +84,7 @@ class CreatineGuideTests(unittest.TestCase):
         from scripts.wp_publish import MARKER
         doc = build_document(self.catalog, BASE, SAMPLE)
         post = {"id":25455,"slug":doc["slug"],"status":"publish",
-                "content":{"raw":MARKER+"\\n"+doc["content"]},
+                "content":{"raw":MARKER+"\n"+doc["content"]},
                 "link":"https://xfit.cz/xfit-os-kreatin-poradce/"}
         with patch("scripts.xfit_creatine_guide.normalized_base",return_value="https://xfit.cz"), \
              patch("scripts.xfit_creatine_guide.wp_request",return_value=[post]), \
@@ -92,7 +92,7 @@ class CreatineGuideTests(unittest.TestCase):
              patch("scripts.xfit_creatine_guide.publish") as writer:
             result = publish_if_changed(doc)
         self.assertEqual(result["state"],"unchanged_public_verified")
-        public.assert_called_once_with(post["link"],doc["title"],MARKER+"\\n"+doc["content"])
+        public.assert_called_once_with(post["link"],doc["title"],MARKER+"\n"+doc["content"])
         writer.assert_not_called()
 
     def test_stale_cached_public_body_never_reports_unchanged_success(self):
@@ -101,7 +101,7 @@ class CreatineGuideTests(unittest.TestCase):
         from scripts.wp_publish import MARKER
         doc = build_document(self.catalog, BASE, SAMPLE)
         post = {"id":25455,"slug":doc["slug"],"status":"publish",
-                "content":{"raw":MARKER+"\\n"+doc["content"]},
+                "content":{"raw":MARKER+"\n"+doc["content"]},
                 "link":"https://xfit.cz/xfit-os-kreatin-poradce/"}
         with patch("scripts.xfit_creatine_guide.normalized_base",return_value="https://xfit.cz"), \
              patch("scripts.xfit_creatine_guide.wp_request",return_value=[post]), \
