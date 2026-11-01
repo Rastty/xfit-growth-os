@@ -61,7 +61,7 @@ class PublisherValidationTests(unittest.TestCase):
                 return "https://xfit.cz/xfit-os-protein-guide/"
 
         with patch("scripts.wp_publish.urllib.request.urlopen",
-                   side_effect=[Response(old.encode()), Response(fresh.encode())]) as load, \\
+                   side_effect=[Response(old.encode()), Response(fresh.encode())]) as load, \
              patch("scripts.wp_publish.time.sleep") as pause:
             self.assertTrue(verify_public("https://xfit.cz/xfit-os-protein-guide/", title, body))
         self.assertEqual(load.call_count, 2)
@@ -83,7 +83,7 @@ class PublisherValidationTests(unittest.TestCase):
             def geturl(self):
                 return "https://xfit.cz/xfit-os-protein-guide/"
         with patch("scripts.wp_publish.urllib.request.urlopen",
-                   side_effect=lambda *args, **kwargs: Response(stale.encode())) as load, \\
+                   side_effect=lambda *args, **kwargs: Response(stale.encode())) as load, \
              patch("scripts.wp_publish.time.sleep") as pause:
             with self.assertRaisesRegex(PublishError, "old/incomplete"):
                 verify_public("https://xfit.cz/xfit-os-protein-guide/", title, body)
@@ -100,9 +100,9 @@ class PublisherValidationTests(unittest.TestCase):
         old = {"id": 25451, "slug": doc["slug"], "status": "publish",
                "content": {"raw": MARKER + "\\n<p>Stará verze bez nejnovějších odstavců.</p>"},
                "link": "https://xfit.cz/xfit-os-protein-guide/"}
-        with patch("scripts.xfit_editorial_gate.check_document", return_value={"passed": True}), \\
-             patch("scripts.wp_publish.normalized_base", return_value="https://xfit.cz"), \\
-             patch("scripts.wp_publish.wp_request", side_effect=[existing, saved, old]) as write, \\
+        with patch("scripts.xfit_editorial_gate.check_document", return_value={"passed": True}), \
+             patch("scripts.wp_publish.normalized_base", return_value="https://xfit.cz"), \
+             patch("scripts.wp_publish.wp_request", side_effect=[existing, saved, old]) as write, \
              patch("scripts.wp_publish.verify_public") as public:
             with self.assertRaisesRegex(PublishError, "raw body differs"):
                 publish(doc, live=True)
