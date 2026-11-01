@@ -104,6 +104,39 @@ class EditorialEngineTests(unittest.TestCase):
                 result = e.select_target()
                 self.assertEqual(result["slug"], other["slug"])
 
+    def test_completed_existing_guides_advance_to_first_original_ai_article(self):
+        first = dict(self.existing)
+        first["content"] = {"raw": self.base + self.html}
+        legacy = {
+            "id": 3660, "slug": "jaky-je-rozdil-mezi-klasickym-pilates-a-power-pilates",
+            "status": "publish", "modified_gmt": "2026-11-01T08:50:00",
+            "link": "https://xfit.cz/jaky-je-rozdil-mezi-klasickym-pilates-a-power-pilates/",
+            "content": {"raw": '<section data-xfit-ai-edit="xfit-ai-pilates-choice-table-v1">done</section>'},
+        }
+        with tempfile.TemporaryDirectory() as temp:
+            with patch.object(e, "TARGET", Path(temp) / "selected.json"), \
+                 patch.object(e, "read_wp_post", side_effect=[first, legacy]), \
+                 patch.object(e, "list_by_slug", return_value=[]) as lookup, \
+                 patch.object(e, "public_proof", return_value=True) as readback:
+                result = e.select_target()
+                self.assertEqual(result["status"], "TARGET_SELECTED")
+                self.assertEqual(result["kind"], "create")
+                self.assertEqual(result["slug"], "xfit-os-jak-porovnat-proteinovou-tycinku")
+                self.assertEqual(readback.call_count, 2)
+                lookup.assert_called_once_with(result["slug"])
+
+    def test_stale_public_html_on_prior_article_blocks_next_create(self):
+        first = dict(self.existing)
+        first["content"] = {"raw": self.base + self.html}
+        with tempfile.TemporaryDirectory() as temp:
+            with patch.object(e, "TARGET", Path(temp) / "selected.json"), \
+                 patch.object(e, "read_wp_post", return_value=first), \
+                 patch.object(e, "public_proof", side_effect=PublishError("stale public cache")), \
+                 patch.object(e, "list_by_slug") as lookup:
+                with self.assertRaisesRegex(PublishError, "stale public cache"):
+                    e.select_target()
+                lookup.assert_not_called()
+
     def test_strict_existing_section_validated(self):
         temp, path, prop = self.with_artifacts()
         with temp, patch.object(e, "TARGET", path), patch.object(e, "PROPOSAL", prop):
