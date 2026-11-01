@@ -16,7 +16,7 @@ class EditorialEngineTests(unittest.TestCase):
     def setUp(self):
         self.policy = e.config_targets()
         self.assertEqual(self.policy[0]["kind"], "enhance")
-        self.base = MARKER + "\n" + "<p>Original article must stay absolutely unchanged.</p>"
+        self.base = MARKER + "\n" + "<p>" + ("Original article must stay absolutely unchanged. " * 22) + "</p>"
         self.existing = {
             "id": 25541, "slug": self.policy[0]["slug"],
             "status": "publish", "modified_gmt": "2026-11-01T08:33:47",
