@@ -90,6 +90,19 @@ class AutonomousEditorialReleaseTests(unittest.TestCase):
             with self.assertRaisesRegex(PublishError, "Git blob SHA mismatch"):
                 prepare_queue(root=root)
 
+    def test_invalid_nonobject_source_is_blocked_before_wordpress(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            dst = root / "content/auto-ready"
+            dst.mkdir(parents=True)
+            payload = b'["not", "an", "article"]\n'
+            (root / ARTICLE).write_bytes(payload)
+            queue = json.loads((ROOT / QUEUE).read_text(encoding="utf-8"))
+            queue["articles"][0]["git_blob_sha"] = blob_sha(payload)
+            (root / QUEUE).write_text(json.dumps(queue), encoding="utf-8")
+            with self.assertRaisesRegex(PublishError, "must be an object"):
+                prepare_queue(root=root)
+
     def test_commercial_or_untrusted_reference_is_blocked(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

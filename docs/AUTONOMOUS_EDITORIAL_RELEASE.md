@@ -31,7 +31,7 @@ Opakované běhy dokládají `ALL_PINNED_ARTICLES_PUBLIC_VERIFIED`; 0 nových z�
 ## Bezpečnost a limity
 
 - V kódu nejsou WP hesla ani affiliate secret IDs. Existující `WP_USERNAME`, `WP_APP_PASSWORD`, `WP_BASE_URL` jsou GitHub Actions Secrets.
-- `xfit-auto-release.py` není samostatný AI worker. Automatické psaní dalších článků vyžaduje novou samostatnou a testovanou authoring lane a nezávislou redakční kontrolu.
+- `xfit_auto_release.py` není samostatný AI worker. Automatické psaní dalších článků vyžaduje novou samostatnou a testovanou authoring lane a nezávislou redakční kontrolu.
 - Automatický kanál nesmí mazat starý archiv, měnit canonical/noindex/redirect, přidávat affiliate tracking ani aktualizovat cizí posty.
 - GitHub Actions scheduled runs mohou mít zpoždění a CI může být blokované poskytovatelem. Nepoužívejte časový plán jako důkaz úspěšného vydání.
 - Public kontrola je jedna perspektiva; na rychlost indexace Google ani provize se z ní neusuzuje.
