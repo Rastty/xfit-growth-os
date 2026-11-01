@@ -1,0 +1,33 @@
+name: XFIT Editorial Author Avatar Release
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-author-avatar.yml'
+      - 'scripts/xfit_author_avatar.py'
+      - 'assets/branding/xfit-redakce-avatar-96.jpg'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xfit-author-avatar-release
+  cancel-in-progress: false
+jobs:
+  update-author-avatar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify repo tests before touching WordPress
+        run: python -m unittest discover -s tests -q
+      - name: Update the Redakce author avatar using native WordPress REST
+        run: python scripts/xfit_author_avatar.py
