@@ -75,7 +75,8 @@ class PublisherValidationTests(unittest.TestCase):
         body = ("<h2>Úplně nový srovnávací blok</h2>"
                 "<p>Porovnejte stejný počet gramů bílkovin podle údajů na skutečném obalu.</p>"
                 "<p>Nikdy nesrovnávejte jen objem jedné odměrky, protože se složení liší.</p>"
-                "<p>Vysvětlete si cenu za stejné množství bílkovin dříve než nakoupíte.</p>")
+                "<p>Vysvětlete si cenu za stejné množství bílkovin dříve než nakoupíte.</p>"
+               "<p>Nezapomeňte zkontrolovat velikost balení, etiketu a konkrétní variantu výrobku.</p>")
         stale = ("<html><h1>" + title + "</h1>"
                  "<p>Porovnejte jen cenu balení bez dalšího výpočtu.</p></html>")
         class Response(io.BytesIO):
@@ -93,7 +94,7 @@ class PublisherValidationTests(unittest.TestCase):
     def test_readback_rejects_old_wordpress_body_after_post(self):
         from scripts.wp_publish import publish, validate_document
         from unittest.mock import patch
-        doc = validate_document(SAMPLE)
+        doc = validate_document(dict(SAMPLE, wp_post_id=25451))
         existing = {"id": 25451, "slug": doc["slug"], "status": "publish",
                     "content": {"raw": doc["content"]}, "link": "https://xfit.cz/xfit-os-protein-guide/"}
         saved = {"id": 25451}
