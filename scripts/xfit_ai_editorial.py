@@ -267,8 +267,13 @@ def validate_proposal(target=None):
         if "section_html" not in proposal or "<h2" not in body or "<li" not in body:
             raise PublishError("Existing article needs usable new section with concrete steps")
     else:
-        if not isinstance(proposal["title"], str) or not isinstance(proposal["excerpt"], str):
-            raise PublishError("Invalid AI title/excerpt")
+        title, excerpt = proposal["title"], proposal["excerpt"]
+        if (not isinstance(title, str) or not isinstance(excerpt, str)
+                or not 20 <= len(title) <= 110
+                or not 70 <= len(excerpt) <= 280
+                or any("<" in x or ">" in x or "http://" in x or "https://" in x
+                       or SENSITIVE.search(x) for x in (title, excerpt))):
+            raise PublishError("Unsafe AI title/excerpt; plain nonclinical text required")
         if not target["slug"].startswith("xfit-os-") or words < target["min_words"] or words > 1350:
             raise PublishError("New page outside quality and volume bounds")
         doc = validate_document({
