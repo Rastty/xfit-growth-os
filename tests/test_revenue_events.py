@@ -104,10 +104,31 @@ class RevenueFunnelTests(unittest.TestCase):
 
     def test_empty_input_is_not_proof_of_zero_revenue(self):
         result = summarize_funnel([], analytics_consent=True)
+        self.assertEqual(result["action_data_status"], {
+            "xfit-os-kreatin-poradce": "UNKNOWN",
+            "xfit-os-syrovatkovy-protein-porovnani": "UNKNOWN",
+        })
         self.assertEqual(result["orders"], "UNKNOWN")
         self.assertEqual(result["commission"], "UNKNOWN")
         self.assertTrue(all(value == 0 for page in result["action_counts"].values()
                             for value in page.values()))
+
+    def test_observed_actions_do_not_imply_data_for_the_other_advisor(self):
+        for page, engine in (("xfit-os-kreatin-poradce", "creatine"),
+                             ("xfit-os-syrovatkovy-protein-porovnani", "whey")):
+            # A completion can also mean deciding to buy nothing.
+            with self.subTest(page=page):
+                result = summarize_funnel(iter([{
+                    "name": "advisor_complete",
+                    "params": {"page": page, "selection_engine": engine},
+                }]), analytics_consent=True)
+                for reported_page, status in result["action_data_status"].items():
+                    self.assertEqual(status, "OBSERVED_ACTIONS"
+                                     if reported_page == page else "UNKNOWN")
+                self.assertEqual(result["action_counts"][page]
+                                 ["affiliate_outbound_click"], 0)
+                self.assertEqual(result["orders"], "UNKNOWN")
+                self.assertEqual(result["commission"], "UNKNOWN")
 
     def test_requires_explicit_consent_without_consuming_input(self):
         def unreadable():

@@ -46,6 +46,13 @@ vracejí `UNKNOWN`. Souhrn neobsahuje produktová ID a nic neodesílá ani neukl
 Před použitím pro rozhodování je nutné ověřit úplnost a období vstupu i
 skutečnou integraci; tento nástroj je sám nedokládá.
 
+`action_data_status` výslovně rozlišuje dostupnost záznamů pro každého poradce:
+`UNKNOWN` znamená, že vstup neobsahoval žádnou jeho akci; `OBSERVED_ACTIONS`
+znamená alespoň jednu ověřenou vstupní akci, včetně dokončení bez nákupu.
+Ani tento stav nepotvrzuje úplnost měření nebo skutečný původ vstupu.
+Poradce s `UNKNOWN` nelze podle nulových počtů označit za neúspěšný ani podle
+toho upřednostnit komerční nabídky. Stavy neobsahují odpovědi ani výsledek volby.
+
 Ověření: `python -m unittest tests.test_revenue_events tests.test_agent_scope`.
 Stav: připraveno lokálně; CI, nasazení, veřejná stránka a měření neověřeny.
 Prokliky/objednávky/provize: UNKNOWN. Vrácení této úpravy: vrátit diff těchto
