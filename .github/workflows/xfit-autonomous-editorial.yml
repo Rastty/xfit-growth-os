@@ -1,0 +1,57 @@
+name: XFIT Autonomous Approved Editorial Publish
+on:
+  schedule:
+    - cron: '13 3,11,19 * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-autonomous-editorial.yml'
+      - 'scripts/xfit_auto_release.py'
+      - 'content/auto-ready/**'
+      - 'tests/test_auto_editorial_release.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xfit-autonomous-approved-editorial
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - name: Check out immutable release
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run existing release regressions and pinned-queue tests
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -v
+      - name: Prove pinned editorial queue before WordPress writes
+        run: python -m scripts.xfit_auto_release --preview
+      - name: Publish at most one eligible new post and verify publicly
+        run: |
+          set -euo pipefail
+          if [[ -z "${WP_USERNAME:-}" || -z "${WP_APP_PASSWORD:-}" ]]; then
+            echo "::error::WordPress credentials unavailable; no publishing attempted"
+            exit 2
+          fi
+          python -m scripts.xfit_auto_release --publish-one
+      - name: Preserve sanitized evidence, including blocked release
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-autonomous-editorial-evidence
+          path: reports/auto-editorial-release-receipt.json
+          retention-days: 30
+          if-no-files-found: warn
