@@ -108,7 +108,7 @@ def build_document(catalog, base, sample):
              '" alt="'+title+'" loading="lazy" width="120" height="120" style="max-width:100%;width:120px;height:120px;object-fit:contain;" /></p>'
              if item["image"] else "")
         label="Nejnižší jednotková cena ve výběru" if index==0 else "Další velikost nebo typ prášku"
-        parts.append('<article id="xfit-offer-'+str(index+1)+'" class="xfit-product-card" style="border:1px solid #dce5e8;'
+        parts.append('<article class="xfit-product-card" id="xfit-offer-'+str(index+1)+'" style="border:1px solid #dce5e8;'
             'border-radius:12px;padding:16px;margin:16px 0;background:#ffffff;">'
             '<h3>'+title+'</h3>'+img+
             '<p><strong>'+label+'</strong></p>'

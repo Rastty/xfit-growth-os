@@ -168,7 +168,7 @@ def build_document(catalog, base, sample):
         image=('<p><img src="'+html.escape(offer["image"],quote=True)+
                '" alt="'+title+'" loading="lazy" width="120" height="120" style="max-width:100%;width:120px;height:120px;object-fit:contain;" /></p>'
                if offer["image"] else "")
-        bits.append('<article id="xfit-offer-'+str(i+1)+'" class="xfit-product-card" style="border:1px solid #dce5e8;'
+        bits.append('<article class="xfit-product-card" id="xfit-offer-'+str(i+1)+'" style="border:1px solid #dce5e8;'
             'border-radius:12px;padding:16px;margin:16px 0;background:#ffffff;">'
             '<h3>'+title+'</h3>'+image+
             '<p><strong>'+label+'</strong></p>'
