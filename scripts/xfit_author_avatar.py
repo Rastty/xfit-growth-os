@@ -75,7 +75,7 @@ def assert_public_avatar():
 
 def main():
     img = IMAGE.read_bytes()
-    if hashlib.sha256(img).hexdigest() != IMAGE_HASH or not img.startswith(b"\\xff\\xd8") or not img.endswith(b"\\xff\\xd9"):
+    if hashlib.sha256(img).hexdigest() != IMAGE_HASH or not img.startswith(b"\xff\xd8") or not img.endswith(b"\xff\xd9"):
         fail("Avatar image bytes differ from reviewed source")
     current = request("users/me?context=edit&_fields=id,name")
     if current.get("id") != 1:
