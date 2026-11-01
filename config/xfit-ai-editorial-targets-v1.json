@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "site": "https://xfit.cz",
+  "policy": "one_AI_written_safe_article_or_revision_per_run",
+  "targets": [
+    {
+      "kind": "enhance",
+      "slug": "xfit-os-cena-proteinu-podle-etikety",
+      "post_id": 25541,
+      "marker": "xfit-ai-protein-price-real-portion-v1",
+      "brief": "Přidej konkrétní užitečnou sekci o převodu ceny na 25 gramů čistých bílkovin: přesný výpočet ze skutečné etikety, modelový příklad 900g/75g bílkovin/899 Kč, výsledek za 25 g = 33,30 Kč, odlišení 25 g proteinového prášku vs 25 g bílkovin. Neopakuj úvod ani stávající tabulku. Doplň krátký checklist, bez zdravotních tvrzení.",
+      "allowed_links": [
+        "https://xfit.cz/xfit-os-protein-guide/",
+        "https://food.ec.europa.eu/food-safety/labelling-and-nutrition/food-information-consumers-legislation_en"
+      ],
+      "max_add_words": 320
+    },
+    {
+      "kind": "enhance",
+      "slug": "jaky-je-rozdil-mezi-klasickym-pilates-a-power-pilates",
+      "post_id": 3660,
+      "marker": "xfit-ai-pilates-choice-table-v1",
+      "brief": "Přidej praktický srovnávací rozhodovací blok pro člověka vybírajícího mezi klasickým a power pilates, podle tempa lekce, cíle a otázek na instruktora. Nepoužívej sliby o rehabilitaci, léčbě nebo zdravotním účinku; nedoporučuj konkrétní zdravotní postupy. Původní článek, odkazy i formátování musí zůstat beze změny, pouze nová sekce před původním obsahem.",
+      "allowed_links": [
+        "https://xfit.cz/jaky-je-rozdil-mezi-klasickym-pilates-a-power-pilates/",
+        "https://xfit.cz/xfit-os-doplnky-pro-zacatecniky/"
+      ],
+      "max_add_words": 320
+    },
+    {
+      "kind": "create",
+      "slug": "xfit-os-jak-porovnat-proteinovou-tycinku",
+      "marker": "xfit-ai-label-protein-bar-v1",
+      "brief": "Praktický spotřebitelský návod pro porovnání dvou proteinových tyčinek podle údajů na etiketě: bílkoviny/100g, porce, cena za 10 g bílkovin, cukry, alergeny a velikost balení. Tři přesné hypotetické příklady (vysvětli matematiku). Bez zdravotních tvrzení, doporučení pro diagnózy a komerčních značek. Vysvětli, kdy může být rozumné nekoupit nic.",
+      "allowed_links": [
+        "https://food.ec.europa.eu/food-safety/labelling-and-nutrition/food-information-consumers-legislation_en",
+        "https://xfit.cz/xfit-os-protein-guide/",
+        "https://xfit.cz/xfit-os-cena-proteinu-podle-etikety/"
+      ],
+      "min_words": 550
+    },
+    {
+      "kind": "create",
+      "slug": "xfit-os-jak-porovnat-cenu-sportovniho-napoje",
+      "marker": "xfit-ai-drink-price-unit-v1",
+      "brief": "Praktický průvodce porovnáním ceny sportovních nápojů podle ceny za litr skutečně připraveného nápoje, u koncentrátu podle ředění uvedeného výrobcem. Dva přesné hypotetické výpočty; hlídej cenu balení, cenu za litr, dávku i velikost lahve. Nepiš zdravotní tvrzení ani doporučené dávkování člověku. Žádné neověřené produkty.",
+      "allowed_links": [
+        "https://food.ec.europa.eu/food-safety/labelling-and-nutrition/food-information-consumers-legislation_en",
+        "https://xfit.cz/xfit-os-doplnky-pro-zacatecniky/"
+      ],
+      "min_words": 550
+    },
+    {
+      "kind": "create",
+      "slug": "xfit-os-vyber-podlozky-na-cviceni",
+      "marker": "xfit-ai-exercise-mat-selector-v1",
+      "brief": "Konkrétní rozhodovací návod na výběr domácí podložky na cvičení podle typu pohybu, prostoru, povrchu, přenášení a údržby, se srovnávací tabulkou situací a kontrolním seznamem. Neuváděj vymyšlená testování, modelové ratingy, výrobce, ceny nebo neověřená zdravotní tvrzení.",
+      "allowed_links": [
+        "https://xfit.cz/jaky-je-rozdil-mezi-klasickym-pilates-a-power-pilates/",
+        "https://xfit.cz/xfit-os-doplnky-pro-zacatecniky/",
+        "https://ods.od.nih.gov/factsheets/ExerciseAndAthleticPerformance-HealthProfessional/"
+      ],
+      "min_words": 550
+    }
+  ]
+}
