@@ -1,0 +1,43 @@
+name: XFIT Public Decision Funnel Freshness
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-public-freshness.yml'
+      - 'scripts/xfit_public_freshness.py'
+      - 'tests/test_public_freshness.py'
+  schedule:
+    - cron: '17 0,4,8,12,16,20 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-public-source-freshness
+  cancel-in-progress: false
+jobs:
+  read-only-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test the read-only source/public evidence contract
+        run: python -m unittest discover -s tests -v
+      - name: Compare four approved source-bound decision pages with public HTML
+        run: python -m scripts.xfit_public_freshness
+      - name: Preserve sanitized freshness report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-public-freshness-${{ github.run_id }}
+          path: reports/xfit-public-freshness.json
+          retention-days: 14
+          if-no-files-found: warn
