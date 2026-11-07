@@ -66,7 +66,7 @@ def job_log(job_id, token):
 def _receipt(line):
     # Logs include the runner UTC prefix before a stand-alone JSON record.
     # Do not scan arbitrary fragments, script output or inline HTML.
-    hit = re.search(r"(?:^|\\s)(\\{\\s*\"(?:state|status|stage)\"\\s*:)", line)
+    hit = re.search(r'(?:^|\s)(\{\s*"(?:state|status|stage)"\s*:)', line)
     if not hit:
         return None
     try:
