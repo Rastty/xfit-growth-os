@@ -159,7 +159,8 @@ class PublicFreshnessTests(unittest.TestCase):
         )
         self.assertEqual(result["product_title_drift_positions"], [1])
         self.assertEqual(result["affiliate_link_drift_positions"], [])
-        self.assertTrue(result["public_affiliate_link_integrity"] is False)
+        self.assertTrue(result["public_affiliate_link_integrity"])
+        self.assertFalse(result["public_product_title_integrity"])
 
     def test_unparsable_card_is_not_mistaken_for_matching_price(self):
         target = TARGETS[3]
