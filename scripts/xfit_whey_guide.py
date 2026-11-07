@@ -64,7 +64,7 @@ def build_document(catalog, base, sample):
         '<p><strong>Výběr syrovátkového proteinu nemusí začínat značkou.</strong> '
         'Nejdříve zvažte, zda vám vyhovuje mléčná bílkovina, co říká etiketa '
         'o složení a jakou porci chcete. Teprve potom má smysl srovnávat cenu.</p>',
-        catalog_retrieval_notice(data),
+        catalog_retrieval_notice(catalog),
         '<p><strong>Jak srovnáváme:</strong> níže používáme cenu za 100 g proteinového '
         'prášku, nikoli za 100 g skutečných bílkovin. K tomu bychom potřebovali '
         'spolehlivý údaj o jejich obsahu pro každou variantu; nelze jej odhadovat '
