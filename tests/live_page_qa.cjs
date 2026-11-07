@@ -105,6 +105,43 @@ for(const spec of checks){
       choices:budgetDetails.length,
       valid:budgetDetails.every(d=>d.hasSummary&&!d.badTarget&&d.goalsValid&&!d.unexpectedOutbound),
     };
+    // Verify two useful buyer goals (or an explicitly shared winner) against
+    // the *existing* source-verified product cards. No merchant click is made.
+    const tradeoffHeading = document.querySelector("h2#xfit-price-tradeoff");
+    const tradeoffRoot = tradeoffHeading?.parentElement;
+    const tradeoffNodes = {
+      upfront:[...document.querySelectorAll('p[data-xfit-tradeoff="upfront"]')],
+      unit:[...document.querySelectorAll('p[data-xfit-tradeoff="unit"]')],
+      same:[...document.querySelectorAll('p[data-xfit-tradeoff="same"]')],
+      difference:[...document.querySelectorAll('p[data-xfit-tradeoff="difference"]')],
+    };
+    const tradeoffLinks=[...tradeoffNodes.upfront,...tradeoffNodes.unit]
+      .flatMap(p=>[...p.querySelectorAll('a')]);
+    const tradeoff={
+      heading:!!tradeoffHeading,
+      cards:document.querySelectorAll(".xfit-product-card").length,
+      upfrontCount:tradeoffNodes.upfront.length,
+      unitCount:tradeoffNodes.unit.length,
+      sameCount:tradeoffNodes.same.length,
+      diffCount:tradeoffNodes.difference.length,
+      targetsValid:tradeoffLinks.every(a=>{
+        const href=a.getAttribute("href")||"";
+        return /^#xfit-offer-[1-9][0-9]*$/.test(href) &&
+               !!document.getElementById(href.slice(1));
+      }),
+      goalsValid:tradeoffNodes.upfront.length===1 && (
+        (tradeoffNodes.unit.length===1 &&
+         tradeoffNodes.same.length===0 &&
+         tradeoffNodes.difference.length===1 &&
+         tradeoffLinks.length===2 &&
+         tradeoffLinks[0].getAttribute("href")!==tradeoffLinks[1].getAttribute("href") &&
+         /\d+[\s\u00a0]*,\d{2} Kč/.test(tradeoffNodes.difference[0].textContent)) ||
+        (tradeoffNodes.unit.length===0 &&
+         tradeoffNodes.same.length===1 &&
+         tradeoffNodes.difference.length===0 && tradeoffLinks.length===1)
+      ),
+      noMerchantLinks:tradeoffLinks.every(a=>a.getAttribute("href")?.startsWith("#"))
+    };
     const modelPortionRows=[
       ...document.querySelectorAll(".xfit-product-card .xfit-model-portion")
     ].map(n=>n.textContent.trim());
@@ -140,11 +177,14 @@ for(const spec of checks){
         merchantLinks:links.length,missingSponsored,imagesMissingAlt:images.length,
         productImages:productImages.length,brokenProductImages:brokenProductImages.length,
         productImageStatus,themeImagesMissingAlt,firstProductLoaded,firstCTASize,
-        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge};
+        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff};
   });
   if(!doc.h1.includes(spec.expected))failures.push("h1_missing_expected");
   if(doc.h2<spec.minH2)failures.push("insufficient_h2");
   if(!doc.hasViewportMeta)failures.push("mobile_viewport_missing");
+  if(spec.commercial && (!doc.tradeoff.heading || !doc.tradeoff.goalsValid ||
+       !doc.tradeoff.targetsValid || !doc.tradeoff.noMerchantLinks))
+    failures.push("price_tradeoff_missing_or_invalid");
   if(spec.commercial && !doc.budget.heading)failures.push("budget_heading_missing");
   if(spec.commercial && doc.budget.choices!==3)failures.push("budget_choices_not_three");
   if(spec.commercial && !doc.budget.valid)failures.push("budget_choice_link_or_summary_invalid");
