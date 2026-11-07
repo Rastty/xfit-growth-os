@@ -58,6 +58,110 @@ class AutonomousEditorialReleaseTests(unittest.TestCase):
         self.assertEqual(result["new_posts"], 0)
         self.assertEqual(result["status"], "ALL_PINNED_ARTICLES_PUBLIC_VERIFIED")
 
+    def _source_bound_ai_post(self):
+        """Mimic only the approved additive release layout of the AI editor."""
+        from scripts.xfit_ai_editorial import config_targets
+
+        target = next(
+            t for t in config_targets()
+            if t["kind"] == "enhance" and t["slug"] == self.entry["slug"]
+        )
+        paragraph = (
+            "Nejprve najděte čistou hmotnost balení a na etiketě údaj "
+            "o obsahu bílkovin. "
+        ) * 15
+        section = (
+            '<section data-xfit-ai-edit="' + target["marker"] + '">'
+            '<h2>Praktické porovnání podobných balení</h2>'
+            '<p>' + paragraph + '</p>'
+            '<ul><li>Přečtěte si etiketu a ověřte hmotnost výrobku.</li></ul>'
+            '<p>Další metodika je v <a href="' + target["allowed_links"][0]
+            + '">průvodci proteinem</a>.</p>'
+            '</section>'
+        )
+        desired = self.entry["doc"]["content"]
+        self.assertTrue(desired.startswith(MARKER + "\n"))
+        return {
+            "id": target["post_id"],
+            "slug": self.entry["slug"],
+            "status": "publish",
+            "content": {"raw": MARKER + "\n" + section + "\n" +
+                        desired[len(MARKER) + 1:]},
+            "link": "https://xfit.cz/" + self.entry["slug"] + "/",
+        }, target["marker"]
+
+    def test_approved_ai_addition_is_idempotent_with_three_public_proofs(self):
+        edited, ai_marker = self._source_bound_ai_post()
+        reads = []
+        result = publish_one(
+            self.prepared, lookup=lambda _: edited,
+            writer=lambda *args, **kwargs: self.fail("No WP writes allowed"),
+            public_check=lambda url, marker: reads.append(("pinned", marker)),
+            ai_public_check=lambda url, marker, *, kind: reads.append((kind, marker)),
+            body_public_check=lambda url, title, content: reads.append(("body", content)),
+        )
+        self.assertEqual(result["status"], "ALL_PINNED_ARTICLES_PUBLIC_VERIFIED")
+        self.assertEqual(result["new_posts"], 0)
+        self.assertEqual(result["verified_ai_enhancements"], 1)
+        self.assertEqual(reads[0], ("pinned", self.entry["marker"]))
+        self.assertEqual(reads[1], ("enhance", ai_marker))
+        self.assertEqual(reads[2], ("body", edited["content"]["raw"]))
+
+    def test_modified_pinned_tail_must_not_be_reconciled(self):
+        edited, marker = self._source_bound_ai_post()
+        edited["content"]["raw"] = edited["content"]["raw"].replace(
+            "899 Kč", "999 Kč"
+        )
+        with self.assertRaisesRegex(PublishError, "differs from pinned queue"):
+            publish_one(
+                self.prepared, lookup=lambda _: edited,
+                writer=lambda *args, **kwargs: self.fail("No WP writes allowed"),
+                public_check=lambda *args: self.fail("Do not approve drift"),
+            )
+
+    def test_unapproved_ai_sections_remain_blocked(self):
+        post, marker = self._source_bound_ai_post()
+        cases = [
+            post["content"]["raw"].replace(marker, "xfit-ai-unknown-edit-v1"),
+            post["content"]["raw"].replace(
+                "https://xfit.cz/xfit-os-protein-guide/",
+                "https://untrusted.example/advertisement/"
+            ),
+            post["content"]["raw"].replace(
+                "<h2>Praktické", "<script>evil()</script><h2>Praktické"
+            ),
+            post["content"]["raw"].replace(
+                "</section>\n", "</section><p>extra copy</p>\n", 1
+            ),
+        ]
+        for raw in cases:
+            with self.subTest(raw=raw[:90]):
+                altered = dict(post, content={"raw": raw})
+                with self.assertRaisesRegex(PublishError, "differs from pinned queue"):
+                    publish_one(
+                        self.prepared, lookup=lambda _: altered,
+                        writer=lambda *args, **kwargs: self.fail("No WP writes allowed"),
+                    )
+        wrong_id = dict(post, id=999999)
+        with self.assertRaisesRegex(PublishError, "differs from pinned queue"):
+            publish_one(self.prepared, lookup=lambda _: wrong_id,
+                        writer=lambda *args, **kwargs: self.fail("No WP writes allowed"))
+
+    def test_missing_public_ai_proof_blocks_reconciliation_without_write(self):
+        edited, marker = self._source_bound_ai_post()
+
+        def fail_ai(*args, **kwargs):
+            raise PublishError("AI section not visible publicly")
+
+        with self.assertRaisesRegex(PublishError, "not visible publicly"):
+            publish_one(
+                self.prepared, lookup=lambda _: edited,
+                writer=lambda *args, **kwargs: self.fail("No WP writes allowed"),
+                public_check=lambda *args: True,
+                ai_public_check=fail_ai,
+                body_public_check=lambda *args: self.fail("Must not accept unverified AI"),
+            )
+
     def test_nonowned_or_modified_post_is_never_overwritten(self):
         post = {"id": 81234, "slug": self.entry["slug"], "status": "publish",
                 "content": {"raw": MARKER + "\n" + "<p>Different existing editor content.</p>"},
