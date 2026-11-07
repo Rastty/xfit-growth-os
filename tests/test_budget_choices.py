@@ -37,6 +37,62 @@ class BudgetChoicesTests(unittest.TestCase):
         self.assertNotIn("<script", result)
         self.assertIn("pokud jej nepotřebujete, nekupujte jej", result.casefold())
 
+    def test_two_distinct_winners_at_same_budget_are_true_product_cards(self):
+        # In a CZK 1000 budget the smallest bill differs from cheapest/100g.
+        output = budget_choices(self.cards, (1000, 1500),
+                                product_kind="creatine")
+        from html.parser import HTMLParser
+
+        class BudgetParser(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.details = []
+                self.current = None
+                self.choice = None
+
+            def handle_starttag(self, tag, attrs):
+                a = dict(attrs)
+                if tag == "details":
+                    self.current = {}
+                    self.details.append(self.current)
+                if tag == "p" and self.current is not None:
+                    self.choice = a.get("data-xfit-budget-choice")
+                if tag == "a" and self.current is not None and self.choice:
+                    self.current[self.choice] = a.get("href")
+
+            def handle_endtag(self, tag):
+                if tag == "p":
+                    self.choice = None
+                if tag == "details":
+                    self.current = None
+
+        p = BudgetParser()
+        p.feed(output)
+        self.assertEqual(p.details, [
+            {"upfront": "#xfit-offer-3", "unit": "#xfit-offer-2"},
+            {"upfront": "#xfit-offer-3", "unit": "#xfit-offer-1"},
+        ])
+        self.assertIn("Nejnižší cena celého balení", output)
+        self.assertIn("nejnižší cena za 100 g prášku", output)
+        self.assertIn("Úspornější jednotková cena", output)
+        self.assertEqual(output.count("<details>"), 2)
+        self.assertEqual(output.count('data-xfit-budget-choice="upfront"'), 2)
+        self.assertEqual(output.count('data-xfit-budget-choice="unit"'), 2)
+        self.assertEqual(output.count('href="#xfit-offer-'), 4)
+        self.assertNotIn("https://www.namaximum.cz/", output)
+
+    def test_same_winner_has_one_product_link_and_clear_explanation(self):
+        output = budget_choices([
+            offer(1, "Jediné výhodné balení", 470, 47, 1000),
+            offer(2, "Dražší a menší balení", 900, 180, 500),
+        ], (500, 1000, 1500), product_kind="creatine")
+        self.assertEqual(output.count('data-xfit-budget-choice="upfront"'), 3)
+        self.assertEqual(output.count('data-xfit-budget-choice="same"'), 3)
+        self.assertEqual(output.count('data-xfit-budget-choice="unit"'), 0)
+        self.assertEqual(output.count('href="#xfit-offer-1"'), 3)
+        self.assertIn("V limitu do 500 Kč", output)
+        self.assertIn("zároveň nejnižší", output)
+
     def test_same_best_product_across_multiple_budgets_has_unique_helpful_copy(self):
         # The live creatine selection may be expensive enough that only one
         # product fits all thresholds; editorial gate must not reject the
