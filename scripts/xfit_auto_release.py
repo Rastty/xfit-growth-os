@@ -200,8 +200,8 @@ def approved_ai_insertion(post, entry, pinned_content):
             or not section.endswith("</section>")
             or ACTIVE.search(section) or SENSITIVE.search(section)
             or "<!--" in section or "[shortcode" in section
-            or not re.search(r"<h2\\b", section)
-            or not re.search(r"<li\\b", section)):
+            or not re.search(r"<h2\b", section)
+            or not re.search(r"<li\b", section)):
         return None
     parser = Links()
     parser.feed(section)
@@ -209,7 +209,7 @@ def approved_ai_insertion(post, entry, pinned_content):
             or any(url not in target["allowed_links"] for url in parser.urls)):
         return None
     words = len(re.findall(
-        r"\\b[\\wÀ-ž]+\\b",
+        r"\b[\wÀ-ž]+\b",
         re.sub(r"<[^>]*>", " ", section)
     ))
     if not 130 <= words <= target["max_add_words"]:
