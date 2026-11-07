@@ -18,6 +18,7 @@ from scripts.xfit_affil_deeplink import affiliate_signature, classify_product_li
 from scripts.xfit_select import select_offers, choose_price_scenarios
 from scripts.xfit_click_metadata import card_click_attributes
 from scripts.xfit_budget_choices import budget_choices
+from scripts.xfit_price_tradeoff import price_tradeoff
 from scripts.xfit_model_portions import model_portion_intro, model_portion_line
 from scripts.xfit_catalog_retrieval import (verified_catalog_fetch_time,
                                             catalog_retrieval_notice)
@@ -116,7 +117,6 @@ def shortlist(catalog, base, sample, budget=1500):
 
 def build_document(catalog, base, sample):
     chosen = shortlist(catalog, base, sample)
-    budget_i = min(range(len(chosen)), key=lambda i: (chosen[i]['price_czk'], chosen[i]['price_per_100g_powder_czk']))
     bits = [
       '<p><strong>Jak vybrat kreatin bez zbytečného přeplácení?</strong> '
       'Pro většinu zdravých dospělých, kteří pravidelně silově nebo intenzivně trénují, '
@@ -146,16 +146,7 @@ def build_document(catalog, base, sample):
       'kreatinem a kreatininem, výsledky studií a kdy řešit nález s lékařem. '
       'Při známém onemocnění ledvin či jater nebo nejasných testech vybírejte '
       'doplněk až po individuální zdravotní konzultaci.</p></details>',
-      '<h2>Dvě cesty k výběru podle ceny</h2>',
-      '<p><strong>Nejnižší výdaj při nákupu:</strong> '
-      f'<a href="#xfit-offer-{budget_i + 1}">zobrazit balení s nejnižší celkovou cenou v tomto výběru</a>. '
-      'To nemusí být nejvýhodnější cena za 100 g.</p>',
-      '<p><strong>Nejnižší cena za 100 g prášku:</strong> '
-      '<a href="#xfit-offer-1">zobrazit variantu s nejnižší jednotkovou cenou v tomto výběru</a>. '
-      'Tato volba může vyžadovat větší jednorázovou útratu.</p>',
-      '<p><small>Tyto dvě volby vycházejí pouze z gramáže a ceny ověřených nabídek '
-      'kreatinu monohydrátu. Nejde o srovnání celého trhu ani důkaz čistoty nebo vhodnosti produktu. '
-      'Před nákupem zkontrolujte etiketu; pokud doplněk nepotřebujete, nekupujte jej.</small></p>',
+      price_tradeoff(chosen, product_kind="creatine"),
       budget_choices(chosen, (500, 1000, 1500), product_kind="creatine"),
       '<h2 id="xfit-offers">Kreatin monohydrát – přehled ověřených produktových nabídek</h2>',
       '<p><em>Obsahuje affiliate odkazy na NaMaximum.cz přes síť Affial. '

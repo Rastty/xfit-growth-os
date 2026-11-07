@@ -10,6 +10,8 @@ on:
       - 'tests/test_publisher.py'
       - 'scripts/xfit_click_metadata.py'
       - 'scripts/xfit_budget_choices.py'
+      - 'scripts/xfit_price_tradeoff.py'
+      - 'tests/test_price_tradeoff.py'
       - 'scripts/xfit_model_portions.py'
       - 'scripts/xfit_catalog_retrieval.py'
       - 'tests/test_catalog_retrieval.py'
