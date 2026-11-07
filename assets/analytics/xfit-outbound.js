@@ -18,7 +18,9 @@
     if (!location || location.protocol !== "https:" ||
         !["xfit.cz", "www.xfit.cz"].includes(location.hostname)) return null;
     const engine = ENGINES[location.pathname];
-    if (!engine || location.search || location.hash) return null;
+    // A verified advisor remains the same page when reached with marketing
+    // parameters or an anchor. Never transmit those parameters to analytics.
+    if (!engine) return null;
 
     const link = event.target.closest("a[data-xfit-product-id]");
     if (!link || typeof link.closest !== "function" ||
@@ -69,7 +71,11 @@
     if (!data) return;
     // No transport retry, navigation interception, health data or affiliate
     // destination URL. This event is NOT a purchase or earned commission.
-    root.gtag("event", "affiliate_outbound_click", data);
+    try {
+      root.gtag("event", "affiliate_outbound_click", data);
+    } catch (_error) {
+      // Analytics failures may not disrupt a reader's purchase link.
+    }
   }
 
   if (root.document && typeof root.document.addEventListener === "function") {

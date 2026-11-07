@@ -1,0 +1,49 @@
+name: XFIT Consent-Gated Analytics Plugin Package
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-analytics-plugin-package.yml'
+      - 'assets/analytics/xfit-webtoffee-bridge.js'
+      - 'assets/analytics/xfit-outbound.js'
+      - 'wordpress-plugin/xfit-analytics/xfit-analytics.php'
+      - 'scripts/build_xfit_wp_plugin.py'
+      - 'tests/test_wp_analytics_plugin.py'
+      - 'tests/test_webtoffee_bridge.cjs'
+      - 'tests/test_outbound_analytics.cjs'
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify offline plugin package and source integrity
+        run: python -m unittest tests/test_wp_analytics_plugin.py -v
+      - name: Verify consent revocation, denied state and outbound event privacy
+        run: |
+          node --check assets/analytics/xfit-outbound.js
+          node --check assets/analytics/xfit-webtoffee-bridge.js
+          node --test tests/test_webtoffee_bridge.cjs tests/test_outbound_analytics.cjs
+      - name: Build installable plugin ZIP from reviewed main source
+        run: python -m scripts.build_xfit_wp_plugin --output dist/xfit-analytics-0.1.0.zip
+      - name: Preserve exact installable package
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-consent-analytics-wp-plugin-${{ github.run_id }}
+          path: dist/xfit-analytics-0.1.0.zip
+          retention-days: 30
+          if-no-files-found: error
