@@ -12,6 +12,11 @@ from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
+try:
+    from scripts.xfit_status_evidence import real_release_evidence
+except ModuleNotFoundError:
+    from xfit_status_evidence import real_release_evidence
+
 ISSUE=1
 SLUGS=[
     ("xfit-os-protein-guide","Průvodce proteinem"),
@@ -86,7 +91,7 @@ def github_lanes(token):
             results.append((number,label,"stav nepodařilo se ověřit",""))
     return results
 
-def render(runs, states, now, lanes=None):
+def render(runs, states, now, lanes=None, production=None):
     successes=[x for x in runs if x.get("conclusion")=="success"]
     failures=[x for x in runs if x.get("conclusion") in ("failure","timed_out","cancelled")]
     ongoing=[x for x in runs if x.get("status")!="completed"]
@@ -104,6 +109,38 @@ def render(runs, states, now, lanes=None):
         "**Běhy GitHub Actions v posledních 4 hodinách:**",
         "- Úspěšné: **"+str(len(successes))+"**, neúspěšné/zrušené: **"+str(len(failures))+"**, stále běží: **"+str(len(ongoing))+"**."
     ]
+    if production is not None:
+        c = production["counts"]
+        lines += [
+            "",
+            "**Skutečné publikace a změny (jen veřejně potvrzené publikační běhy):**",
+            "- Nové články: **" + str(c["new"]) + "**; upravené stránky: **" +
+            str(c["updated"]) + "**; zápisy bez rozlišení nová/úprava: **" +
+            str(c["publication_or_update"]) + "**.",
+            "- Úspěšné publikační běhy bez nové změny: **" +
+            str(production["verified_no_change_runs"]) + "**.",
+        ]
+        for event in production["verified_events"][:10]:
+            label = ("nová publikace" if event["kind"] == "new"
+                     else "úprava" if event["kind"] == "updated"
+                     else "publikace nebo úprava")
+            lines.append("- **" + label + "**: [" + event["slug"] +
+                         "](" + event["url"] + ") · [produkční doklad](" +
+                         event["run_url"] + ")")
+        if production["unverified_runs"]:
+            lines.append("- **NEOVĚŘENO: " + str(len(production["unverified_runs"])) +
+                         " publikačních běhů.** Bez jednoznačného produkčního " +
+                         "dokladu nelze tvrdit, že bylo provedeno 0 změn.")
+            for item in production["unverified_runs"][:5]:
+                if item["run_id"] is not None:
+                    run_link = "https://github.com/" + EXPECTED_REPO + "/actions/runs/" + str(item["run_id"])
+                    lines.append("- [" + item["name"] + "](" + run_link + ") — " +
+                                 "nelze potvrdit výsledek na WordPressu")
+        elif production["publisher_runs_seen"] == 0:
+            lines.append("- V tomto intervalu nebyl zaznamenán žádný " +
+                         "schválený publikační běh.")
+        lines.append("- Tyto počty nepokrývají ruční úpravy WordPressu " +
+                     "ani prodeje/affiliate provize.")
     if failures:
         lines.append("- **Vyžaduje opravu:** "+", ".join(
             "["+x.get("name","?")+"]("+x.get("html_url","")+")" for x in failures[:5]))
@@ -134,7 +171,12 @@ def main():
     runs=github_activity(token, now-timedelta(hours=4))
     states=wordpress_state()
     lanes=github_lanes(token)
-    body=render(runs,states,now,lanes)
+    production=real_release_evidence(
+        runs, token,
+        fetch_jobs=lambda run_id, auth: get_json(
+            "https://api.github.com/repos/" + EXPECTED_REPO +
+            "/actions/runs/" + str(run_id) + "/jobs?per_page=100", auth))
+    body=render(runs,states,now,lanes,production)
     summary=os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary,"a",encoding="utf-8") as f:f.write(body+"\n")
@@ -142,6 +184,8 @@ def main():
                   token,method="POST",payload={"body":body})
     print(json.dumps({"state":"status_issued","issue":ISSUE,
           "comment_id":result.get("id"),"runs_in_period":len(runs),
+          "verified_wp_changes":len(production["verified_events"]),
+          "unverified_publisher_runs":len(production["unverified_runs"]),
           "no_wordpress_writes":True},ensure_ascii=False))
 if __name__=="__main__":
     try:
