@@ -16,6 +16,7 @@ from urllib.parse import parse_qsl, parse_qs, urlencode, urlsplit, urlunsplit
 
 from scripts.xfit_affil_deeplink import affiliate_signature, classify_product_link
 from scripts.xfit_select import select_offers, choose_price_scenarios
+from scripts.xfit_click_metadata import card_click_attributes
 from scripts.wp_publish import (MARKER, PublishError, normalized_base, plain,
                                 publish, verify_public, wp_request, existing_content)
 
@@ -175,7 +176,7 @@ def build_document(catalog, base, sample):
             '<p><strong>Cena: '+price+' Kč</strong> · Balení: '+
             str(offer["mass_g"])+' g</p>'
             '<p><strong>Cena za 100 g prášku: '+unit+' Kč</strong></p>'
-            '<p><a href="'+href+'" rel="sponsored nofollow noopener noreferrer" '
+            '<p><a'+card_click_attributes(offer["id"], "creatine")+' href="'+href+'" rel="sponsored nofollow noopener noreferrer" '
             'aria-label="Zobrazit konkrétní balení na NaMaximum.cz: '+html.escape(offer["title"],quote=True)+' (nová karta)" '
             'target="_blank" style="display:inline-block;padding:12px 16px;min-height:44px;box-sizing:border-box;'
             'background-color:#116a70;color:#ffffff;text-decoration:none;font-weight:700;'
