@@ -3,7 +3,7 @@ from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 from scripts.xfit_public_freshness import (
     TARGETS, owns_public_url, visible_has, probe, product_card_texts,
-    typography_key, public_get,
+    typography_key, public_get, cta_metadata, metadata_readiness,
 )
 from scripts.wp_publish import PublishError
 
@@ -256,6 +256,33 @@ class PublicFreshnessTests(unittest.TestCase):
                 public_get(url)
             self.assertEqual(get.call_count, 3)
             self.assertEqual(pause.call_count, 2)
+
+    def test_product_metadata_stage_distinguishes_source_public_and_missing(self):
+        source = (
+            '<article class="xfit-product-card">'
+            '<a href="https://www.namaximum.cz/p?secret=never-log" rel="sponsored" '
+            'data-xfit-engine="creatine" data-xfit-partner="namaximum" '
+            'data-xfit-product-id="392">koupit</a></article>'
+            '<article class="xfit-product-card">'
+            '<a href="https://www.namaximum.cz/q" rel="sponsored" '
+            'data-xfit-engine="creatine" data-xfit-partner="namaximum" '
+            'data-xfit-product-id="393">koupit</a></article>'
+        )
+        values = cta_metadata(source)
+        ready = metadata_readiness(values, values, "creatine", 2)
+        self.assertEqual(ready["cta_measurement_stage"], "PUBLIC_METADATA_VERIFIED")
+        self.assertTrue(ready["cta_metadata_match"])
+        self.assertNotIn("secret", str(ready))
+        self.assertNotIn("392", str(ready))
+
+        public = cta_metadata(source.replace('data-xfit-product-id="393"', ""))
+        missing = metadata_readiness(values, public, "creatine", 2)
+        self.assertEqual(missing["cta_measurement_stage"],
+                         "PUBLIC_METADATA_MISSING_OR_DIFFERENT")
+        self.assertFalse(missing["cta_metadata_match"])
+        source_missing = metadata_readiness(public, values, "creatine", 2)
+        self.assertEqual(source_missing["cta_measurement_stage"],
+                         "SOURCE_METADATA_INCOMPLETE")
 
     def test_visible_text_decodes_entities_and_whitespace(self):
         self.assertTrue(visible_has("<h2>Dvě&nbsp;cesty k výběru podle ceny</h2>",
