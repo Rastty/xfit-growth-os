@@ -18,8 +18,9 @@ from pathlib import Path
 
 from scripts.wp_publish import (
     MARKER, PublishError, existing_content, normalized_base, publish,
-    validate_document, wp_request
+    validate_document, verify_public, wp_request
 )
+from scripts.xfit_ai_editorial import ACTIVE, SENSITIVE, Links, config_targets, public_proof
 from scripts.xfit_editorial_gate import check_document
 
 SITE = "https://xfit.cz"
@@ -163,20 +164,86 @@ def check_public_marker(url, marker):
     return True
 
 
+def approved_ai_insertion(post, entry, pinned_content):
+    """Recognize only the exact additive edit approved by the separate AI lane.
+
+    Never reconcile arbitrary WordPress formatting or replace source content:
+    the *entire* pinned original body must survive byte-for-byte. The only
+    permitted difference is one bounded, allowlisted AI section immediately
+    after the ownership marker, as written by xfit_ai_editorial.publish_target.
+    """
+    raw = (post.get("content") or {}).get("raw")
+    prefix = MARKER + "\n"
+    if (not isinstance(raw, str) or not raw.startswith(prefix)
+            or not pinned_content.startswith(prefix)):
+        return None
+    original_body = pinned_content[len(prefix):]
+    if not original_body or not raw.endswith(original_body):
+        return None
+    insertion = raw[len(prefix):len(raw) - len(original_body)]
+    if not insertion.endswith("</section>\n"):
+        return None
+    section = insertion[:-1]
+    if not 200 <= len(section.encode("utf-8")) <= 15000:
+        return None
+    targets = [
+        t for t in config_targets()
+        if t["kind"] == "enhance" and t["slug"] == entry["slug"]
+        and t["post_id"] == post.get("id")
+    ]
+    if len(targets) != 1:
+        return None
+    target = targets[0]
+    signature = 'data-xfit-ai-edit="' + target["marker"] + '"'
+    if (section.count(signature) != 1
+            or not section.startswith("<section " + signature + ">")
+            or not section.endswith("</section>")
+            or ACTIVE.search(section) or SENSITIVE.search(section)
+            or "<!--" in section or "[shortcode" in section
+            or not re.search(r"<h2\\b", section)
+            or not re.search(r"<li\\b", section)):
+        return None
+    parser = Links()
+    parser.feed(section)
+    if (parser.active or not 1 <= len(parser.urls) <= 6
+            or any(url not in target["allowed_links"] for url in parser.urls)):
+        return None
+    words = len(re.findall(
+        r"\\b[\\wÀ-ž]+\\b",
+        re.sub(r"<[^>]*>", " ", section)
+    ))
+    if not 130 <= words <= target["max_add_words"]:
+        return None
+    return target["marker"]
+
+
 def publish_one(prepared, *, lookup=existing_owned_post,
-                writer=publish, public_check=check_public_marker):
-    """Returns one sanitized receipt. No article updates, only new posts."""
+                writer=publish, public_check=check_public_marker,
+                ai_public_check=public_proof, body_public_check=verify_public):
+    """Returns one sanitized receipt. No existing WordPress post is written."""
+    verified_ai = 0
     for entry in prepared:
         doc, slug = entry["doc"], entry["slug"]
         found = lookup(slug)
         desired = doc["content"].strip()
         if found is not None:
             content = (found.get("content") or {}).get("raw", "")
-            if (found.get("status") == "publish" and isinstance(content, str)
-                    and MARKER in content and content.strip() == desired):
-                # A previously published article still requires public proof.
-                public_check(found.get("link", ""), entry["marker"])
-                continue
+            if found.get("status") == "publish" and isinstance(content, str):
+                if content.strip() == desired:
+                    # A previously published article still requires public proof.
+                    public_check(found.get("link", ""), entry["marker"])
+                    continue
+                marker = approved_ai_insertion(found, entry, desired)
+                if marker:
+                    # The AI lane is allowed to ADD a source-bound section, not
+                    # rewrite the original pinned article. Check both markers
+                    # AND every substantive paragraph on the public page.
+                    url = found.get("link", "")
+                    public_check(url, entry["marker"])
+                    ai_public_check(url, marker, kind="enhance")
+                    body_public_check(url, doc["title"], content)
+                    verified_ai += 1
+                    continue
             # A previous WP POST may have succeeded but readback failed.
             # Fail closed instead of rewriting or creating a duplicate.
             raise PublishError("Existing WordPress post differs from pinned queue; manual review required: " + slug)
@@ -188,7 +255,8 @@ def publish_one(prepared, *, lookup=existing_owned_post,
                 "post_id": result.get("post_id"), "url": result.get("url"),
                 "marker": entry["marker"], "new_posts": 1}
     return {"status": "ALL_PINNED_ARTICLES_PUBLIC_VERIFIED", "new_posts": 0,
-            "verified_articles": len(prepared)}
+            "verified_articles": len(prepared),
+            "verified_ai_enhancements": verified_ai}
 
 
 def main(argv=None):
