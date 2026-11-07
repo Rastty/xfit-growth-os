@@ -78,6 +78,55 @@ def product_card_texts(value):
     return parsed.cards
 
 
+# Only compare already-visible, non-sensitive commercial figures. Never write
+# affiliate tracking URLs, WP HTML, or source article bodies into artifacts.
+COMMERCIAL_FACT_PATTERNS = {
+    "price_czk": re.compile(r"\bcena:\s*([0-9][0-9\s.,]*)\s*kč\b", re.I),
+    "package_g": re.compile(r"\bbalení:\s*(\d+)\s*g\b", re.I),
+    "unit_price_czk": re.compile(
+        r"\bcena za 100 g prášku:\s*([0-9][0-9\s.,]*)\s*kč\b", re.I),
+}
+
+
+def commercial_facts(card):
+    facts = {}
+    for field, pattern in COMMERCIAL_FACT_PATTERNS.items():
+        match = pattern.search(card)
+        facts[field] = "".join(match.group(1).split()) if match else None
+    return facts
+
+
+def card_drift_diagnostics(source_cards, public_cards):
+    """Give operators actionable discrepancy categories without leaking links."""
+    mismatched = []
+    commercial_drift = []
+    missing_fields = []
+    text_only = []
+    for index in range(max(len(source_cards), len(public_cards))):
+        left = source_cards[index] if index < len(source_cards) else None
+        right = public_cards[index] if index < len(public_cards) else None
+        if left == right:
+            continue
+        pos = index + 1
+        mismatched.append(pos)
+        if left is None or right is None:
+            missing_fields.append(pos)
+            continue
+        a, b = commercial_facts(left), commercial_facts(right)
+        if any(a[k] is None or b[k] is None for k in COMMERCIAL_FACT_PATTERNS):
+            missing_fields.append(pos)
+        elif a != b:
+            commercial_drift.append(pos)
+        else:
+            text_only.append(pos)
+    return {
+        "mismatched_card_positions": mismatched,
+        "commercial_fact_drift_positions": commercial_drift,
+        "unparsed_commercial_fact_positions": missing_fields,
+        "noncommercial_copy_drift_positions": text_only,
+    }
+
+
 def public_get(url):
     req = urllib.request.Request(url, headers={
         "User-Agent": "XfitPublicFreshnessMonitor/1.0",
@@ -118,6 +167,7 @@ def probe(target, *, read_post=None, read_public=None):
     source_cards = product_card_texts(raw) if product else []
     public_cards = product_card_texts(page) if product else []
     cards_match = (len(source_cards) >= 2 and source_cards == public_cards) if product else True
+    diagnostics = card_drift_diagnostics(source_cards, public_cards) if product else {}
     status = ("SOURCE_NOT_UPDATED" if not source_has
               else "WP_SOURCE_INCOMPLETE" if product and len(source_cards) < 2
               else "PUBLIC_FRESH" if public_has and cards_match
@@ -125,7 +175,8 @@ def probe(target, *, read_post=None, read_public=None):
     return {"slug": slug, "post_id": post_id, "status": status,
             "wp_source_has_target": source_has, "public_has_target": public_has,
             "wp_product_cards": len(source_cards), "public_product_cards": len(public_cards),
-            "product_cards_match": cards_match, "cache_headers": headers}
+            "product_cards_match": cards_match, "cache_headers": headers,
+            **diagnostics}
 
 
 def main():
