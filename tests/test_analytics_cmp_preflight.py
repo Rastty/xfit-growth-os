@@ -37,6 +37,24 @@ class ReadOnlyPreflightTests(unittest.TestCase):
         self.assertFalse(report["consent_bridge_symbol_in_html"])
         self.assertFalse(report["analytics_event_observed"])
 
+    def test_script_load_order_is_explicitly_checked_not_inferred(self):
+        correct = (
+            '<script src="/wp-content/plugins/xfit-analytics/assets/'
+            'xfit-webtoffee-bridge.js"></script>'
+            '<script src="/wp-content/plugins/xfit-analytics/assets/'
+            'xfit-outbound.js"></script>'
+        )
+        report = probe.scan_public_html(correct)
+        self.assertTrue(report["first_party_consent_bridge_script_reference"])
+        self.assertTrue(report["first_party_analytics_script_reference"])
+        self.assertTrue(report["bridge_precedes_outbound_script"])
+        reverse = probe.scan_public_html(
+            correct.replace("xfit-webtoffee-bridge.js", "placeholder.js", 1)
+            .replace("xfit-outbound.js", "xfit-webtoffee-bridge.js", 1)
+            .replace("placeholder.js", "xfit-outbound.js", 1)
+        )
+        self.assertFalse(reverse["bridge_precedes_outbound_script"])
+
     def test_plugin_inventory_requires_permission_and_redacts_names(self):
         plugins = [
             {"plugin": "complianz-gdpr/complianz-gpdr.php", "status": "active"},
