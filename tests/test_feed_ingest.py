@@ -63,6 +63,31 @@ class AffiliateFeedTests(unittest.TestCase):
         self.assertIsNone(parse_price("unknown"))
         with self.assertRaises(ValueError):
             parse_feed(b"<SHOP>")
+    def test_reject_nonfinite_and_rounded_zero_prices_at_xml_boundary(self):
+        for text in ("NaN", "nan", "Inf", "-Infinity", "1e309",
+                     "0", "-2", "0.001", "broken", "9"*80):
+            with self.subTest(price=text):
+                self.assertIsNone(parse_price(text))
+        for bad in (None, True, 350, [], {}):
+            with self.subTest(type=type(bad).__name__):
+                self.assertIsNone(parse_price(bad))
+        self.assertEqual(parse_price("299,90"), 299.90)
+        self.assertEqual(parse_price(" 1 000,50 "), 1000.50)
+
+    def test_one_poisoned_xml_item_does_not_block_valid_merchandise(self):
+        sample = b"""<SHOP>
+        <SHOPITEM><ITEM_ID>101</ITEM_ID><PRODUCTNAME>Creatine Monohydrate 500g</PRODUCTNAME>
+          <PRICE_VAT>NaN</PRICE_VAT><URL>https://www.namaximum.cz/p/a?variant=1</URL></SHOPITEM>
+        <SHOPITEM><ITEM_ID>102</ITEM_ID><PRODUCTNAME>Whey WPC 1000g</PRODUCTNAME>
+          <PRICE_VAT>Infinity</PRICE_VAT><URL>https://www.namaximum.cz/p/b?variant=2</URL></SHOPITEM>
+        <SHOPITEM><ITEM_ID>103</ITEM_ID><PRODUCTNAME>Creatine Monohydrate 1000g</PRODUCTNAME>
+          <PRICE_VAT>899.90</PRICE_VAT><URL>https://www.namaximum.cz/p/c?variant=3</URL></SHOPITEM>
+        </SHOP>"""
+        result, skipped = parse_feed(sample)
+        self.assertEqual([p["id"] for p in result], ["103"])
+        self.assertEqual(result[0]["price_czk"], 899.9)
+        self.assertEqual(skipped["missing_title_or_price"], 2)
+
     def test_doctype_rejected(self):
         with self.assertRaises(ValueError):
             parse_feed(b'<!DOCTYPE shop [ <!ENTITY x "y"> ]><SHOP/>')
