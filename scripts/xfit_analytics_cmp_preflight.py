@@ -47,6 +47,7 @@ PLUGIN_SIGNATURES = {
     **ANALYTICS_SIGNATURES,
     "ga_google_analytics": ("ga-google-analytics",),
     "pixel_your_site": ("pixelyoursite",),
+    "xfit_analytics_plugin": ("xfit-analytics/xfit-analytics.php",),
 }
 
 SAFE_HOSTS = frozenset(("xfit.cz", "www.xfit.cz"))
@@ -87,11 +88,19 @@ def scan_public_html(value):
         k for k, patterns in ANALYTICS_SIGNATURES.items()
         if any(s in lowered for s in patterns)
     )
+    scripts = [src.casefold() for src in parser.scripts]
+    bridge_indices = [i for i, src in enumerate(scripts)
+                      if "xfit-webtoffee-bridge.js" in src]
+    outbound_indices = [i for i, src in enumerate(scripts)
+                        if "xfit-outbound.js" in src]
     return {
         "cmp_html_fingerprints": cmp_found,
         "analytics_html_fingerprints": analytics_found,
-        "first_party_analytics_script_reference": any(
-            "xfit-outbound.js" in src.casefold() for src in parser.scripts
+        "first_party_analytics_script_reference": bool(outbound_indices),
+        "first_party_consent_bridge_script_reference": bool(bridge_indices),
+        "bridge_precedes_outbound_script": bool(
+            bridge_indices and outbound_indices and
+            bridge_indices[0] < outbound_indices[0]
         ),
         "consent_bridge_symbol_in_html": "xfitgetanalyticsconsent" in lowered,
         "catalog_cta_metadata_count": parser.ctas,
@@ -174,6 +183,8 @@ def run(*, public_reader=get_public_html, plugin_reader=inspect_plugins):
                           "cmp_html_fingerprints": [],
                           "analytics_html_fingerprints": [],
                           "first_party_analytics_script_reference": False,
+                          "first_party_consent_bridge_script_reference": False,
+                          "bridge_precedes_outbound_script": False,
                           "consent_bridge_symbol_in_html": False,
                           "analytics_event_observed": False,
                           "consent_decision_observed": False})
