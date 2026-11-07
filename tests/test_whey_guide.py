@@ -28,6 +28,18 @@ class WheyTests(unittest.TestCase):
         self.assertIn("Ceny se mohou měnit",doc["content"])
         self.assertIn('rel="sponsored nofollow noopener noreferrer"',doc["content"])
         self.assertNotIn("Whey gainer",doc["content"])
+    def test_buying_guide_links_to_actual_protein_nutrition_label_method(self):
+        body = build_document(self.catalog, BASE, SAMPLE)["content"]
+        guide = "https://xfit.cz/xfit-os-cena-proteinu-podle-etikety/"
+        self.assertEqual(body.count('href="' + guide + '"'), 1)
+        self.assertLess(body.index(guide),
+                        body.index('<h2>Než koupíte protein'))
+        self.assertIn("skutečné bílkoviny", body)
+        self.assertIn("Bez ověřeného údaje o bílkovinách", body)
+        self.assertIn("nemusíte kupovat nic", body)
+        # The new link is in-domain education, never a sponsored redirect.
+        self.assertEqual(body.count('rel="sponsored nofollow'), 3)
+
     def test_collagen_creatine_and_electrolyte_whey_blends_are_not_ranked_as_plain_whey(self):
         # These are synthetically cheap examples, so a unit-price-only
         # ranking would incorrectly elevate them above comparable whey powders.

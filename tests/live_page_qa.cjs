@@ -109,11 +109,20 @@ for(const spec of checks){
         el.textContent.includes("Aktuální cenu, složení a dostupnost ověřte")
       ),
     };
+    const labelGuideLinks=[...document.querySelectorAll('a[href="https://xfit.cz/xfit-os-cena-proteinu-podle-etikety/"]')];
+    const firstDecisionHeading=document.querySelector("h2");
+    const labelGuideBridge={
+      count:labelGuideLinks.length,
+      early:labelGuideLinks.length===1 && (!firstDecisionHeading ||
+        !!(labelGuideLinks[0].compareDocumentPosition(firstDecisionHeading) & Node.DOCUMENT_POSITION_FOLLOWING)),
+      clear:labelGuideLinks.length===1 &&
+        labelGuideLinks[0].textContent.includes("nutriční etikety"),
+    };
     return {h1,h2,titles,viewport:inner,documentWidth:full,details,summaries,
         merchantLinks:links.length,missingSponsored,imagesMissingAlt:images.length,
         productImages:productImages.length,brokenProductImages:brokenProductImages.length,
         productImageStatus,themeImagesMissingAlt,firstProductLoaded,firstCTASize,
-        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance};
+        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge};
   });
   if(!doc.h1.includes(spec.expected))failures.push("h1_missing_expected");
   if(doc.h2<spec.minH2)failures.push("insufficient_h2");
@@ -139,6 +148,9 @@ for(const spec of checks){
     failures.push("catalog_date_notice_missing_or_duplicate");
   if(spec.commercial && !doc.feedProvenance.explicitCatalogDate)
     failures.push("catalog_date_not_explained_as_retrieval");
+  if(spec.name==="whey" && (doc.labelGuideBridge.count!==1 ||
+      !doc.labelGuideBridge.early || !doc.labelGuideBridge.clear))
+    failures.push("whey_label_price_education_link_missing_or_not_early");
   if(spec.commercial && !doc.merchantLinks)failures.push("merchant_links_missing");
   if(spec.commercial && doc.missingSponsored)failures.push("sponsored_rel_missing");
   if(spec.commercial && doc.brokenProductImages)failures.push("broken_product_images_"+doc.brokenProductImages);
