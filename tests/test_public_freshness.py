@@ -1,9 +1,12 @@
 import unittest
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 from scripts.xfit_public_freshness import (
     TARGETS, owns_public_url, visible_has, probe, product_card_texts,
     typography_key, public_get, cta_metadata, metadata_readiness,
+    catalog_retrieval_readiness,
 )
 from scripts.wp_publish import PublishError
 
@@ -11,7 +14,15 @@ from scripts.wp_publish import PublishError
 def post(slug, post_id, marker):
     source = "<!-- xfit-growth-os:v1 -->\n<h2>" + marker + "</h2>"
     if slug in ("xfit-os-kreatin-poradce", "xfit-os-syrovatkovy-protein-porovnani"):
+        checked = datetime.now(ZoneInfo("Europe/Prague")).date()
+        display = f"{checked.day}. {checked.month}. {checked.year}"
         source += (
+            '<p class="xfit-feed-retrieval"><small>'
+            '<strong>Kdy jsme data nabídky načetli:</strong> ' + display +
+            ' (produktový XML katalog NaMaximum.cz). '
+            'Datum označuje načtení katalogu, nikoli okamžik změny ceny '
+            'u prodejce. Aktuální cenu, složení a dostupnost ověřte '
+            'v obchodě.</small></p>'
             "<article class='xfit-product-card'><h3>Produkt A</h3><p>Cena: 200,00 Kč</p>"
             "<a rel='sponsored nofollow' href='https://www.namaximum.cz/produkt-a"
             "?utm_medium=affiliate&a_aid=demo&a_bid=test'>Zobrazit</a></article>"
@@ -40,6 +51,75 @@ class PublicFreshnessTests(unittest.TestCase):
         self.assertEqual(stale["status"],"PUBLIC_STALE_OR_RENDERED_DIFFERENTLY")
         self.assertTrue(stale["wp_source_has_target"])
         self.assertFalse(stale["public_has_target"])
+
+    def test_catalog_date_match_and_drift_are_evidence_not_just_price(self):
+        target = TARGETS[2]
+        original = post(*target)
+        source = original["content"]["raw"]
+        good = probe(target, read_post=lambda _:original,
+                     read_public=lambda _:("<html>"+source+"</html>",{}))
+        self.assertEqual(good["status"], "PUBLIC_FRESH")
+        self.assertEqual(good["catalog_retrieval_stage"], "PUBLIC_DATE_VERIFIED")
+        self.assertTrue(good["catalog_date_source_public_match"])
+
+        stale = probe(
+            target, read_post=lambda _:original,
+            read_public=lambda _:("<html>"+source.replace(
+                "Datum označuje načtení katalogu", "Ceny jsou vždy aktuální"
+            )+"</html>",{})
+        )
+        self.assertEqual(stale["status"], "PUBLIC_STALE_OR_RENDERED_DIFFERENTLY")
+        self.assertEqual(stale["catalog_retrieval_stage"],
+                         "PUBLIC_DATE_MISSING_OR_DIFFERENT")
+        self.assertTrue(stale["product_cards_match"])
+        self.assertFalse(stale["catalog_date_source_public_match"])
+
+        no_public = probe(target, read_post=lambda _: original,
+                          read_public=lambda _:("<html>"+source.replace(
+                              "xfit-feed-retrieval", "removed-class"
+                          )+"</html>",{}))
+        self.assertEqual(no_public["status"], "PUBLIC_STALE_OR_RENDERED_DIFFERENTLY")
+        self.assertEqual(no_public["public_retrieval_notice_count"], 0)
+
+    def test_missing_or_outdated_source_date_fails_closed(self):
+        target = TARGETS[3]
+        original = post(*target)
+        source = original["content"]["raw"]
+        missing = dict(original)
+        missing["content"]={"raw":source.replace("xfit-feed-retrieval","other-class")}
+        report = probe(target, read_post=lambda _:missing,
+                       read_public=lambda _:("<html>"+source+"</html>",{}))
+        self.assertEqual(report["status"], "WP_SOURCE_INCOMPLETE")
+        self.assertEqual(report["catalog_retrieval_stage"],
+                         "SOURCE_DATE_MISSING_OR_INVALID")
+
+        note = ('<p class="xfit-feed-retrieval">'
+                'Kdy jsme data nabídky načetli: 1. 11. 2026. '
+                'Datum označuje načtení katalogu.</p>')
+        stale = catalog_retrieval_readiness(
+            note, note, today=date(2026,11,7))
+        self.assertEqual(stale["catalog_retrieval_stage"],
+                         "SOURCE_DATE_STALE_OR_IN_FUTURE")
+        future = catalog_retrieval_readiness(
+            note.replace("1. 11.", "9. 11."),
+            note.replace("1. 11.", "9. 11."),
+            today=date(2026,11,7))
+        self.assertEqual(future["catalog_retrieval_stage"],
+                         "SOURCE_DATE_STALE_OR_IN_FUTURE")
+        self.assertNotIn("namaximum", str(future))
+
+    def test_duplicate_provenance_is_rejected_even_with_fresh_cards(self):
+        target = TARGETS[2]
+        original = post(*target)
+        source = original["content"]["raw"]
+        start = source.index('<p class="xfit-feed-retrieval">')
+        end = source.index('</p>', start)+4
+        duplicate=source[:end]+source[start:end]+source[end:]
+        original["content"]["raw"]=duplicate
+        result=probe(target, read_post=lambda _:original,
+                     read_public=lambda _:("<html>"+duplicate+"</html>",{}))
+        self.assertEqual(result["status"],"WP_SOURCE_INCOMPLETE")
+        self.assertEqual(result["source_retrieval_notice_count"],2)
 
     def test_stale_pricing_cards_fail_even_if_new_heading_is_already_visible(self):
         target = TARGETS[3]
