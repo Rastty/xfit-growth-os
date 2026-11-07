@@ -192,9 +192,16 @@ def real_release_evidence(runs, token, *, fetch_jobs, fetch_log=job_log):
     if len(publishers) > 15:
         unknown.append({"run_id": None, "name": "More publisher runs than safely inspected"})
     counts = {
-        "new": sum(x["kind"] == "new" for x in changed),
+        # Never present repeated publishes of the SAME URL as distinct pages.
+        "new": len({x["url"] for x in changed if x["kind"] == "new"}),
         "updated": sum(x["kind"] == "updated" for x in changed),
-        "publication_or_update": sum(x["kind"] == "publication_or_update" for x in changed),
+        "unique_updated_pages": len({
+            x["url"] for x in changed if x["kind"] == "updated"
+        }),
+        "publication_or_update": sum(
+            x["kind"] == "publication_or_update" for x in changed
+        ),
+        "unique_changed_pages": len({x["url"] for x in changed}),
     }
     return {
         "verified_events": changed,
