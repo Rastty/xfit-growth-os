@@ -15,6 +15,7 @@ from urllib.parse import urlsplit
 from scripts.xfit_creatine_guide import build_tracked_url, safe_image
 from scripts.xfit_select import select_offers, choose_price_scenarios
 from scripts.xfit_click_metadata import card_click_attributes
+from scripts.xfit_budget_choices import budget_choices
 from scripts.wp_publish import PublishError, normalized_base, MARKER, existing_content, wp_request, validate_document, publish, verify_public
 
 SLUG = "xfit-os-syrovatkovy-protein-porovnani"
@@ -91,6 +92,7 @@ def build_document(catalog, base, sample):
         '<p><small>Tyto dvě volby vycházejí pouze z gramáže a ceny ověřených nabídek '
         'syrovátkových proteinů. Nejde o srovnání celého trhu ani důkaz čistoty nebo vhodnosti produktu. '
         'Před nákupem zkontrolujte etiketu; pokud doplněk nepotřebujete, nekupujte jej.</small></p>',
+        budget_choices(chosen, (750, 1200, 2000), product_kind="whey"),
         '<h2 id="xfit-offers">Syrovátkové proteiny – porovnání balení a ceny</h2>',
         '<p><em>Partnerské odkazy (Affial / NaMaximum.cz). Při nákupu přes odkaz '
         'může Xfit.cz získat provizi. Pořadí určuje jednotková cena za hmotnost '
