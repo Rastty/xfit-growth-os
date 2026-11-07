@@ -140,7 +140,7 @@ def inspect_plugins(*, wp_fetch=wp_request):
                    ("cookie-law-info", "webtoffee", "gdpr-cookie-consent")):
                 version = item.get("version")
                 if isinstance(version, str):
-                    match = re.match(r"^([0-9]{1,2})\\.", version)
+                    match = re.match(r"^([0-9]{1,2})\.", version)
                     if match:
                         webtoffee_major = int(match.group(1))
         return {
