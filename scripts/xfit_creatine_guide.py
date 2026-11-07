@@ -17,6 +17,7 @@ from urllib.parse import parse_qsl, parse_qs, urlencode, urlsplit, urlunsplit
 from scripts.xfit_affil_deeplink import affiliate_signature, classify_product_link
 from scripts.xfit_select import select_offers, choose_price_scenarios
 from scripts.xfit_click_metadata import card_click_attributes
+from scripts.xfit_budget_choices import budget_choices
 from scripts.wp_publish import (MARKER, PublishError, normalized_base, plain,
                                 publish, verify_public, wp_request, existing_content)
 
@@ -151,6 +152,7 @@ def build_document(catalog, base, sample):
       '<p><small>Tyto dvě volby vycházejí pouze z gramáže a ceny ověřených nabídek '
       'kreatinu monohydrátu. Nejde o srovnání celého trhu ani důkaz čistoty nebo vhodnosti produktu. '
       'Před nákupem zkontrolujte etiketu; pokud doplněk nepotřebujete, nekupujte jej.</small></p>',
+      budget_choices(chosen, (500, 1000, 1500), product_kind="creatine"),
       '<h2 id="xfit-offers">Kreatin monohydrát – přehled ověřených produktových nabídek</h2>',
       '<p><em>Obsahuje affiliate odkazy na NaMaximum.cz přes síť Affial. '
       'Pokud přes odkaz nakoupíte, Xfit.cz může získat provizi. '
