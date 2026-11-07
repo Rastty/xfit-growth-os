@@ -10,6 +10,7 @@ from collections import Counter
 from datetime import datetime, timezone
 from io import BytesIO
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -47,14 +48,20 @@ def safe_product_url(text):
     return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path, safe_query, ""))
 
 def parse_price(value):
-    if not value:
+    """Only finite, positive CZK prices can enter the published catalog.
+
+    A partner XML value like NaN bypasses ordinary <= and > comparisons
+    and would poison JSON artifacts and both deterministic selectors.
+    """
+    if not isinstance(value, str) or not value.strip() or len(value) > 64:
         return None
     try:
         n = float(value.strip().replace(" ", "").replace(",", "."))
-        if n <= 0 or n > 1000000:
+        if not math.isfinite(n) or n <= 0 or n > 1000000:
             return None
-        return round(n, 2)
-    except ValueError:
+        result = round(n, 2)
+        return result if result > 0 and math.isfinite(result) else None
+    except (ValueError, OverflowError):
         return None
 
 def parse_feed(xml_bytes):
