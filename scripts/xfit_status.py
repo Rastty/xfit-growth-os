@@ -114,18 +114,28 @@ def render(runs, states, now, lanes=None, production=None):
         lines += [
             "",
             "**Skutečné publikace a změny (jen veřejně potvrzené publikační běhy):**",
-            "- Nové články: **" + str(c["new"]) + "**; upravené stránky: **" +
-            str(c["updated"]) + "**; zápisy bez rozlišení nová/úprava: **" +
+            "- Nové články: **" + str(c["new"]) +
+            "**; ověřené aktualizační zásahy: **" + str(c["updated"]) +
+            "** na **" + str(c["unique_updated_pages"]) +
+            "** různých stránkách; zápisy bez rozlišení nová/úprava: **" +
             str(c["publication_or_update"]) + "**.",
             "- Úspěšné publikační běhy bez nové změny: **" +
             str(production["verified_no_change_runs"]) + "**.",
         ]
-        for event in production["verified_events"][:10]:
+        grouped = {}
+        for event in production["verified_events"]:
+            key = (event["kind"], event["url"])
+            if key not in grouped:
+                grouped[key] = {"event": event, "count": 0}
+            grouped[key]["count"] += 1
+        for item in list(grouped.values())[:10]:
+            event = item["event"]
             label = ("nová publikace" if event["kind"] == "new"
-                     else "úprava" if event["kind"] == "updated"
+                     else "ověřená aktualizace" if event["kind"] == "updated"
                      else "publikace nebo úprava")
-            lines.append("- **" + label + "**: [" + event["slug"] +
-                         "](" + event["url"] + ") · [produkční doklad](" +
+            lines.append("- **" + label + " (" + str(item["count"]) +
+                         "× v období)**: [" + event["slug"] +
+                         "](" + event["url"] + ") · [nejnovější produkční doklad](" +
                          event["run_url"] + ")")
         if production["unverified_runs"]:
             lines.append("- **NEOVĚŘENO: " + str(len(production["unverified_runs"])) +
