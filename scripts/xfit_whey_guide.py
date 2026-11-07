@@ -16,6 +16,7 @@ from scripts.xfit_creatine_guide import build_tracked_url, safe_image
 from scripts.xfit_select import select_offers, choose_price_scenarios
 from scripts.xfit_click_metadata import card_click_attributes
 from scripts.xfit_budget_choices import budget_choices
+from scripts.xfit_model_portions import model_portion_intro, model_portion_line
 from scripts.wp_publish import PublishError, normalized_base, MARKER, existing_content, wp_request, validate_document, publish, verify_public
 
 SLUG = "xfit-os-syrovatkovy-protein-porovnani"
@@ -98,6 +99,7 @@ def build_document(catalog, base, sample):
         'může Xfit.cz získat provizi. Pořadí určuje jednotková cena za hmotnost '
         'prášku, nikoliv provize.</em></p>',
         '<p><strong>Vybrané možnosti:</strong> uvádíme různé výrobky či velikosti balení, ne opakované příchutě stejného prášku.</p>',
+        model_portion_intro("whey"),
         '<div class="xfit-product-cards">'
     ]
     for index,item in enumerate(chosen):
@@ -119,6 +121,7 @@ def build_document(catalog, base, sample):
             '<p>Typ podle názvu: '+kind+'</p>'
             '<p><strong>Cena: '+price+' Kč</strong> · Balení: '+str(item["mass_g"])+' g</p>'
             '<p><strong>Cena za 100 g prášku: '+unit+' Kč</strong></p>'
+            +model_portion_line(item, "whey")+
             '<p><a'+card_click_attributes(item["id"], "whey")+' href="'+link+'" rel="sponsored nofollow noopener noreferrer" '
             'aria-label="Zobrazit konkrétní balení na NaMaximum.cz: '+html.escape(item["title"],quote=True)+' (nová karta)" '
             'target="_blank" style="display:inline-block;padding:12px 16px;min-height:44px;box-sizing:border-box;'
