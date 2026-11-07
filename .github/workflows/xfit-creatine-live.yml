@@ -11,6 +11,8 @@ on:
       - 'scripts/xfit_click_metadata.py'
       - 'scripts/xfit_budget_choices.py'
       - 'scripts/xfit_model_portions.py'
+      - 'scripts/xfit_catalog_retrieval.py'
+      - 'tests/test_catalog_retrieval.py'
       - 'tests/test_model_portions.py'
       - 'tests/test_budget_choices.py'
       - 'tests/test_creatine_guide.py'
