@@ -30,11 +30,12 @@ def _price(value):
 
 
 def budget_choices(selected, limits, *, product_kind):
-    """Return accessible, no-script budget chooser for the selected offers.
+    """Return two distinct buyer goals inside accessible native budget controls.
 
-    Indexes MUST correspond to the existing xfit-offer-N anchors, not new
-    affiliate redirects. For each limit, choose the lowest unit cost that
-    fits, breaking ties by actual total price and original card order.
+    Within each spend limit: show the cheapest whole pack and the lowest
+    price per 100 g of POWDER. Both resolve only to existing verified
+    xfit-offer-N cards; no new merchant links, cookies, JS or tracking.
+    When one card wins both criteria, avoid two redundant links.
     """
     if product_kind not in ("creatine", "whey"):
         raise PublishError("Unsupported product decision type")
@@ -63,10 +64,11 @@ def budget_choices(selected, limits, *, product_kind):
 
     result = [
         '<h2 id="xfit-vyber-podle-rozpoctu">Kolik chcete maximálně utratit?</h2>',
-        '<p>Vyberte si svůj cenový limit. U každého ukazujeme nabídku '
-        's nejnižší cenou za 100 g prášku, která se do něj vejde. '
-        'Vycházíme jen z výrobků již uvedených níže, ne z celého trhu. '
-        'Ceny se mohou změnit.</p>',
+        '<p>Vyberte cenový limit a porovnejte dvě různé priority: '
+        '<strong>co nejméně zaplatit nyní</strong> za celé balení, nebo '
+        '<strong>co nejméně zaplatit za 100 g prášku</strong>. '
+        'Někdy vyhraje stejný produkt. Počítáme pouze nabídky již '
+        'zobrazené níže, nikoli celý trh. Ceny se mohou změnit.</p>',
     ]
 
     for limit in limits:
@@ -86,19 +88,49 @@ def budget_choices(selected, limits, *, product_kind):
                 '</details>'
             )
             continue
-        number, item, total, per100 = min(
+        # Original card positions are the ONLY allowed destinations.
+        # Deterministic tie-breakers guarantee consistent behavior across
+        # repeated daily feed refreshes with the same inputs.
+        cheapest_pack = min(
+            possible, key=lambda row: (row[2], row[3], row[0])
+        )
+        cheapest_unit = min(
             possible, key=lambda row: (row[3], row[2], row[0])
         )
-        # Use a same-page anchor; the catalog product destination and tracking
-        # remain exclusively in the original verified sponsored CTA.
+        pack_pos, pack, pack_total, pack_per100 = cheapest_pack
+        unit_pos, unit, unit_total, unit_per100 = cheapest_unit
         result.append(
-            '<p><strong>V limitu do ' + str(limit) + ' Kč má nejnižší jednotkovou cenu:</strong> '
-            '<a href="#xfit-offer-' + str(number) + '">' +
-            html.escape(item["title"]) + '</a> — ' + money(total) +
-            ' za balení ' + str(item["mass_g"]) + ' g; ' +
-            money(per100) + ' za 100 g prášku. '
-            'Před případným nákupem ověřte etiketu, cenu a dostupnost '
-            'u prodejce.</p></details>'
+            '<p data-xfit-budget-choice="upfront"><strong>V limitu do ' +
+            str(limit) + ' Kč – nejnižší cena celého balení:</strong> '
+            '<a href="#xfit-offer-' + str(pack_pos) + '">' +
+            html.escape(pack["title"]) + '</a> — ' + money(pack_total) +
+            ' za balení ' + str(pack["mass_g"]) + ' g; ' +
+            money(pack_per100) + ' za 100 g prášku.</p>'
+        )
+        if unit_pos == pack_pos:
+            result.append(
+                '<p data-xfit-budget-choice="same">Toto stejné balení má '
+                'v uvedeném limitu zároveň nejnižší cenu za 100 g prášku. '
+                'Nemusíte vybírat mezi levnějším nákupem a jednotkovou '
+                'cenou.</p>'
+            )
+        else:
+            result.append(
+                '<p data-xfit-budget-choice="unit"><strong>V limitu do ' +
+                str(limit) + ' Kč – nejnižší cena za 100 g prášku:</strong> '
+                '<a href="#xfit-offer-' + str(unit_pos) + '">' +
+                html.escape(unit["title"]) + '</a> — ' +
+                money(unit_per100) + ' za 100 g prášku; celkem ' +
+                money(unit_total) + ' za balení ' +
+                str(unit["mass_g"]) + ' g. '
+                'Úspornější jednotková cena může vyžadovat vyšší '
+                'jednorázovou útratu.</p>'
+            )
+        result.append(
+            '<p><small>Obě volby používají pouze zobrazené produkty, '
+            'nikoli všechny nabídky na trhu. Před případným nákupem '
+            'ověřte etiketu, cenu a dostupnost u prodejce.</small></p>'
+            '</details>'
         )
 
     result.append(
