@@ -78,6 +78,73 @@ def product_card_texts(value):
     return parsed.cards
 
 
+class ProductCardIdentity(HTMLParser):
+    """Extract product title and merchant destination without logging URLs."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.depth = 0
+        self.in_heading = False
+        self.heading = []
+        self.links = []
+        self.items = []
+
+    def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        if tag == "article":
+            if self.depth:
+                self.depth += 1
+            elif "xfit-product-card" in (attributes.get("class") or "").split():
+                self.depth = 1
+                self.in_heading = False
+                self.heading = []
+                self.links = []
+        elif self.depth:
+            if tag == "h3":
+                self.in_heading = True
+            elif tag == "a":
+                rel = (attributes.get("rel") or "").lower().split()
+                self.links.append((attributes.get("href"), "sponsored" in rel))
+
+    def handle_data(self, data):
+        if self.depth and self.in_heading:
+            self.heading.append(data)
+
+    def handle_endtag(self, tag):
+        if not self.depth:
+            return
+        if tag == "h3":
+            self.in_heading = False
+        elif tag == "article":
+            self.depth -= 1
+            if not self.depth:
+                title = " ".join(html.unescape("".join(self.heading)).casefold().split())
+                self.items.append((title, self.links[:]))
+
+
+def product_card_identities(value):
+    parser = ProductCardIdentity()
+    parser.feed(value)
+    return parser.items
+
+
+def safe_affiliate_card(identity):
+    """Each public card must have exactly one disclosed HTTPS product link."""
+    title, links = identity
+    if not title or len(links) != 1:
+        return False
+    href, sponsored = links[0]
+    parsed = urllib.parse.urlsplit(href or "")
+    params = urllib.parse.parse_qs(parsed.query)
+    return (
+        sponsored and parsed.scheme == "https"
+        and parsed.hostname in ("namaximum.cz", "www.namaximum.cz")
+        and not parsed.username and not parsed.password and not parsed.port
+        and parsed.path.rstrip("/") not in ("", "/")
+        and params.get("utm_medium") == ["affiliate"]
+        and bool(params.get("a_aid")) and bool(params.get("a_bid"))
+    )
+
+
 # Only compare already-visible, non-sensitive commercial figures. Never write
 # affiliate tracking URLs, WP HTML, or source article bodies into artifacts.
 COMMERCIAL_FACT_PATTERNS = {
@@ -96,7 +163,7 @@ def commercial_facts(card):
     return facts
 
 
-def card_drift_diagnostics(source_cards, public_cards):
+def card_drift_diagnostics(source_cards, public_cards, source_identities=None, public_identities=None):
     """Give operators actionable discrepancy categories without leaking links."""
     mismatched = []
     commercial_drift = []
@@ -119,7 +186,29 @@ def card_drift_diagnostics(source_cards, public_cards):
             commercial_drift.append(pos)
         else:
             text_only.append(pos)
+    source_identities = source_identities or []
+    public_identities = public_identities or []
+    title_drift = []
+    link_drift = []
+    unsafe_links = []
+    for index in range(max(len(source_identities), len(public_identities))):
+        left = source_identities[index] if index < len(source_identities) else None
+        right = public_identities[index] if index < len(public_identities) else None
+        if left is None or right is None:
+            title_drift.append(index + 1)
+            link_drift.append(index + 1)
+            unsafe_links.append(index + 1)
+            continue
+        if left[0] != right[0]:
+            title_drift.append(index + 1)
+        if left[1] != right[1]:
+            link_drift.append(index + 1)
+        if not safe_affiliate_card(left) or not safe_affiliate_card(right):
+            unsafe_links.append(index + 1)
     return {
+        "product_title_drift_positions": title_drift,
+        "affiliate_link_drift_positions": link_drift,
+        "unsafe_affiliate_link_positions": unsafe_links,
         "mismatched_card_positions": mismatched,
         "commercial_fact_drift_positions": commercial_drift,
         "unparsed_commercial_fact_positions": missing_fields,
@@ -166,8 +255,18 @@ def probe(target, *, read_post=None, read_public=None):
     product = slug in {"xfit-os-kreatin-poradce", "xfit-os-syrovatkovy-protein-porovnani"}
     source_cards = product_card_texts(raw) if product else []
     public_cards = product_card_texts(page) if product else []
-    cards_match = (len(source_cards) >= 2 and source_cards == public_cards) if product else True
-    diagnostics = card_drift_diagnostics(source_cards, public_cards) if product else {}
+    source_identities = product_card_identities(raw) if product else []
+    public_identities = product_card_identities(page) if product else []
+    link_integrity = (len(source_identities) == len(public_identities)
+                      == len(source_cards) >= 2
+                      and source_identities == public_identities
+                      and all(safe_affiliate_card(x) for x in source_identities)
+                      and all(safe_affiliate_card(x) for x in public_identities)) if product else True
+    cards_match = (len(source_cards) >= 2 and source_cards == public_cards
+                   and link_integrity) if product else True
+    diagnostics = (card_drift_diagnostics(
+        source_cards, public_cards, source_identities, public_identities)
+        if product else {})
     status = ("SOURCE_NOT_UPDATED" if not source_has
               else "WP_SOURCE_INCOMPLETE" if product and len(source_cards) < 2
               else "PUBLIC_FRESH" if public_has and cards_match
@@ -175,7 +274,9 @@ def probe(target, *, read_post=None, read_public=None):
     return {"slug": slug, "post_id": post_id, "status": status,
             "wp_source_has_target": source_has, "public_has_target": public_has,
             "wp_product_cards": len(source_cards), "public_product_cards": len(public_cards),
-            "product_cards_match": cards_match, "cache_headers": headers,
+            "product_cards_match": cards_match,
+            "public_affiliate_link_integrity": link_integrity,
+            "cache_headers": headers,
             **diagnostics}
 
 
