@@ -55,7 +55,7 @@ class BudgetChoicesTests(unittest.TestCase):
         checker = Inspector()
         checker.feed(output)
         normalized = [
-            re.sub(r"\\W+", " ", p.casefold()).strip()
+            re.sub(r"\W+", " ", p.casefold()).strip()
             for p in checker.paragraphs if len(p) > 110
         ]
         self.assertEqual(len(normalized), len(set(normalized)))
