@@ -6,8 +6,13 @@ from scripts.wp_publish import PublishError
 def post(slug, post_id, marker):
     source = "<!-- xfit-growth-os:v1 -->\n<h2>" + marker + "</h2>"
     if slug in ("xfit-os-kreatin-poradce", "xfit-os-syrovatkovy-protein-porovnani"):
-        source += ("<article class='xfit-product-card'><h3>Produkt A</h3><p>Cena: 200,00 Kč</p></article>"
-                   "<article class='xfit-product-card'><h3>Produkt B</h3><p>Cena: 300,00 Kč</p></article>")
+        source += (
+            "<article class='xfit-product-card'><h3>Produkt A</h3><p>Cena: 200,00 Kč</p>"
+            "<a rel='sponsored nofollow' href='https://www.namaximum.cz/produkt-a"
+            "?utm_medium=affiliate&a_aid=demo&a_bid=test'>Zobrazit</a></article>"
+            "<article class='xfit-product-card'><h3>Produkt B</h3><p>Cena: 300,00 Kč</p>"
+            "<a rel='sponsored nofollow' href='https://www.namaximum.cz/produkt-b"
+            "?utm_medium=affiliate&a_aid=demo&a_bid=test'>Zobrazit</a></article>")
     return {"id":post_id, "slug":slug, "status":"publish",
             "content":{"raw":source},
             "link":"https://xfit.cz/"+slug+"/"}
@@ -104,6 +109,58 @@ class PublicFreshnessTests(unittest.TestCase):
         self.assertEqual(copy_drift["commercial_fact_drift_positions"], [])
         self.assertEqual(copy_drift["noncommercial_copy_drift_positions"], [2])
         self.assertEqual(copy_drift["mismatched_card_positions"], [2])
+
+    def test_same_visible_card_text_with_changed_affiliate_url_fails(self):
+        target = TARGETS[2]
+        original = post(*target)
+        source = original["content"]["raw"]
+        tampered = source.replace(
+            "https://www.namaximum.cz/produkt-a",
+            "https://external-merchant.example/produkt-a",
+            1
+        )
+        result = probe(
+            target, read_post=lambda _: original,
+            read_public=lambda _: ("<html>" + tampered + "</html>", {})
+        )
+        self.assertTrue(result["public_has_target"])
+        self.assertEqual(result["wp_product_cards"], 2)
+        self.assertEqual(result["public_product_cards"], 2)
+        self.assertFalse(result["product_cards_match"])
+        self.assertFalse(result["public_affiliate_link_integrity"])
+        self.assertEqual(result["affiliate_link_drift_positions"], [1])
+        self.assertEqual(result["unsafe_affiliate_link_positions"], [1])
+        self.assertEqual(result["status"], "PUBLIC_STALE_OR_RENDERED_DIFFERENTLY")
+        self.assertNotIn("a_aid", str(result))
+        self.assertNotIn("demo", str(result))
+
+    def test_missing_sponsored_disclosure_fails_even_with_matching_prices(self):
+        target = TARGETS[3]
+        original = post(*target)
+        public = original["content"]["raw"].replace(
+            "rel='sponsored nofollow'", "rel='nofollow'", 1
+        )
+        result = probe(
+            target, read_post=lambda _: original,
+            read_public=lambda _: ("<html>" + public + "</html>", {})
+        )
+        self.assertFalse(result["public_affiliate_link_integrity"])
+        self.assertEqual(result["affiliate_link_drift_positions"], [1])
+        self.assertIn(1, result["unsafe_affiliate_link_positions"])
+        self.assertEqual(result["status"], "PUBLIC_STALE_OR_RENDERED_DIFFERENTLY")
+
+    def test_noncommercial_title_change_is_identified(self):
+        target = TARGETS[2]
+        original = post(*target)
+        public = original["content"]["raw"].replace("Produkt A", "Produkt A nová verze")
+        result = probe(
+            target, read_post=lambda _: original,
+            read_public=lambda _: ("<html>" + public + "</html>", {})
+        )
+        self.assertEqual(result["product_title_drift_positions"], [1])
+        self.assertEqual(result["affiliate_link_drift_positions"], [])
+        self.assertTrue(result["public_affiliate_link_integrity"])
+        self.assertFalse(result["public_product_title_integrity"])
 
     def test_unparsable_card_is_not_mistaken_for_matching_price(self):
         target = TARGETS[3]
