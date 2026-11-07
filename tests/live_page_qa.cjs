@@ -87,11 +87,24 @@ for(const spec of checks){
       choices:budgetDetails.length,
       valid:budgetDetails.every(d=>d.hasSummary&&!d.badTarget&&!d.unexpectedOutbound),
     };
+    const modelPortionRows=[
+      ...document.querySelectorAll(".xfit-product-card .xfit-model-portion")
+    ].map(n=>n.textContent.trim());
+    const servingGrams=location.pathname.includes("kreatin-poradce")?3:30;
+    const modelPortions={
+      count:modelPortionRows.length,
+      valid:modelPortionRows.every(t=>
+        t.includes("Modelové porce po "+servingGrams+" g prášku") &&
+        /[1-9][0-9]* celých porcí v balení/.test(t) &&
+        t.includes("Kč za "+servingGrams+" g prášku")
+      ),
+      intro:document.body.textContent.includes("Co stojí modelová porce?"),
+    };
     return {h1,h2,titles,viewport:inner,documentWidth:full,details,summaries,
         merchantLinks:links.length,missingSponsored,imagesMissingAlt:images.length,
         productImages:productImages.length,brokenProductImages:brokenProductImages.length,
         productImageStatus,themeImagesMissingAlt,firstProductLoaded,firstCTASize,
-        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget};
+        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions};
   });
   if(!doc.h1.includes(spec.expected))failures.push("h1_missing_expected");
   if(doc.h2<spec.minH2)failures.push("insufficient_h2");
@@ -109,6 +122,10 @@ for(const spec of checks){
       }
     }else failures.push("budget_first_choice_not_keyboard_accessible");
   }
+  if(spec.commercial && doc.modelPortions.count!==doc.merchantLinks)
+    failures.push("model_portion_rows_not_matching_product_ctas");
+  if(spec.commercial && (!doc.modelPortions.valid || !doc.modelPortions.intro))
+    failures.push("model_portion_math_or_disclaimer_missing");
   if(spec.commercial && !doc.merchantLinks)failures.push("merchant_links_missing");
   if(spec.commercial && doc.missingSponsored)failures.push("sponsored_rel_missing");
   if(spec.commercial && doc.brokenProductImages)failures.push("broken_product_images_"+doc.brokenProductImages);
