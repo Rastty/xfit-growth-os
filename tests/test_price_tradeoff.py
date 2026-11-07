@@ -64,7 +64,7 @@ class TradeoffTests(unittest.TestCase):
         self.assertIn("700,00 Kč za celé balení 1000 g",body)
         self.assertIn("o 250,00 Kč více",body)
         self.assertIn("cenový rozdíl 20,00 Kč",body)
-        self.assertIn("nejde o zaručenou úsporu".casefold(),body.casefold())
+        self.assertIn("nikoli o zaručenou úsporu".casefold(),body.casefold())
         self.assertIn("Nejnižší výdaj při nákupu",body)
         self.assertIn("Nejnižší cena za 100 g prášku",body)
         self.assertNotIn("href=\"https://",body)
@@ -131,7 +131,7 @@ class TradeoffTests(unittest.TestCase):
         for kind,builder,category,titles in [
             ("creatine",creatine,"Kreatin",
                 ("Creatine Monohydrate 1kg","Creatine Monohydrate 500g",
-                 "Creatine Pure 250g")),
+                 "Creatine Monohydrate 250g")),
             ("whey",whey,"Syrovátkové proteiny",
                 ("Whey WPC 1kg","Whey WPC 500g",
                  "Whey Isolate 750g")),
