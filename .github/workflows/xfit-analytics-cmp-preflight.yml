@@ -1,0 +1,47 @@
+name: XFIT Analytics and CMP Read-only Preflight
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-analytics-cmp-preflight.yml'
+      - 'scripts/xfit_analytics_cmp_preflight.py'
+      - 'tests/test_analytics_cmp_preflight.py'
+  schedule:
+    - cron: '19 6 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xfit-analytics-cmp-read-only
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline redaction and privacy regression tests
+        run: python -m unittest tests/test_analytics_cmp_preflight.py -v
+      - name: Inspect public script tags and authorized WP plugins without modification
+        run: python -m scripts.xfit_analytics_cmp_preflight
+      - name: Preserve limited nonsecret integration fingerprint for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-analytics-cmp-readonly-${{ github.run_id }}
+          path: reports/xfit-analytics-cmp-preflight.json
+          retention-days: 7
+          if-no-files-found: warn
