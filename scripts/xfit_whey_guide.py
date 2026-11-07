@@ -69,6 +69,15 @@ def build_document(catalog, base, sample):
         'prášku, nikoli za 100 g skutečných bílkovin. K tomu bychom potřebovali '
         'spolehlivý údaj o jejich obsahu pro každou variantu; nelze jej odhadovat '
         'jen z názvu nebo ceny. Ceny se mohou měnit.</p>',
+        '<p><strong>Máte etiketu konkrétního balení?</strong> '
+        'Vedle ceny za prášek si můžete spočítat také cenu za skutečné '
+        'bílkoviny: podívejte se na '
+        '<a href="https://xfit.cz/xfit-os-cena-proteinu-podle-etikety/">'
+        'postup přepočtu ceny podle nutriční etikety</a>. '
+        'Bez ověřeného údaje o bílkovinách u každé varianty '
+        'nelze pořadí níže považovat za žebříček nejlevnějších '
+        'skutečných bílkovin. Když produkt nepotřebujete, '
+        'nemusíte kupovat nic.</p>',
         '<h2>Než koupíte protein: krátký rozhodovací rozcestník</h2>',
         '<details><summary><strong>Musím protein kupovat, abych nabral svaly?</strong></summary>'
         '<p>Ne. Proteinový prášek je praktický způsob doplnění bílkovin, pokud je '
