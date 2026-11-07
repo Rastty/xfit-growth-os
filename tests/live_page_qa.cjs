@@ -104,7 +104,7 @@ for(const spec of checks){
     const feedProvenance={
       noticeCount:feedNotices.length,
       explicitCatalogDate:feedNotices.every(el=>
-        /\\b[0-3]?[0-9]\\. [01]?[0-9]\\. 20[0-9]{2}\\b/.test(el.textContent) &&
+        /\b[0-3]?[0-9]\. [01]?[0-9]\. 20[0-9]{2}\b/.test(el.textContent) &&
         el.textContent.includes("Datum označuje načtení katalogu") &&
         el.textContent.includes("Aktuální cenu, složení a dostupnost ověřte")
       ),
