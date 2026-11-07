@@ -359,7 +359,7 @@ def _catalog_notes(value):
 
 
 def _catalog_date(note):
-    match = re.search(r"\\b([0-3]?[0-9])\\.\\s+([01]?[0-9])\\.\\s+(20[0-9]{2})\\b", note)
+    match = re.search(r"\b([0-3]?[0-9])\.\s+([01]?[0-9])\.\s+(20[0-9]{2})\b", note)
     if not match:
         return None
     try:
