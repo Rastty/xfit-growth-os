@@ -123,16 +123,26 @@ def inspect_plugins(*, wp_fetch=wp_request):
     try:
         response = wp_fetch(
             normalized_base(),
-            "plugins?per_page=100&status=active&_fields=plugin,status",
+            "plugins?per_page=100&status=active&_fields=plugin,status,version",
         )
         if not isinstance(response, list):
             raise ValueError("Unexpected plugins inventory")
         active = []
+        webtoffee_major = None
         for item in response:
             if not isinstance(item, dict):
                 continue
-            if item.get("status") == "active" and isinstance(item.get("plugin"), str):
-                active.append(item["plugin"].casefold())
+            if item.get("status") != "active" or not isinstance(item.get("plugin"), str):
+                continue
+            slug = item["plugin"].casefold()
+            active.append(slug)
+            if any(term in slug for term in
+                   ("cookie-law-info", "webtoffee", "gdpr-cookie-consent")):
+                version = item.get("version")
+                if isinstance(version, str):
+                    match = re.match(r"^([0-9]{1,2})\\.", version)
+                    if match:
+                        webtoffee_major = int(match.group(1))
         return {
             "inventory_status": "READ_ONLY_VISIBLE",
             "recognized_active_providers": sorted(
@@ -140,12 +150,14 @@ def inspect_plugins(*, wp_fetch=wp_request):
                 if any(part in name for name in active for part in patterns)
             ),
             "active_plugin_count": len(active),
+            "webtoffee_major_version": webtoffee_major,
         }
     except (PublishError, ValueError, OSError):
         return {
             "inventory_status": "UNKNOWN_NO_AUTHORIZED_INVENTORY",
             "recognized_active_providers": [],
             "active_plugin_count": None,
+            "webtoffee_major_version": None,
         }
 
 
