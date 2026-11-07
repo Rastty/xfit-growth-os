@@ -13,6 +13,7 @@ No changes to WordPress, no personal data, no health advice.
 """
 import argparse
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -27,12 +28,21 @@ MASS_RE = re.compile(r"(?<![a-z0-9])(\d+(?:[,.]\d+)?)\s*(kg|g)\b", re.I)
 MAX_OPTIONS = 200
 
 def mass_grams(title):
-    """Return known powder package mass in grams or None; not serving dose."""
+    """Return plausible package mass; never treat malformed mass as a serving."""
+    if not isinstance(title, str) or len(title) > 5000:
+        return None
     matches = MASS_RE.findall(title)
     if not matches:
         return None
     size, unit = matches[-1]
-    number = float(size.replace(",", "."))
+    if len(size) > 14:
+        return None
+    try:
+        number = float(size.replace(",", "."))
+    except (ValueError, OverflowError):
+        return None
+    if not math.isfinite(number):
+        return None
     grams = number * (1000 if unit.lower() == "kg" else 1)
     return int(round(grams)) if 50 <= grams <= 10000 else None
 
@@ -58,8 +68,15 @@ def select_offers(catalog, kind, max_price=None, min_mass_g=100, limit=12):
         raise ValueError("Unsupported engine kind")
     if not 1 <= limit <= MAX_OPTIONS:
         raise ValueError("limit out of bounds")
-    if max_price is not None and max_price <= 0:
-        raise ValueError("Invalid price limit")
+    if max_price is not None:
+        if isinstance(max_price, bool):
+            raise ValueError("Invalid price limit")
+        try:
+            max_price = float(max_price)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError("Invalid price limit") from exc
+        if not math.isfinite(max_price) or max_price <= 0:
+            raise ValueError("Invalid price limit")
     if min_mass_g < 50 or min_mass_g > 10000:
         raise ValueError("Invalid minimum mass")
     choices = []
@@ -69,11 +86,15 @@ def select_offers(catalog, kind, max_price=None, min_mass_g=100, limit=12):
             continue
         if not matches_kind(item, kind):
             continue
+        if isinstance(item.get("price_czk"), bool):
+            continue
         try:
             price = float(item["price_czk"])
-        except (ValueError, KeyError, TypeError):
+        except (ValueError, KeyError, TypeError, OverflowError):
             continue
-        if price <= 0 or max_price is not None and price > max_price:
+        if (not math.isfinite(price) or price <= 0 or price > 1000000
+                or max_price is not None and price > max_price
+                or round(price, 2) <= 0):
             continue
         mass = mass_grams(item.get("title") or "")
         if mass is None or mass < min_mass_g:
