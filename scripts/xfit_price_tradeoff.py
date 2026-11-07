@@ -43,7 +43,8 @@ def price_tradeoff(selected, *, product_kind):
 
     parts = [
         '<h2 id="xfit-price-tradeoff">Dvě cesty k výběru podle ceny</h2>',
-        '<p>V šesti zobrazených nabídkách sledujeme dvě odlišné priority: '
+        '<p>V ' + str(len(selected)) +
+        ' zobrazených nabídkách sledujeme dvě odlišné priority: '
         'co nejnižší výdaj dnes a co nejnižší cenu za 100 g prášku. '
         'Nemusí zvítězit stejné balení.</p>',
         '<p data-xfit-tradeoff="upfront"><strong>Nejnižší výdaj při nákupu:</strong> '
