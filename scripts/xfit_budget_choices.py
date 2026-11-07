@@ -92,7 +92,7 @@ def budget_choices(selected, limits, *, product_kind):
         # Use a same-page anchor; the catalog product destination and tracking
         # remain exclusively in the original verified sponsored CTA.
         result.append(
-            '<p><strong>Nejnižší jednotková cena v tomto limitu:</strong> '
+            '<p><strong>V limitu do ' + str(limit) + ' Kč má nejnižší jednotkovou cenu:</strong> '
             '<a href="#xfit-offer-' + str(number) + '">' +
             html.escape(item["title"]) + '</a> — ' + money(total) +
             ' za balení ' + str(item["mass_g"]) + ' g; ' +

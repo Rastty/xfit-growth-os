@@ -37,6 +37,29 @@ class BudgetChoicesTests(unittest.TestCase):
         self.assertNotIn("<script", result)
         self.assertIn("pokud jej nepotřebujete, nekupujte jej", result.casefold())
 
+    def test_same_best_product_across_multiple_budgets_has_unique_helpful_copy(self):
+        # The live creatine selection may be expensive enough that only one
+        # product fits all thresholds; editorial gate must not reject the
+        # legitimate same recommendation as duplicated filler.
+        cards = [
+            offer(901, "Creatine velké 1 kg", 490, 49, 1000),
+            offer(902, "Creatine menší 500 g", 850, 170, 500),
+        ]
+        output = budget_choices(cards, (500, 1000, 1500),
+                                product_kind="creatine")
+        self.assertEqual(output.count('href="#xfit-offer-1"'), 3)
+        for limit in (500, 1000, 1500):
+            self.assertIn("V limitu do " + str(limit) + " Kč", output)
+        from scripts.xfit_editorial_gate import Inspector
+        import re
+        checker = Inspector()
+        checker.feed(output)
+        normalized = [
+            re.sub(r"\W+", " ", p.casefold()).strip()
+            for p in checker.paragraphs if len(p) > 110
+        ]
+        self.assertEqual(len(normalized), len(set(normalized)))
+
     def test_no_offer_in_budget_explicitly_admits_limit_and_no_purchase(self):
         result = budget_choices(self.cards, (300, 500), product_kind="creatine")
         self.assertIn("Do 300 Kč — 0 nabídek", result)
