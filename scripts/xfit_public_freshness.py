@@ -68,7 +68,9 @@ class ProductCards(HTMLParser):
         if tag == "article":
             self.depth -= 1
             if not self.depth:
-                text = " ".join(html.unescape("".join(self.buffer)).casefold().split())
+                # WordPress may display an en dash / curly quote instead of the
+                # source punctuation. Ignore typography only, never amounts or words.
+                text = typography_key(" ".join(html.unescape("".join(self.buffer)).casefold().split()))
                 self.cards.append(text)
         elif tag in ("h3","p","strong","a","li"):
             self.buffer.append(" ")
@@ -292,8 +294,9 @@ def probe(target, *, read_post=None, read_public=None):
     public_identities = product_card_identities(page) if product else []
     title_integrity = (len(source_identities) == len(public_identities)
                        == len(source_cards) >= 2
-                       and all(a[0] == b[0] for a, b in zip(
-                           source_identities, public_identities))) if product else True
+                       and all(typography_key(a[0]) == typography_key(b[0])
+                               for a, b in zip(
+                                   source_identities, public_identities))) if product else True
     link_integrity = (len(source_identities) == len(public_identities)
                       == len(source_cards) >= 2
                       and all(a[1] == b[1] for a, b in zip(

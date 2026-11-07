@@ -139,6 +139,28 @@ class PublicFreshnessTests(unittest.TestCase):
         self.assertNotIn("a_aid", str(result))
         self.assertNotIn("demo", str(result))
 
+    def test_wordpress_typographic_title_is_equivalent_without_weakening_prices(self):
+        target = TARGETS[2]
+        original = post(*target)
+        original["content"]["raw"] = original["content"]["raw"].replace(
+            "Produkt A", "Produkt A - Natural"
+        )
+        public = original["content"]["raw"].replace(
+            "Produkt A - Natural", "Produkt A – Natural"
+        )
+        result = probe(
+            target, read_post=lambda _: original,
+            read_public=lambda _: ("<html>" + public + "</html>", {})
+        )
+        self.assertEqual(result["status"], "PUBLIC_FRESH")
+        self.assertTrue(result["product_cards_match"])
+        self.assertTrue(result["public_product_title_integrity"])
+        self.assertTrue(result["public_affiliate_link_integrity"])
+        self.assertEqual(result["product_title_drift_positions"], [1])
+        self.assertEqual(result["typographic_title_drift_positions"], [1])
+        self.assertEqual(result["substantive_title_drift_positions"], [])
+        self.assertEqual(result["commercial_fact_drift_positions"], [])
+
     def test_missing_sponsored_disclosure_fails_even_with_matching_prices(self):
         target = TARGETS[3]
         original = post(*target)
@@ -163,9 +185,12 @@ class PublicFreshnessTests(unittest.TestCase):
             read_public=lambda _: ("<html>" + public + "</html>", {})
         )
         self.assertEqual(result["product_title_drift_positions"], [1])
+        self.assertEqual(result["typographic_title_drift_positions"], [])
+        self.assertEqual(result["substantive_title_drift_positions"], [1])
         self.assertEqual(result["affiliate_link_drift_positions"], [])
         self.assertTrue(result["public_affiliate_link_integrity"])
         self.assertFalse(result["public_product_title_integrity"])
+        self.assertEqual(result["status"], "PUBLIC_STALE_OR_RENDERED_DIFFERENTLY")
 
     def test_unparsable_card_is_not_mistaken_for_matching_price(self):
         target = TARGETS[3]
