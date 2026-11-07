@@ -36,6 +36,7 @@ jobs:
       - name: Verify consent and safe affiliate event parameters
         run: |
           node --check assets/analytics/xfit-outbound.js
+          node --check tests/live_page_qa.cjs
           node --check assets/analytics/xfit-webtoffee-bridge.js
           node --test tests/test_outbound_analytics.cjs tests/test_webtoffee_bridge.cjs tests/test_mobile_navigation.cjs
       - name: Validate sample without remote writes
