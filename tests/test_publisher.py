@@ -67,6 +67,73 @@ class PublisherValidationTests(unittest.TestCase):
         self.assertEqual(load.call_count, 2)
         pause.assert_called_once_with(2)
 
+    def test_wptexturize_punctuation_does_not_look_like_stale_body(self):
+        from scripts.wp_publish import verify_public
+        from unittest.mock import patch
+        import io
+
+        title = "Jak vybrat kreatin - srovnání balení"
+        body = (
+            '<h2>Na co se zaměřit – výběr podle ceny</h2>'
+            '<p>Modelové balení "Natural" za 549,00 Kč je zde pouze ukázkou '
+            'toho, jak srovnat skutečnou cenu za 100 g prášku.</p>'
+            '<p>Jiná gramáž – a případně jiný výrobek – může vycházet dražší, '
+            'proto je nutné porovnat cenu při stejné jednotce.</p>'
+            '<p>Na etiketu se dívejte vždy před kliknutím a rozlišujte '
+            'prášek od přesného obsahu deklarované látky.</p>'
+        )
+        public = ('<html><h1>Jak vybrat kreatin – srovnání balení</h1>'
+                  '<main>' + body.replace(
+                      'výběr podle ceny', 'výběr podle ceny').replace(
+                      'zaměřit –', 'zaměřit -').replace(
+                      '"Natural"', '“Natural”').replace(
+                      'Jiná gramáž –', 'Jiná gramáž -')
+                  + '</main></html>')
+
+        class Response(io.BytesIO):
+            status = 200
+            def geturl(self):
+                return "https://xfit.cz/xfit-os-kreatin-poradce/"
+
+        with patch("scripts.wp_publish.urllib.request.urlopen",
+                   side_effect=lambda *a, **k: Response(public.encode())), \
+             patch("scripts.wp_publish.time.sleep") as pause:
+            self.assertTrue(verify_public(
+                "https://xfit.cz/xfit-os-kreatin-poradce/", title, body))
+        pause.assert_not_called()
+
+    def test_wptexturize_does_not_hide_changed_product_price(self):
+        from scripts.wp_publish import verify_public
+        from unittest.mock import patch
+        import io
+
+        title = "Srovnání proteinů"
+        body = (
+            '<h2>Modelové nabídky podle ceny za 100 g</h2>'
+            '<p>První produkt je uveden za 549,00 Kč a má gramáž 1000 g; '
+            'to umožňuje jasně vysvětlit jednotkovou cenu.</p>'
+            '<p>Druhý produkt je uveden za 699,00 Kč a má gramáž 500 g; '
+            'je nutné srovnávat stejnou jednotku.</p>'
+            '<p>Nejde o slib nejlepší ceny na trhu, návštěvník '
+            'si cenu i dostupnost ověří u prodejce.</p>'
+        )
+        changed = ('<html><h1>' + title + '</h1>' +
+                   body.replace('549,00 Kč', '599,00 Kč') + '</html>')
+
+        class Response(io.BytesIO):
+            status = 200
+            def geturl(self):
+                return "https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/"
+
+        with patch("scripts.wp_publish.urllib.request.urlopen",
+                   side_effect=lambda *a, **k: Response(changed.encode())), \
+             patch("scripts.wp_publish.time.sleep") as pause:
+            with self.assertRaisesRegex(PublishError, "old/incomplete"):
+                verify_public(
+                    "https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/",
+                    title, body)
+        self.assertEqual(pause.call_count, 2)
+
     def test_public_stale_body_fails_closed_even_when_title_matches(self):
         from scripts.wp_publish import verify_public
         from unittest.mock import patch
