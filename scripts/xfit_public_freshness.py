@@ -257,13 +257,18 @@ def probe(target, *, read_post=None, read_public=None):
     public_cards = product_card_texts(page) if product else []
     source_identities = product_card_identities(raw) if product else []
     public_identities = product_card_identities(page) if product else []
+    title_integrity = (len(source_identities) == len(public_identities)
+                       == len(source_cards) >= 2
+                       and all(a[0] == b[0] for a, b in zip(
+                           source_identities, public_identities))) if product else True
     link_integrity = (len(source_identities) == len(public_identities)
                       == len(source_cards) >= 2
-                      and source_identities == public_identities
+                      and all(a[1] == b[1] for a, b in zip(
+                          source_identities, public_identities))
                       and all(safe_affiliate_card(x) for x in source_identities)
                       and all(safe_affiliate_card(x) for x in public_identities)) if product else True
     cards_match = (len(source_cards) >= 2 and source_cards == public_cards
-                   and link_integrity) if product else True
+                   and title_integrity and link_integrity) if product else True
     diagnostics = (card_drift_diagnostics(
         source_cards, public_cards, source_identities, public_identities)
         if product else {})
@@ -276,6 +281,7 @@ def probe(target, *, read_post=None, read_public=None):
             "wp_product_cards": len(source_cards), "public_product_cards": len(public_cards),
             "product_cards_match": cards_match,
             "public_affiliate_link_integrity": link_integrity,
+            "public_product_title_integrity": title_integrity,
             "cache_headers": headers,
             **diagnostics}
 
