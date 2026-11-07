@@ -1,5 +1,10 @@
 import unittest
-from scripts.xfit_public_freshness import TARGETS, owns_public_url, visible_has, probe, product_card_texts
+from unittest.mock import patch
+from urllib.error import HTTPError, URLError
+from scripts.xfit_public_freshness import (
+    TARGETS, owns_public_url, visible_has, probe, product_card_texts,
+    typography_key, public_get,
+)
 from scripts.wp_publish import PublishError
 
 
@@ -173,6 +178,59 @@ class PublicFreshnessTests(unittest.TestCase):
         self.assertEqual(report["unparsed_commercial_fact_positions"], [1])
         self.assertEqual(report["commercial_fact_drift_positions"], [])
         self.assertEqual(report["status"], "PUBLIC_STALE_OR_RENDERED_DIFFERENTLY")
+
+    def test_title_triage_never_confuses_typographic_and_substantive_drift(self):
+        self.assertEqual(
+            typography_key("Creatine monohydrate - Natural"),
+            typography_key("Creatine monohydrate – Natural"),
+        )
+        self.assertNotEqual(
+            typography_key("Creatine monohydrate - Natural 1kg"),
+            typography_key("Creatine monohydrate - Natural 500g"),
+        )
+
+    def test_public_http_get_retries_only_readonly_transient_failures(self):
+        class FakeResponse:
+            status = 200
+            headers = {"Age": "0"}
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def geturl(self):
+                return "https://xfit.cz/xfit-os-kreatin-poradce/"
+
+            def read(self, size):
+                return b"<html>public card</html>"
+
+        url = "https://xfit.cz/xfit-os-kreatin-poradce/"
+        with patch("scripts.xfit_public_freshness.urllib.request.urlopen",
+                   side_effect=[URLError("temporary"), FakeResponse()]) as get, \
+             patch("scripts.xfit_public_freshness.time.sleep") as pause:
+            page, headers = public_get(url)
+            self.assertEqual(page, "<html>public card</html>")
+            self.assertEqual(headers["Age"], "0")
+            self.assertEqual(get.call_count, 2)
+            pause.assert_called_once_with(2)
+
+        with patch("scripts.xfit_public_freshness.urllib.request.urlopen",
+                   side_effect=HTTPError(url, 404, "Not Found", None, None)) as get, \
+             patch("scripts.xfit_public_freshness.time.sleep") as pause:
+            with self.assertRaises(HTTPError):
+                public_get(url)
+            self.assertEqual(get.call_count, 1)
+            pause.assert_not_called()
+
+        with patch("scripts.xfit_public_freshness.urllib.request.urlopen",
+                   side_effect=URLError("still unavailable")) as get, \
+             patch("scripts.xfit_public_freshness.time.sleep") as pause:
+            with self.assertRaises(URLError):
+                public_get(url)
+            self.assertEqual(get.call_count, 3)
+            self.assertEqual(pause.call_count, 2)
 
     def test_visible_text_decodes_entities_and_whitespace(self):
         self.assertTrue(visible_has("<h2>Dvě&nbsp;cesty k výběru podle ceny</h2>",
