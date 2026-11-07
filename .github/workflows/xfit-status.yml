@@ -6,6 +6,8 @@ on:
     paths:
       - '.github/workflows/xfit-status.yml'
       - 'scripts/xfit_status.py'
+      - 'scripts/xfit_status_evidence.py'
+      - 'tests/test_status_evidence.py'
   schedule:
     - cron: '13 */4 * * *'
 permissions:
@@ -26,5 +28,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Validate production receipt classification before issue write
+        run: python -m unittest tests.test_status_evidence -v
       - name: Collect evidence and post status to issue #1
-        run: python scripts/xfit_status.py
+        run: python -m scripts.xfit_status
