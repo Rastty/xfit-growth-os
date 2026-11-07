@@ -100,11 +100,20 @@ for(const spec of checks){
       ),
       intro:document.body.textContent.includes("Co stojí modelová porce?"),
     };
+    const feedNotices=[...document.querySelectorAll(".xfit-feed-retrieval")];
+    const feedProvenance={
+      noticeCount:feedNotices.length,
+      explicitCatalogDate:feedNotices.every(el=>
+        /\\b[0-3]?[0-9]\\. [01]?[0-9]\\. 20[0-9]{2}\\b/.test(el.textContent) &&
+        el.textContent.includes("Datum označuje načtení katalogu") &&
+        el.textContent.includes("Aktuální cenu, složení a dostupnost ověřte")
+      ),
+    };
     return {h1,h2,titles,viewport:inner,documentWidth:full,details,summaries,
         merchantLinks:links.length,missingSponsored,imagesMissingAlt:images.length,
         productImages:productImages.length,brokenProductImages:brokenProductImages.length,
         productImageStatus,themeImagesMissingAlt,firstProductLoaded,firstCTASize,
-        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions};
+        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance};
   });
   if(!doc.h1.includes(spec.expected))failures.push("h1_missing_expected");
   if(doc.h2<spec.minH2)failures.push("insufficient_h2");
@@ -126,6 +135,10 @@ for(const spec of checks){
     failures.push("model_portion_rows_not_matching_product_ctas");
   if(spec.commercial && (!doc.modelPortions.valid || !doc.modelPortions.intro))
     failures.push("model_portion_math_or_disclaimer_missing");
+  if(spec.commercial && doc.feedProvenance.noticeCount!==1)
+    failures.push("catalog_date_notice_missing_or_duplicate");
+  if(spec.commercial && !doc.feedProvenance.explicitCatalogDate)
+    failures.push("catalog_date_not_explained_as_retrieval");
   if(spec.commercial && !doc.merchantLinks)failures.push("merchant_links_missing");
   if(spec.commercial && doc.missingSponsored)failures.push("sponsored_rel_missing");
   if(spec.commercial && doc.brokenProductImages)failures.push("broken_product_images_"+doc.brokenProductImages);
