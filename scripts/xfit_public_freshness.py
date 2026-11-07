@@ -4,6 +4,8 @@
 No uploads, retries of POST, user events, cookies, or full WP content in logs.
 Helps distinguish a successful WP write from public cache/render staleness.
 """
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 import html
 import json
 import re
@@ -323,6 +325,74 @@ def public_get(url):
     raise PublishError("Unexpected exhausted public read retry")
 
 
+class CatalogRetrievalNotes(HTMLParser):
+    """Capture only the branded feed-retrieval notice, never product URLs."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.active = False
+        self.buffer = []
+        self.notices = []
+
+    def handle_starttag(self, tag, attrs):
+        values = dict(attrs)
+        if tag == "p" and "xfit-feed-retrieval" in (
+                values.get("class") or "").split():
+            self.active = True
+            self.buffer = []
+
+    def handle_data(self, data):
+        if self.active:
+            self.buffer.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "p" and self.active:
+            self.notices.append(" ".join("".join(self.buffer).split()))
+            self.active = False
+            self.buffer = []
+
+
+def _catalog_notes(value):
+    parser = CatalogRetrievalNotes()
+    parser.feed(value)
+    return parser.notices
+
+
+def _catalog_date(note):
+    match = re.search(r"\\b([0-3]?[0-9])\\.\\s+([01]?[0-9])\\.\\s+(20[0-9]{2})\\b", note)
+    if not match:
+        return None
+    try:
+        return date(int(match.group(3)), int(match.group(2)), int(match.group(1)))
+    except ValueError:
+        return None
+
+
+def catalog_retrieval_readiness(source, public, *, today=None):
+    """Read-only fail-closed evidence; return no raw price, token or timestamp."""
+    original, exposed = _catalog_notes(source), _catalog_notes(public)
+    if (len(original) != 1 or not _catalog_date(original[0]) or
+            "Datum označuje načtení katalogu" not in original[0]):
+        stage = "SOURCE_DATE_MISSING_OR_INVALID"
+    else:
+        day = today if today is not None else datetime.now(
+            ZoneInfo("Europe/Prague")).date()
+        age = (day - _catalog_date(original[0])).days
+        if not 0 <= age <= 2:
+            stage = "SOURCE_DATE_STALE_OR_IN_FUTURE"
+        elif (len(exposed) != 1 or
+              typography_key(original[0]) != typography_key(exposed[0])):
+            stage = "PUBLIC_DATE_MISSING_OR_DIFFERENT"
+        else:
+            stage = "PUBLIC_DATE_VERIFIED"
+    return {
+        "catalog_retrieval_stage": stage,
+        "source_retrieval_notice_count": len(original),
+        "public_retrieval_notice_count": len(exposed),
+        "catalog_date_source_public_match": stage == "PUBLIC_DATE_VERIFIED",
+    }
+
+
 def probe(target, *, read_post=None, read_public=None):
     slug, post_id, marker = target
     read_post = read_post or (lambda ident: wp_request(
@@ -365,6 +435,8 @@ def probe(target, *, read_post=None, read_public=None):
     diagnostics = (card_drift_diagnostics(
         source_cards, public_cards, source_identities, public_identities)
         if product else {})
+    retrieval = (catalog_retrieval_readiness(raw, page) if product else
+                 {"catalog_retrieval_stage": "NOT_APPLICABLE"})
     if product:
         engine = "creatine" if slug == "xfit-os-kreatin-poradce" else "whey"
         metadata = metadata_readiness(
@@ -372,8 +444,14 @@ def probe(target, *, read_post=None, read_public=None):
     else:
         metadata = {"cta_measurement_stage": "NOT_APPLICABLE"}
     status = ("SOURCE_NOT_UPDATED" if not source_has
-              else "WP_SOURCE_INCOMPLETE" if product and len(source_cards) < 2
-              else "PUBLIC_FRESH" if public_has and cards_match
+              else "WP_SOURCE_INCOMPLETE" if product and (
+                  len(source_cards) < 2 or
+                  retrieval["catalog_retrieval_stage"] in (
+                      "SOURCE_DATE_MISSING_OR_INVALID",
+                      "SOURCE_DATE_STALE_OR_IN_FUTURE"))
+              else "PUBLIC_FRESH" if public_has and cards_match and (
+                  not product or retrieval["catalog_retrieval_stage"] ==
+                  "PUBLIC_DATE_VERIFIED")
               else "PUBLIC_STALE_OR_RENDERED_DIFFERENTLY")
     return {"slug": slug, "post_id": post_id, "status": status,
             "wp_source_has_target": source_has, "public_has_target": public_has,
@@ -383,7 +461,8 @@ def probe(target, *, read_post=None, read_public=None):
             "public_product_title_integrity": title_integrity,
             "cache_headers": headers,
             **diagnostics,
-            **metadata}
+            **metadata,
+            **retrieval}
 
 
 def main():
