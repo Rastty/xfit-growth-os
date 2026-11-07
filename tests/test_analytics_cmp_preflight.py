@@ -40,6 +40,7 @@ class ReadOnlyPreflightTests(unittest.TestCase):
     def test_plugin_inventory_requires_permission_and_redacts_names(self):
         plugins = [
             {"plugin": "complianz-gdpr/complianz-gpdr.php", "status": "active"},
+            {"plugin": "cookie-law-info/cookie-law-info.php", "status": "active", "version": "3.4.9"},
             {"plugin": "google-site-kit/google-site-kit.php", "status": "active"},
             {"plugin": "sensitive-fake-plugin/example.php", "status": "inactive"},
             {"plugin": "private-vendor-secret-plugin/example.php", "status": "active"},
@@ -52,7 +53,9 @@ class ReadOnlyPreflightTests(unittest.TestCase):
         self.assertEqual(result["inventory_status"], "READ_ONLY_VISIBLE")
         self.assertIn("complianz", result["recognized_active_providers"])
         self.assertIn("google_site_kit", result["recognized_active_providers"])
-        self.assertEqual(result["active_plugin_count"], 3)
+        self.assertEqual(result["active_plugin_count"], 4)
+        self.assertEqual(result["webtoffee_major_version"], 3)
+        self.assertNotIn("3.4.9", str(result))
         self.assertNotIn("private-vendor", str(result))
 
     def test_plugin_inventory_denied_does_not_report_no_plugins(self):
@@ -66,6 +69,7 @@ class ReadOnlyPreflightTests(unittest.TestCase):
         self.assertEqual(result["inventory_status"],
                          "UNKNOWN_NO_AUTHORIZED_INVENTORY")
         self.assertIsNone(result["active_plugin_count"])
+        self.assertIsNone(result["webtoffee_major_version"])
         self.assertNotIn("TOKEN", str(result))
 
     def test_report_never_exposes_raw_html_or_claims_measured_clicks(self):
