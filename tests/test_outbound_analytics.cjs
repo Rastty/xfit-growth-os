@@ -92,6 +92,25 @@ test("only trusted active links from controlled card and page are counted", () =
   assert.equal(wrongPage.calls.length, 0);
 });
 
+test("landing-page query and anchor are not sent with click event", () => {
+  const h = harness();
+  h.root.location.search = "?utm_source=organic&utm_campaign=PRIVATE";
+  h.root.location.hash = "#xfit-offers";
+  h.click();
+  assert.equal(h.calls.length, 1);
+  const params = JSON.stringify(h.calls[0][2]);
+  assert.equal(params.includes("utm_source"), false);
+  assert.equal(params.includes("PRIVATE"), false);
+  assert.equal(params.includes("#"), false);
+  assert.equal(h.calls[0][2].page, "xfit-os-kreatin-poradce");
+});
+
+test("broken gtag transport cannot cancel a product click", () => {
+  const h = harness();
+  h.root.gtag = () => { throw new Error("analytics transport failed"); };
+  assert.doesNotThrow(() => h.click());
+});
+
 test("whey events are attributed to the correct advisor, not a purchase", () => {
   const h = harness({page:"/xfit-os-syrovatkovy-protein-porovnani/"});
   h.click({engine:"whey", id:"483"});
