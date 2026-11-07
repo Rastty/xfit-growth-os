@@ -14,6 +14,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 from scripts.xfit_creatine_guide import build_tracked_url, safe_image
 from scripts.xfit_select import select_offers, choose_price_scenarios
+from scripts.xfit_click_metadata import card_click_attributes
 from scripts.wp_publish import PublishError, normalized_base, MARKER, existing_content, wp_request, validate_document, publish, verify_public
 
 SLUG = "xfit-os-syrovatkovy-protein-porovnani"
@@ -116,7 +117,7 @@ def build_document(catalog, base, sample):
             '<p>Typ podle názvu: '+kind+'</p>'
             '<p><strong>Cena: '+price+' Kč</strong> · Balení: '+str(item["mass_g"])+' g</p>'
             '<p><strong>Cena za 100 g prášku: '+unit+' Kč</strong></p>'
-            '<p><a href="'+link+'" rel="sponsored nofollow noopener noreferrer" '
+            '<p><a'+card_click_attributes(item["id"], "whey")+' href="'+link+'" rel="sponsored nofollow noopener noreferrer" '
             'aria-label="Zobrazit konkrétní balení na NaMaximum.cz: '+html.escape(item["title"],quote=True)+' (nová karta)" '
             'target="_blank" style="display:inline-block;padding:12px 16px;min-height:44px;box-sizing:border-box;'
             'background-color:#116a70;color:#ffffff;text-decoration:none;font-weight:700;'

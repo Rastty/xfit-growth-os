@@ -57,3 +57,13 @@ Ověření: `python -m unittest tests.test_revenue_events tests.test_agent_scope
 Stav: připraveno lokálně; CI, nasazení, veřejná stránka a měření neověřeny.
 Prokliky/objednávky/provize: UNKNOWN. Vrácení této úpravy: vrátit diff těchto
 tří souborů; žádná existující integrace se na ně zatím neodkazuje.
+
+## CTA identifikace a první webový adaptér — 2026-11-07
+
+`scripts/xfit_click_metadata.py` vkládá do obou produktových srovnávačů tři **necitlivé** `data-xfit-*` atributy: `engine`, `partner=namaximum` a skutečné kladné numerické katalogové `product_id`. Identifikátor pochází z ověřeného produktového feedu. Nevalidní/mimo rozsah → fail-closed před publikací. Nikdy do atributů nevkládat affiliate `a_aid`/`a_bid`, URL ani zdravotní údaje. Výsledek publikace vždy ověřit v WP REST i na veřejné stránce; samotný commit nestačí.
+
+`assets/analytics/xfit-outbound.js` je **připravený první-party browser adaptér**, nikoli automaticky instalovaný WordPress plugin. Zachytí pouze skutečné uživatelské kliknutí na označené produktové tlačítko v jednom ze dvou schválených poradců, ověří partnera/destinaci/affiliate parametry a odešle do `gtag` událost `affiliate_outbound_click` výhradně po návratu `true` z `window.xfitGetAnalyticsConsent()`. Tato funkce **musí** být připojena ke skutečně ověřenému cookie consent manageru. **Nedefinovat ji pomocí odhadu z cookie, permanentního `true` ani předem zatrženého souhlasu.** Bez této funkce, bez `gtag` nebo bez souhlasu modul zcela mlčí. Nemanipuluje s navigací a neposílá URL ani odpovědi z poradce. Zařízení a GA4 mohou vytvářet své vlastní automatické metadatové parametry; tento adaptér nezaručuje obecnou anonymitu GA4.
+
+**Nasazení adaptéru dosud nepotvrzeno.** Potřebujeme ověřenou cestu nahrání externího JS přes hosting / WP theme enqueue a skutečné napojení CMP + GA4. Nevkládat JavaScript do editoru jako `<script>` ani `onclick`; to obchází publikovací standardy a může být odstraněno WordPressem. Bez ověřené integrace nenazývat `affiliate_outbound_click` měřeným. Před ostrým nasazením prověřit při zamítnutém i uděleném consentu, zda událost skutečně odchází, zda nemá URL/tajné hodnoty a zda je vidět v GA4 DebugView. Testovací kliky nejsou provize.
+
+Testy: `python -m unittest discover -s tests -v` a `node --test tests/test_outbound_analytics.cjs`. V budoucím analytickém statusu vždy odlišovat `instrumentation_code_ready`, `html_metadata_public_verified`, `consent_bridge_verified`, `ga4_event_observed`, `affial_order_or_commission_observed`. První úspěšný CI test prokazuje pouze první položku.
