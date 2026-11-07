@@ -17,6 +17,8 @@ from scripts.xfit_select import select_offers, choose_price_scenarios
 from scripts.xfit_click_metadata import card_click_attributes
 from scripts.xfit_budget_choices import budget_choices
 from scripts.xfit_model_portions import model_portion_intro, model_portion_line
+from scripts.xfit_catalog_retrieval import (verified_catalog_fetch_time,
+                                            catalog_retrieval_notice)
 from scripts.wp_publish import PublishError, normalized_base, MARKER, existing_content, wp_request, validate_document, publish, verify_public
 
 SLUG = "xfit-os-syrovatkovy-protein-porovnani"
@@ -62,6 +64,7 @@ def build_document(catalog, base, sample):
         '<p><strong>Výběr syrovátkového proteinu nemusí začínat značkou.</strong> '
         'Nejdříve zvažte, zda vám vyhovuje mléčná bílkovina, co říká etiketa '
         'o složení a jakou porci chcete. Teprve potom má smysl srovnávat cenu.</p>',
+        catalog_retrieval_notice(data),
         '<p><strong>Jak srovnáváme:</strong> níže používáme cenu za 100 g proteinového '
         'prášku, nikoli za 100 g skutečných bílkovin. K tomu bychom potřebovali '
         'spolehlivý údaj o jejich obsahu pro každou variantu; nelze jej odhadovat '
@@ -198,6 +201,7 @@ def main():
     sample=os.getenv("XFIT_AFFIL_SAMPLE_PRODUCT_LINK","")
     if not base or not sample:raise PublishError("Affiliate secrets missing")
     data=json.loads(Path(args.catalog).read_text(encoding="utf-8"))
+    verified_catalog_fetch_time(data, required=True)
     doc=build_document(data,base,sample)
     if not args.deploy:
         print(json.dumps({"state":"whey_guide_dry_run","chars":len(doc["content"]),"slug":SLUG,"public_site_modified":False}))
