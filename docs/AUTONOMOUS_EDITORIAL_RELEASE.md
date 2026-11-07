@@ -28,6 +28,12 @@ Komplexnější poradci s aktuálními ověřenými produktovými daty běží v
 
 Opakované běhy dokládají `ALL_PINNED_ARTICLES_PUBLIC_VERIFIED`; 0 nových zápisů je správná idempotence. Když URL po zápisu nejde číst z veřejného internetu, workflow nahlásí `BLOCKED_MANUAL_REVIEW`. Neprovádějte automatické slepé opakování POST ani rollback bez kontroly WP revizí.
 
+## Soužití s AI redakčními doplněními (2026-11-07)
+
+Samostatný AI redakční proces smí do již publikovaného původně připnutého článku **vložit pouze jednu předem povolenou sekci**. Aby autonomní kanál starší vydání nepokládal stále za chybu, read-only kontrola nově uzná také přesné schéma: `MARKER + schválená AI sekce + původní připnutý obsah bez jediné změny`.
+
+Podmínky: přesná shoda celého původního obsahu za AI vložením, správné WP ID/slug a marker z `config/xfit-ai-editorial-targets-v1.json`, pouze povolené HTML a odkazy, ověřený původní marker, veřejný AI marker a viditelnost skutečného těla článku. Při jakékoli neshodě zůstává `BLOCKED_MANUAL_REVIEW`. **Žádné přepisování WordPressu** během tohoto ztotožnění. Úspěšný opakovaný běh má `new_posts: 0` a `verified_ai_enhancements: 1`, nejde o novou publikaci ani o obchodní výsledek.
+
 ## Bezpečnost a limity
 
 - V kódu nejsou WP hesla ani affiliate secret IDs. Existující `WP_USERNAME`, `WP_APP_PASSWORD`, `WP_BASE_URL` jsou GitHub Actions Secrets.
