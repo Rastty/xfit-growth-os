@@ -8,6 +8,8 @@ import html
 import json
 import re
 import sys
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -163,6 +165,15 @@ def commercial_facts(card):
     return facts
 
 
+def typography_key(text):
+    """Classify harmless punctuation transforms; never use to approve a page."""
+    translation = str.maketrans({
+        "–": "-", "—": "-", "−": "-",
+        "‘": "'", "’": "'", "“": '"', "”": '"',
+    })
+    return " ".join(text.translate(translation).split())
+
+
 def card_drift_diagnostics(source_cards, public_cards, source_identities=None, public_identities=None):
     """Give operators actionable discrepancy categories without leaking links."""
     mismatched = []
@@ -189,6 +200,8 @@ def card_drift_diagnostics(source_cards, public_cards, source_identities=None, p
     source_identities = source_identities or []
     public_identities = public_identities or []
     title_drift = []
+    typographic_title_drift = []
+    substantive_title_drift = []
     link_drift = []
     unsafe_links = []
     for index in range(max(len(source_identities), len(public_identities))):
@@ -201,12 +214,18 @@ def card_drift_diagnostics(source_cards, public_cards, source_identities=None, p
             continue
         if left[0] != right[0]:
             title_drift.append(index + 1)
+            if typography_key(left[0]) == typography_key(right[0]):
+                typographic_title_drift.append(index + 1)
+            else:
+                substantive_title_drift.append(index + 1)
         if left[1] != right[1]:
             link_drift.append(index + 1)
         if not safe_affiliate_card(left) or not safe_affiliate_card(right):
             unsafe_links.append(index + 1)
     return {
         "product_title_drift_positions": title_drift,
+        "typographic_title_drift_positions": typographic_title_drift,
+        "substantive_title_drift_positions": substantive_title_drift,
         "affiliate_link_drift_positions": link_drift,
         "unsafe_affiliate_link_positions": unsafe_links,
         "mismatched_card_positions": mismatched,
@@ -222,13 +241,27 @@ def public_get(url):
         "Cache-Control": "no-cache",
         "Pragma": "no-cache",
     })
-    with urllib.request.urlopen(req, timeout=25) as response:
-        final = response.geturl()
-        if not owns_public_url(final, urllib.parse.urlsplit(url).path.strip("/")) or response.status != 200:
-            raise PublishError("Unexpected public page response/redirect")
-        page = response.read(2000000).decode("utf-8", errors="replace")
-        cache = {k: response.headers.get(k) for k in ALLOWED_CACHE_HEADERS if response.headers.get(k)}
-        return page, cache
+    # Public reads are safe to retry; POSTs are never retried here.
+    # Intermittent WEDOS TLS/HTTP issues must not be confused with stale prices.
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=25) as response:
+                final = response.geturl()
+                if (not owns_public_url(final, urllib.parse.urlsplit(url).path.strip("/"))
+                        or response.status != 200):
+                    raise PublishError("Unexpected public page response/redirect")
+                page = response.read(2000000).decode("utf-8", errors="replace")
+                cache = {k: response.headers.get(k) for k in ALLOWED_CACHE_HEADERS
+                         if response.headers.get(k)}
+                return page, cache
+        except urllib.error.HTTPError as exc:
+            if exc.code not in (429, 502, 503, 504) or attempt == 2:
+                raise
+        except OSError:
+            if attempt == 2:
+                raise
+        time.sleep(2 * (attempt + 1))
+    raise PublishError("Unexpected exhausted public read retry")
 
 
 def probe(target, *, read_post=None, read_public=None):
