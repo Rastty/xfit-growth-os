@@ -103,7 +103,10 @@ class WheyTests(unittest.TestCase):
         rendered = build_document(self.catalog,BASE,SAMPLE)["content"]
         parser = PickParser()
         parser.feed(rendered)
-        self.assertEqual(len(parser.priorities),2)
+        self.assertGreaterEqual(len(parser.priorities),2)
+        self.assertIn('id="xfit-vyber-podle-rozpoctu"',rendered)
+        self.assertIn("Kolik chcete maximálně utratit?",rendered)
+        self.assertIn("v tomto přehledu",rendered)
         self.assertTrue(all(anchor in parser.ids for anchor in parser.priorities))
         self.assertIn("Nejnižší výdaj při nákupu",rendered)
         self.assertIn("Nejnižší cena za 100 g prášku",rendered)
