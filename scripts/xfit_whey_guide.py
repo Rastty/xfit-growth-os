@@ -16,6 +16,7 @@ from scripts.xfit_creatine_guide import build_tracked_url, safe_image
 from scripts.xfit_select import select_offers, choose_price_scenarios
 from scripts.xfit_click_metadata import card_click_attributes
 from scripts.xfit_budget_choices import budget_choices
+from scripts.xfit_price_tradeoff import price_tradeoff
 from scripts.xfit_model_portions import model_portion_intro, model_portion_line
 from scripts.xfit_catalog_retrieval import (verified_catalog_fetch_time,
                                             catalog_retrieval_notice)
@@ -59,7 +60,6 @@ def build_document(catalog, base, sample):
     if len(chosen)<2:
         raise PublishError("Not enough distinct whey product/size families")
     chosen=choose_price_scenarios(chosen, limit=6)[0]
-    budget_i = min(range(len(chosen)), key=lambda i: (chosen[i]['price_czk'], chosen[i]['price_per_100g_powder_czk']))
     parts=[
         '<p><strong>Výběr syrovátkového proteinu nemusí začínat značkou.</strong> '
         'Nejdříve zvažte, zda vám vyhovuje mléčná bílkovina, co říká etiketa '
@@ -95,17 +95,8 @@ def build_document(catalog, base, sample):
         'nepovažujte za bezpečnou volbu; izolát není zárukou absence mléčných '
         'alergenů. Pro veganské stravování zvažte vhodné rostlinné zdroje. '
         'Při zdravotním omezení výběr řešte s kvalifikovaným odborníkem.</p></details>',
-        '<h2>Dvě cesty k výběru podle ceny</h2>',
-        '<p><strong>Nejnižší výdaj při nákupu:</strong> '
-        f'<a href="#xfit-offer-{budget_i + 1}">zobrazit balení s nejnižší celkovou cenou v tomto výběru</a>. '
-        'To nemusí být nejvýhodnější cena za 100 g.</p>',
-        '<p><strong>Nejnižší cena za 100 g prášku:</strong> '
-        '<a href="#xfit-offer-1">zobrazit variantu s nejnižší jednotkovou cenou v tomto výběru</a>. '
-        'Tato volba může vyžadovat větší jednorázovou útratu.</p>',
-        '<p><small>Tyto dvě volby vycházejí pouze z gramáže a ceny ověřených nabídek '
-        'syrovátkových proteinů. Nejde o srovnání celého trhu ani důkaz čistoty nebo vhodnosti produktu. '
-        'Před nákupem zkontrolujte etiketu; pokud doplněk nepotřebujete, nekupujte jej.</small></p>',
-        budget_choices(chosen, (750, 1200, 2000), product_kind="whey"),
+        price_tradeoff(chosen, product_kind="whey"),
+      budget_choices(chosen, (750, 1200, 2000), product_kind="whey"),
         '<h2 id="xfit-offers">Syrovátkové proteiny – porovnání balení a ceny</h2>',
         '<p><em>Partnerské odkazy (Affial / NaMaximum.cz). Při nákupu přes odkaz '
         'může Xfit.cz získat provizi. Pořadí určuje jednotková cena za hmotnost '
