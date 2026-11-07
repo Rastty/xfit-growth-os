@@ -72,7 +72,7 @@ class BudgetChoicesTests(unittest.TestCase):
             {"upfront": "#xfit-offer-3", "unit": "#xfit-offer-2"},
             {"upfront": "#xfit-offer-3", "unit": "#xfit-offer-1"},
         ])
-        self.assertIn("Nejnižší cena celého balení", output)
+        self.assertIn("nejnižší cena celého balení", output)
         self.assertIn("nejnižší cena za 100 g prášku", output)
         self.assertIn("Úspornější jednotková cena", output)
         self.assertEqual(output.count("<details>"), 2)
