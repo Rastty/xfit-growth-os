@@ -62,15 +62,53 @@ for(const spec of checks){
     const themeImagesMissingAlt=images.slice(0,8).map(n=>({
       host:new URL(n.currentSrc||n.src).hostname,
       path:new URL(n.currentSrc||n.src).pathname.slice(0,120)}));
+    const budgetHeading=document.querySelector('h2#xfit-vyber-podle-rozpoctu');
+    const budgetDetails=[];
+    if(budgetHeading){
+      for(let node=budgetHeading.nextElementSibling;
+          node && node.tagName.toLowerCase()!=="h2";
+          node=node.nextElementSibling){
+        if(node.tagName.toLowerCase()!=="details")continue;
+        const summary=node.querySelector("summary");
+        const anchors=[...node.querySelectorAll('a[href^="#xfit-offer-"]')];
+        budgetDetails.push({
+          hasSummary:!!(summary&&summary.textContent.trim().startsWith("Do ")),
+          badTarget:anchors.some(link=>{
+            const id=(link.getAttribute("href")||"").slice(1);
+            return !/^xfit-offer-[1-9][0-9]*$/.test(id) ||
+                !document.getElementById(id);
+          }),
+          unexpectedOutbound:!!node.querySelector('a[href^="http"],a[onclick]'),
+        });
+      }
+    }
+    const budget={
+      heading:!!budgetHeading,
+      choices:budgetDetails.length,
+      valid:budgetDetails.every(d=>d.hasSummary&&!d.badTarget&&!d.unexpectedOutbound),
+    };
     return {h1,h2,titles,viewport:inner,documentWidth:full,details,summaries,
         merchantLinks:links.length,missingSponsored,imagesMissingAlt:images.length,
         productImages:productImages.length,brokenProductImages:brokenProductImages.length,
         productImageStatus,themeImagesMissingAlt,firstProductLoaded,firstCTASize,
-        hasViewportMeta:!!document.querySelector('meta[name="viewport"]')};
+        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget};
   });
   if(!doc.h1.includes(spec.expected))failures.push("h1_missing_expected");
   if(doc.h2<spec.minH2)failures.push("insufficient_h2");
   if(!doc.hasViewportMeta)failures.push("mobile_viewport_missing");
+  if(spec.commercial && !doc.budget.heading)failures.push("budget_heading_missing");
+  if(spec.commercial && doc.budget.choices!==3)failures.push("budget_choices_not_three");
+  if(spec.commercial && !doc.budget.valid)failures.push("budget_choice_link_or_summary_invalid");
+  if(spec.commercial && doc.budget.choices===3){
+    const firstSummary=page.locator('h2#xfit-vyber-podle-rozpoctu ~ details summary').first();
+    if(await firstSummary.count()){
+      await firstSummary.focus();
+      await page.keyboard.press("Enter");
+      if(!await firstSummary.evaluate(el=>!!el.parentElement?.open)){
+        failures.push("budget_first_choice_not_keyboard_accessible");
+      }
+    }else failures.push("budget_first_choice_not_keyboard_accessible");
+  }
   if(spec.commercial && !doc.merchantLinks)failures.push("merchant_links_missing");
   if(spec.commercial && doc.missingSponsored)failures.push("sponsored_rel_missing");
   if(spec.commercial && doc.brokenProductImages)failures.push("broken_product_images_"+doc.brokenProductImages);
