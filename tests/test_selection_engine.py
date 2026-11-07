@@ -73,6 +73,35 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual((value_i,budget_i),(0,0))
         self.assertEqual(len(selected),2)
 
+    def test_nonfinite_prices_do_not_poison_ranking_or_publication(self):
+        items = [
+            offer("Creatine Monohydrate 1kg", "NaN", id="nan"),
+            offer("Creatine Monohydrate 1kg", "Infinity", id="inf"),
+            offer("Creatine Monohydrate 1kg", float("-inf"), id="neg-inf"),
+            offer("Creatine Monohydrate 500g", True, id="bool"),
+            offer("Creatine Monohydrate 250g", 0.001, id="rounded-zero"),
+            offer("Creatine Monohydrate 1000g", 900, id="valid1"),
+            offer("Creatine Monohydrate 500g", 499, id="valid2"),
+        ]
+        for ceiling in (None, 1500):
+            with self.subTest(ceiling=ceiling):
+                selected=select_offers({"products":items},"creatine",
+                                       max_price=ceiling,min_mass_g=200)
+                self.assertEqual({p["id"] for p in selected},
+                                 {"valid1","valid2"})
+                self.assertEqual(len(selected),2)
+                self.assertTrue(all(p["price_per_100g_powder_czk"]>0
+                                    for p in selected))
+
+    def test_invalid_ceiling_and_giant_mass_do_not_enter_published_cards(self):
+        for ceiling in (float("nan"), float("inf"), float("-inf"), -1, True, "broken"):
+            with self.subTest(ceiling=repr(ceiling)), self.assertRaises(ValueError):
+                select_offers({"products":[]},"creatine",max_price=ceiling)
+        self.assertIsNone(mass_grams("Creatine " + "9"*700 + "g"))
+        self.assertIsNone(mass_grams("Whey " + "9"*6000 + "g"))
+        self.assertIsNone(mass_grams(None))
+        self.assertEqual(mass_grams("Whey 1,5 kg"),1500)
+
     def test_invalid_controls(self):
         with self.assertRaises(ValueError):
             select_offers({"products":[]},"unknown")
