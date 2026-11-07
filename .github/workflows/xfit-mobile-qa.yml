@@ -6,6 +6,8 @@ on:
     paths:
       - '.github/workflows/xfit-mobile-qa.yml'
       - 'tests/live_page_qa.cjs'
+      - 'scripts/xfit_mobile_navigation.cjs'
+      - 'tests/test_mobile_navigation.cjs'
   schedule:
     - cron: '11 8 * * 2,5'
 permissions:

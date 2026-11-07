@@ -1,5 +1,6 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
+const {navigatePublicGet} = require("../scripts/xfit_mobile_navigation.cjs");
 const checks = [
   {name:"beginner",url:"https://xfit.cz/xfit-os-doplnky-pro-zacatecniky/",expected:"Doplňky stravy pro začátečníky",minH2:6,commercial:false},
   {name:"creatine",url:"https://xfit.cz/xfit-os-kreatin-poradce/",expected:"Jak vybrat kreatin",minH2:3,commercial:true},
@@ -19,7 +20,7 @@ for(const spec of checks){
  const page=await context.newPage();
  const failures=[];
  try{
-  const response=await page.goto(spec.url,{waitUntil:"domcontentloaded",timeout:60000});
+  const {response,retries}=await navigatePublicGet(page,spec.url,{timeout:60000});
   if(!response || response.status()>=400)failures.push("http_"+(response?.status()||"none"));
   await page.waitForTimeout(1200);
   // A full-page screenshot does not automatically fetch off-screen lazy images.
@@ -78,7 +79,7 @@ for(const spec of checks){
   if(["beginner","pilates-cardio","creatine-kidney","creatine-vs-protein","protein-intake","protein-meaning"].includes(spec.name) && doc.details<3)failures.push("interactive_details_missing");
   if(doc.documentWidth>doc.viewport+12)failures.push("horizontal_overflow_"+(doc.documentWidth-doc.viewport));
   await page.screenshot({path:"reports/browser-qa/"+spec.name+"-mobile.png",fullPage:true});
-  console.log(JSON.stringify({page:spec.name,state:failures.length?"FAIL":"PASS",doc,failures}));
+  console.log(JSON.stringify({page:spec.name,state:failures.length?"FAIL":"PASS",navigation_retries:retries,doc,failures}));
  }catch(e){failures.push("browser_fetch_error_"+e.name);console.log(JSON.stringify({page:spec.name,state:"ERROR",failures}));}
  await context.close();
  bad ||= failures.length>0;
