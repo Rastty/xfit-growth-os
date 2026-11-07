@@ -109,10 +109,10 @@ def budget_choices(selected, limits, *, product_kind):
         )
         if unit_pos == pack_pos:
             result.append(
-                '<p data-xfit-budget-choice="same">Toto stejné balení má '
-                'v uvedeném limitu zároveň nejnižší cenu za 100 g prášku. '
-                'Nemusíte vybírat mezi levnějším nákupem a jednotkovou '
-                'cenou.</p>'
+                '<p data-xfit-budget-choice="same">V limitu do ' +
+                str(limit) + ' Kč má toto stejné balení zároveň nejnižší '
+                'cenu za 100 g prášku. Nemusíte vybírat mezi levnějším '
+                'nákupem a jednotkovou cenou.</p>'
             )
         else:
             result.append(
@@ -126,13 +126,13 @@ def budget_choices(selected, limits, *, product_kind):
                 'Úspornější jednotková cena může vyžadovat vyšší '
                 'jednorázovou útratu.</p>'
             )
-        result.append(
-            '<p><small>Obě volby používají pouze zobrazené produkty, '
-            'nikoli všechny nabídky na trhu. Před případným nákupem '
-            'ověřte etiketu, cenu a dostupnost u prodejce.</small></p>'
-            '</details>'
-        )
+        result.append('</details>')
 
+    result.append(
+        '<p><small>Rozpočtové volby vycházejí jen z nabídek uvedených '
+        'v tomto přehledu, nikoli z celého trhu. Aktuální cenu, etiketu '
+        'a dostupnost vždy ověřte u prodejce.</small></p>'
+    )
     result.append(
         '<p><small>' + (
             'Porovnáváme hmotnost syrovátkového prášku, nikoli množství '
