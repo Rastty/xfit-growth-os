@@ -149,6 +149,63 @@ def safe_affiliate_card(identity):
     )
 
 
+class CTAMetadata(HTMLParser):
+    """Report only attribute coverage, never product IDs or tracking URLs."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.depth = 0
+        self.links = []
+
+    def handle_starttag(self, tag, attrs):
+        values = dict(attrs)
+        if tag == "article":
+            if self.depth:
+                self.depth += 1
+            elif "xfit-product-card" in (values.get("class") or "").split():
+                self.depth = 1
+        elif self.depth and tag == "a" and "sponsored" in (
+                values.get("rel") or "").split():
+            self.links.append((
+                values.get("data-xfit-engine"),
+                values.get("data-xfit-partner"),
+                values.get("data-xfit-product-id"),
+            ))
+
+    def handle_endtag(self, tag):
+        if tag == "article" and self.depth:
+            self.depth -= 1
+
+
+def cta_metadata(raw):
+    parsed = CTAMetadata()
+    parsed.feed(raw)
+    return parsed.links
+
+
+def metadata_readiness(source, public, engine, expected_cards):
+    """Read-only triage of WP vs public metadata, never claim GA4 events."""
+    valid = lambda xs: (
+        len(xs) == expected_cards >= 2
+        and all(row[0] == engine and row[1] == "namaximum"
+                and isinstance(row[2], str)
+                and re.fullmatch(r"[1-9][0-9]{0,9}", row[2])
+                and int(row[2]) <= 2**31 - 1
+                for row in xs))
+    src_valid = valid(source)
+    pub_valid = valid(public)
+    return {
+        "source_cta_metadata_count": len(source),
+        "public_cta_metadata_count": len(public),
+        "source_cta_metadata_valid": src_valid,
+        "public_cta_metadata_valid": pub_valid,
+        "cta_metadata_match": src_valid and pub_valid and source == public,
+        "cta_measurement_stage": (
+            "PUBLIC_METADATA_VERIFIED" if src_valid and pub_valid and source == public
+            else "SOURCE_METADATA_INCOMPLETE" if not src_valid
+            else "PUBLIC_METADATA_MISSING_OR_DIFFERENT"),
+    }
+
+
 # Only compare already-visible, non-sensitive commercial figures. Never write
 # affiliate tracking URLs, WP HTML, or source article bodies into artifacts.
 COMMERCIAL_FACT_PATTERNS = {
@@ -308,6 +365,12 @@ def probe(target, *, read_post=None, read_public=None):
     diagnostics = (card_drift_diagnostics(
         source_cards, public_cards, source_identities, public_identities)
         if product else {})
+    if product:
+        engine = "creatine" if slug == "xfit-os-kreatin-poradce" else "whey"
+        metadata = metadata_readiness(
+            cta_metadata(raw), cta_metadata(page), engine, len(source_cards))
+    else:
+        metadata = {"cta_measurement_stage": "NOT_APPLICABLE"}
     status = ("SOURCE_NOT_UPDATED" if not source_has
               else "WP_SOURCE_INCOMPLETE" if product and len(source_cards) < 2
               else "PUBLIC_FRESH" if public_has and cards_match
@@ -319,7 +382,8 @@ def probe(target, *, read_post=None, read_public=None):
             "public_affiliate_link_integrity": link_integrity,
             "public_product_title_integrity": title_integrity,
             "cache_headers": headers,
-            **diagnostics}
+            **diagnostics,
+            **metadata}
 
 
 def main():
