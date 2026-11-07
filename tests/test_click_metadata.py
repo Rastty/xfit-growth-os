@@ -3,8 +3,11 @@ from html.parser import HTMLParser
 
 from scripts.xfit_click_metadata import card_click_attributes
 from scripts.wp_publish import PublishError
-from tests.test_creatine_guide import BASE as CBASE, SAMPLE as CSAMPLE, CreatineGuideTests
-from tests.test_whey_guide import BASE as WBASE, SAMPLE as WSAMPLE, WheyTests
+BASE = ("https://www.namaximum.cz/?utm_medium=affiliate"
+        "&utm_campaign=affial.com&utm_source=pap&a_aid=TESTA&a_bid=TESTB")
+SAMPLE = ("https://www.namaximum.cz/kategorie/kreatin/creatine-creapure"
+          "?variant=392&utm_medium=affiliate&utm_campaign=affial.com"
+          "&utm_source=pap&a_aid=TESTA&a_bid=TESTB")
 from scripts.xfit_creatine_guide import build_document as creatine_document
 from scripts.xfit_whey_guide import build_document as whey_document
 
@@ -34,15 +37,25 @@ class ClickMetadataTests(unittest.TestCase):
             card_click_attributes(392, "unknown")
 
     def test_both_trusted_catalog_builders_produce_attributed_ctas(self):
-        creators = [
-            (CreatineGuideTests().setUp, creatine_document, CBASE, CSAMPLE,
-             "creatine"),
-            (WheyTests().setUp, whey_document, WBASE, WSAMPLE, "whey"),
-        ]
-        for setup, builder, base, sample, engine in creators:
-            instance = setup.__self__
-            setup()
-            page = builder(instance.catalog, base, sample)
+        def offer(ident, name, category, price):
+            return {"id": str(ident), "title": name, "price_czk": price,
+                    "category": category, "merchant": "NaMaximum.cz",
+                    "source_url": ("https://www.namaximum.cz/p/product"
+                                   "?variant=" + str(ident)),
+                    "ean": str(ident)}
+        creatine = {"merchant":"namaximum.cz","merchant_match": True,
+                    "products": [
+                        offer(392,"Creatine Monohydrate 1kg","Kreatin",800),
+                        offer(393,"Creatine Monohydrate 500g","Kreatin",499)]}
+        whey = {"merchant":"namaximum.cz","merchant_match": True,
+                "products": [
+                    offer(482,"Whey WPC 1kg","Syrovátkové proteiny",900),
+                    offer(483,"Whey WPI 750g","Syrovátkové proteiny",1000)]}
+        for builder, catalog, engine in (
+            (creatine_document, creatine, "creatine"),
+            (whey_document, whey, "whey"),
+        ):
+            page = builder(catalog, BASE, SAMPLE)
             parsed = OutboundAttributes()
             parsed.feed(page["content"])
             self.assertGreaterEqual(len(parsed.ctas), 2)
