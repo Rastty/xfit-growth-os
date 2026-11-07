@@ -71,6 +71,23 @@ for(const spec of checks){
         if(node.tagName.toLowerCase()!=="details")continue;
         const summary=node.querySelector("summary");
         const anchors=[...node.querySelectorAll('a[href^="#xfit-offer-"]')];
+        const cheapestPack=node.querySelectorAll('p[data-xfit-budget-choice="upfront"]');
+        const cheapestUnit=node.querySelectorAll('p[data-xfit-budget-choice="unit"]');
+        const sameWinner=node.querySelectorAll('p[data-xfit-budget-choice="same"]');
+        const noOffers=summary?.textContent.includes("— 0 nabídek")||false;
+        const packLink=cheapestPack[0]?.querySelector('a[href^="#xfit-offer-"]');
+        const unitLink=cheapestUnit[0]?.querySelector('a[href^="#xfit-offer-"]');
+        const goalsValid=noOffers ? (
+          anchors.length===0 && cheapestPack.length===0 &&
+          cheapestUnit.length===0 && sameWinner.length===0
+        ) : (
+          cheapestPack.length===1 && !!packLink &&
+          ((cheapestUnit.length===1 && sameWinner.length===0 &&
+            !!unitLink && unitLink.getAttribute("href")!==packLink.getAttribute("href") &&
+            anchors.length===2) ||
+           (sameWinner.length===1 && cheapestUnit.length===0 &&
+            anchors.length===1))
+        );
         budgetDetails.push({
           hasSummary:!!(summary&&summary.textContent.trim().startsWith("Do ")),
           badTarget:anchors.some(link=>{
@@ -78,6 +95,7 @@ for(const spec of checks){
             return !/^xfit-offer-[1-9][0-9]*$/.test(id) ||
                 !document.getElementById(id);
           }),
+          goalsValid,
           unexpectedOutbound:!!node.querySelector('a[href^="http"],a[onclick]'),
         });
       }
@@ -85,7 +103,7 @@ for(const spec of checks){
     const budget={
       heading:!!budgetHeading,
       choices:budgetDetails.length,
-      valid:budgetDetails.every(d=>d.hasSummary&&!d.badTarget&&!d.unexpectedOutbound),
+      valid:budgetDetails.every(d=>d.hasSummary&&!d.badTarget&&d.goalsValid&&!d.unexpectedOutbound),
     };
     const modelPortionRows=[
       ...document.querySelectorAll(".xfit-product-card .xfit-model-portion")
