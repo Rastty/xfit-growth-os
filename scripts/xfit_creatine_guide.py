@@ -180,7 +180,7 @@ def build_document(catalog, base, sample):
             '<p><strong>Cena: '+price+' Kč</strong> · Balení: '+
             str(offer["mass_g"])+' g</p>'
             '<p><strong>Cena za 100 g prášku: '+unit+' Kč</strong></p>'
-            +model_portion_line(offer, "creatine")
+            +model_portion_line(offer, "creatine")+
             '<p><a'+card_click_attributes(offer["id"], "creatine")+' href="'+href+'" rel="sponsored nofollow noopener noreferrer" '
             'aria-label="Zobrazit konkrétní balení na NaMaximum.cz: '+html.escape(offer["title"],quote=True)+' (nová karta)" '
             'target="_blank" style="display:inline-block;padding:12px 16px;min-height:44px;box-sizing:border-box;'
