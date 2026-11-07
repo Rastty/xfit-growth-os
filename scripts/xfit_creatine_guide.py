@@ -18,6 +18,7 @@ from scripts.xfit_affil_deeplink import affiliate_signature, classify_product_li
 from scripts.xfit_select import select_offers, choose_price_scenarios
 from scripts.xfit_click_metadata import card_click_attributes
 from scripts.xfit_budget_choices import budget_choices
+from scripts.xfit_model_portions import model_portion_intro, model_portion_line
 from scripts.wp_publish import (MARKER, PublishError, normalized_base, plain,
                                 publish, verify_public, wp_request, existing_content)
 
@@ -158,6 +159,7 @@ def build_document(catalog, base, sample):
       'Pokud přes odkaz nakoupíte, Xfit.cz může získat provizi. '
       'Řazení je podle ceny za 100 g baleného prášku, nikoli výše provize.</em></p>',
       '<p><strong>Vybrané možnosti:</strong> odlišné výrobky nebo gramáže, ne šest příchutí téhož balení.</p>',
+        model_portion_intro("creatine"),
       '<div class="xfit-product-cards">'
     ]
     for i,offer in enumerate(chosen):
@@ -178,6 +180,7 @@ def build_document(catalog, base, sample):
             '<p><strong>Cena: '+price+' Kč</strong> · Balení: '+
             str(offer["mass_g"])+' g</p>'
             '<p><strong>Cena za 100 g prášku: '+unit+' Kč</strong></p>'
+            +model_portion_line(offer, "creatine")
             '<p><a'+card_click_attributes(offer["id"], "creatine")+' href="'+href+'" rel="sponsored nofollow noopener noreferrer" '
             'aria-label="Zobrazit konkrétní balení na NaMaximum.cz: '+html.escape(offer["title"],quote=True)+' (nová karta)" '
             'target="_blank" style="display:inline-block;padding:12px 16px;min-height:44px;box-sizing:border-box;'
