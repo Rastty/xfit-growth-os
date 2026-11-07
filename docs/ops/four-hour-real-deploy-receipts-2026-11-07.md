@@ -27,6 +27,11 @@ jednoznačné produkční potvrzení:
   Označí se `NEOVĚŘENO`, nikoli tiše jako nula.
 
 Stejný WordPress post v jediném běhu se počítá jen jednou.
+**Dvě různá měřítka se nikdy nesmějí zaměnit:** při osmi ověřených
+aktualizačních bězích, které se týkají dvou článků, uváděj
+**8 produkčních zásahů na 2 unikátních URL**. Nepiš „8 upravených
+stránek“. Výpis po URL agreguje opakované zásahy a ponechá odkaz
+na nejnovější produkční důkaz.
 U konkrétních komerčních poradců se navíc vynucují vlastní WP ID
 25455 a 25456. K reportu se přidává veřejný odkaz na stránku
 a příslušný GitHub Actions run.

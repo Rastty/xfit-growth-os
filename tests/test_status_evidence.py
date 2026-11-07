@@ -31,13 +31,48 @@ class StatusEvidenceTests(unittest.TestCase):
     def test_whey_github_action_logs_prove_one_real_public_update(self):
         result = real_release_evidence([run()], "fake", fetch_jobs=jobs, fetch_log=log_value)
         self.assertEqual(result["counts"], {
-            "new": 0, "updated": 1, "publication_or_update": 0
+            "new": 0, "updated": 1, "unique_updated_pages": 1,
+            "publication_or_update": 0, "unique_changed_pages": 1
         })
         self.assertEqual(result["verified_events"][0]["post_id"], 25456)
         self.assertEqual(result["verified_events"][0]["kind"], "updated")
         self.assertEqual(result["unverified_runs"], [])
         self.assertEqual(result["verified_no_change_runs"], 0)
         self.assertNotIn("api_accepted", str(result))
+
+    def test_multiple_updates_to_two_pages_are_not_eight_different_articles(self):
+        updates = []
+        for idx in range(8):
+            name = ("XFIT Whey Advisor Live" if idx % 2
+                    else "XFIT Creatine Advisor Live")
+            updates.append(run(name=name, id=500 + idx))
+        def logs(job_id, token):
+            raise AssertionError("Use fetch_jobs to identify each run")
+        current = {"rid": 0}
+        def read_jobs(rid, token):
+            current["rid"] = rid
+            return {"jobs":[{"id":rid,"conclusion":"success"}]}
+        def read_log(jobid, token):
+            if jobid % 2:
+                slug,pid="xfit-os-syrovatkovy-protein-porovnani",25456
+            else:
+                slug,pid="xfit-os-kreatin-poradce",25455
+            return (
+                '{"state":"live_verified","post_id":'+str(pid)+
+                ',"url":"https://xfit.cz/'+slug+
+                '/","public_site_modified":true}'
+            )
+        output = real_release_evidence(
+            updates,"fake",fetch_jobs=read_jobs,fetch_log=read_log)
+        self.assertEqual(output["counts"]["updated"],8)
+        self.assertEqual(output["counts"]["unique_updated_pages"],2)
+        self.assertEqual(output["counts"]["unique_changed_pages"],2)
+        self.assertEqual(output["counts"]["new"],0)
+        report=render([],[],__import__("datetime").datetime.now(
+            __import__("datetime").timezone.utc),production=output)
+        self.assertIn("aktualizační zásahy: **8** na **2** různých stránkách",report)
+        self.assertEqual(report.count("nejnovější produkční doklad"),2)
+        self.assertIn("aktualizace (4× v období)",report)
 
     def test_duplicate_receipt_not_double_counted_and_safe_link(self):
         r = run()
@@ -141,7 +176,7 @@ class StatusEvidenceTests(unittest.TestCase):
                                "https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/")],
                     __import__("datetime").datetime(2026,11,7,tzinfo=__import__("datetime").timezone.utc),
                     labels,result)
-        self.assertIn("Nové články: **0**; upravené stránky: **1**",body)
+        self.assertIn("Nové články: **0**; ověřené aktualizační zásahy: **1** na **1** různých stránkách",body)
         self.assertIn("produkční doklad",body)
         self.assertNotIn("NEOVĚŘENO:",body)
         result=real_release_evidence([run()],"fake",fetch_jobs=jobs,
