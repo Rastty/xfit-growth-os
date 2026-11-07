@@ -9,6 +9,8 @@ on:
       - 'scripts/wp_publish.py'
       - 'tests/test_publisher.py'
       - 'scripts/xfit_click_metadata.py'
+      - 'scripts/xfit_budget_choices.py'
+      - 'tests/test_budget_choices.py'
       - 'tests/test_whey_guide.py'
   schedule:
     - cron: '51 5 * * *'
