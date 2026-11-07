@@ -6,6 +6,9 @@ on:
     paths:
       - '.github/workflows/xfit-whey-live.yml'
       - 'scripts/xfit_whey_guide.py'
+      - 'scripts/wp_publish.py'
+      - 'tests/test_publisher.py'
+      - 'scripts/xfit_click_metadata.py'
       - 'tests/test_whey_guide.py'
   schedule:
     - cron: '51 5 * * *'
