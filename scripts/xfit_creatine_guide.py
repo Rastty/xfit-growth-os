@@ -19,6 +19,8 @@ from scripts.xfit_select import select_offers, choose_price_scenarios
 from scripts.xfit_click_metadata import card_click_attributes
 from scripts.xfit_budget_choices import budget_choices
 from scripts.xfit_model_portions import model_portion_intro, model_portion_line
+from scripts.xfit_catalog_retrieval import (verified_catalog_fetch_time,
+                                            catalog_retrieval_notice)
 from scripts.wp_publish import (MARKER, PublishError, normalized_base, plain,
                                 publish, verify_public, wp_request, existing_content)
 
@@ -121,6 +123,7 @@ def build_document(catalog, base, sample):
       'je často nejpraktičtější volbou kreatin monohydrát. '
       'Tento přehled srovnává nabídky podle ceny a hmotnosti balení, '
       'nikoli podle marketingových superlativů.</p>',
+      catalog_retrieval_notice(catalog),
       '<p><strong>Jak používat výběr:</strong> Porovnejte cenu za 100 g prášku, '
       'velikost balení a celkovou cenu. Nezaměňujte cenu za 100 g výrobku '
       's přesnou cenou za 100 g čistého kreatinu – čistotu konkrétních '
@@ -272,6 +275,7 @@ def main():
     catalog=json.loads(Path(args.catalog).read_text(encoding="utf-8"))
     if catalog.get("merchant")!="namaximum.cz" or not catalog.get("merchant_match"):
         raise PublishError("Merchant mismatch in XML; cannot build guide")
+    verified_catalog_fetch_time(catalog, required=True)
     doc=build_document(catalog,base,sample)
     if not args.deploy:
         print(json.dumps({"state":"guide_dry_run","slug":SLUG,
