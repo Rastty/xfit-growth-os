@@ -1,7 +1,7 @@
 """Expiry-proof source dates for real product comparisons; no fake freshness."""
 from datetime import datetime, timedelta, timezone
 from unittest import TestCase
-from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 from scripts.xfit_catalog_retrieval import (
     verified_catalog_fetch_time, catalog_retrieval_notice
@@ -101,21 +101,22 @@ class CatalogRetrievalTests(TestCase):
                 item(484,"Whey Concentrate 500g","Syrovátkové proteiny",450),
             ]),
         ]
-        with patch("scripts.xfit_catalog_retrieval.datetime") as clock:
-            clock.now.return_value = EXAMPLE_NOW
-            for builder, products in examples:
-                with self.subTest(builder=builder.__name__):
-                    catalog={
-                        "fetched_at_utc":"2026-11-07T11:58:00Z",
-                        "merchant":"namaximum.cz",
-                        "merchant_match":True,
-                        "products":products,
-                    }
-                    html = builder(catalog, BASE, SAMPLE)["content"]
-                    self.assertIn('class="xfit-feed-retrieval"', html)
-                    self.assertEqual(html.count('class="xfit-feed-retrieval"'),1)
-                    self.assertIn("7. 11. 2026", html)
-                    self.assertIn("Datum označuje načtení katalogu", html)
+        fetched = datetime.now(UTC) - timedelta(minutes=2)
+        local = fetched.astimezone(ZoneInfo("Europe/Prague"))
+        expected_date = f"{local.day}. {local.month}. {local.year}"
+        for builder, products in examples:
+            with self.subTest(builder=builder.__name__):
+                catalog={
+                    "fetched_at_utc":fetched.isoformat(),
+                    "merchant":"namaximum.cz",
+                    "merchant_match":True,
+                    "products":products,
+                }
+                html = builder(catalog, BASE, SAMPLE)["content"]
+                self.assertIn('class="xfit-feed-retrieval"', html)
+                self.assertEqual(html.count('class="xfit-feed-retrieval"'),1)
+                self.assertIn(expected_date, html)
+                self.assertIn("Datum označuje načtení katalogu", html)
 
 
 if __name__ == "__main__":
