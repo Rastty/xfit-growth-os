@@ -147,10 +147,19 @@ class VisibleArticle(HTMLParser):
                 self.segments.append(segment)
 
 
+# WordPress wptexturize changes cosmetic punctuation when rendering source
+# HTML. Never normalize numbers, products, prices, URLs or actual words.
+_TYPOGRAPHY = str.maketrans({
+    "–": "-", "—": "-", "−": "-",
+    "‘": "'", "’": "'", "“": '"', "”": '"',
+})
+
+
 def normalize_visible(value):
-    # Unescape entities and unify NBSP/formatting differences without
-    # accepting missing, reordered or outdated article text.
-    return " ".join(html.unescape(value).casefold().split())
+    # Unescape entities and unify whitespace and narrowly specified
+    # typographic transformations. All substantive body segments still
+    # have to be visible in the same public page.
+    return " ".join(html.unescape(value).casefold().translate(_TYPOGRAPHY).split())
 
 
 def article_visible(source):
