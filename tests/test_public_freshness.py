@@ -65,6 +65,58 @@ class PublicFreshnessTests(unittest.TestCase):
         self.assertEqual(result["status"],"PUBLIC_READ_ERROR")
         self.assertNotIn("network",str(result))
 
+    def test_commercial_drift_report_distinguishes_price_from_copy(self):
+        target = TARGETS[2]
+        original = post(*target)
+        source = original["content"]["raw"]
+        source = source.replace(
+            "Cena: 200,00 Kč</p>",
+            "Cena: 200,00 Kč · Balení: 500 g</p>"
+            "<p>Cena za 100 g prášku: 40,00 Kč</p>"
+        ).replace(
+            "Cena: 300,00 Kč</p>",
+            "Cena: 300,00 Kč · Balení: 600 g</p>"
+            "<p>Cena za 100 g prášku: 50,00 Kč</p>"
+        )
+        source = source.replace(
+            "</article>",
+            '<a href="https://www.namaximum.cz/product?secret=private">'
+            "Zobrazit balení</a></article>", 1
+        )
+        original["content"]["raw"] = source
+
+        price_drift = probe(
+            target, read_post=lambda _: original,
+            read_public=lambda _: ("<html>" + source.replace(
+                "Cena: 200,00 Kč", "Cena: 220,00 Kč") + "</html>", {})
+        )
+        self.assertEqual(price_drift["status"], "PUBLIC_STALE_OR_RENDERED_DIFFERENTLY")
+        self.assertEqual(price_drift["commercial_fact_drift_positions"], [1])
+        self.assertEqual(price_drift["noncommercial_copy_drift_positions"], [])
+        self.assertNotIn("secret", str(price_drift))
+        self.assertNotIn("namaximum", str(price_drift))
+
+        copy_drift = probe(
+            target, read_post=lambda _: original,
+            read_public=lambda _: ("<html>" + source.replace(
+                "Produkt B", "Produkt B upravený") + "</html>", {})
+        )
+        self.assertEqual(copy_drift["commercial_fact_drift_positions"], [])
+        self.assertEqual(copy_drift["noncommercial_copy_drift_positions"], [2])
+        self.assertEqual(copy_drift["mismatched_card_positions"], [2])
+
+    def test_unparsable_card_is_not_mistaken_for_matching_price(self):
+        target = TARGETS[3]
+        original = post(*target)
+        altered = original["content"]["raw"].replace("Produkt A", "Jiný produkt")
+        report = probe(
+            target, read_post=lambda _: original,
+            read_public=lambda _: ("<html>" + altered + "</html>", {})
+        )
+        self.assertEqual(report["unparsed_commercial_fact_positions"], [1])
+        self.assertEqual(report["commercial_fact_drift_positions"], [])
+        self.assertEqual(report["status"], "PUBLIC_STALE_OR_RENDERED_DIFFERENTLY")
+
     def test_visible_text_decodes_entities_and_whitespace(self):
         self.assertTrue(visible_has("<h2>Dvě&nbsp;cesty k výběru podle ceny</h2>",
                                     "Dvě cesty k výběru podle ceny"))
