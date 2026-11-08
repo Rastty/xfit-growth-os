@@ -170,8 +170,14 @@ def article_visible(source):
 
 def verify_public(url, title, expected_content):
     parsed = urllib.parse.urlsplit(url)
-    if parsed.scheme != "https" or parsed.hostname not in ("xfit.cz", "www.xfit.cz"):
-        raise PublishError("Unexpected public URL host; refusing verification")
+    if (parsed.scheme != "https" or parsed.hostname not in ("xfit.cz", "www.xfit.cz")
+            or parsed.username or parsed.password or parsed.port
+            or parsed.query or parsed.fragment or parsed.path.rstrip("/") in ("", "/")):
+        raise PublishError("Unexpected public URL identity; refusing verification")
+    # A same-host redirect to another post or homepage is NOT proof this
+    # specific owned article was published. Minor trailing slash and www
+    # canonicalization are acceptable; never accept changed path or query.
+    expected_path = parsed.path.rstrip("/")
     expected_text, segments = article_visible(expected_content)
     if len(expected_text) < 250 or len(segments) < 3:
         raise PublishError("No usable editorial body evidence for public freshness check")
@@ -187,9 +193,17 @@ def verify_public(url, title, expected_content):
             with urllib.request.urlopen(req, timeout=25) as response:
                 target = urllib.parse.urlsplit(response.geturl())
                 if (response.status != 200 or target.scheme != "https"
-                        or target.hostname not in ("xfit.cz", "www.xfit.cz")):
-                    raise PublishError("Public verification redirected outside approved XFIT page")
-                public_html = response.read(2_000_000).decode("utf-8", errors="replace")
+                        or target.hostname not in ("xfit.cz", "www.xfit.cz")
+                        or target.username or target.password or target.port
+                        or target.query or target.fragment
+                        or target.path.rstrip("/") != expected_path):
+                    raise PublishError("Public verification returned different canonical page")
+                # Fail on truncated HTML rather than treating partial text
+                # as a complete published page.
+                data = response.read(2_000_001)
+                if len(data) > 2_000_000:
+                    raise PublishError("Public verification page too large")
+                public_html = data.decode("utf-8", errors="replace")
         except (OSError, ValueError) as ex:
             if attempt == 2:
                 raise PublishError("Public verification failed (" + type(ex).__name__ + ")") from ex

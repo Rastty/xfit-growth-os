@@ -67,6 +67,93 @@ class PublisherValidationTests(unittest.TestCase):
         self.assertEqual(load.call_count, 2)
         pause.assert_called_once_with(2)
 
+    def test_public_identity_rejects_wrong_path_even_if_full_article_matches(self):
+        from scripts.wp_publish import verify_public
+        from unittest.mock import patch
+        import io
+
+        slug = "xfit-os-protein-guide"
+        good_url = "https://xfit.cz/" + slug + "/"
+        title = "Jak vybrat kvalitní protein"
+        body = (
+            "<h2>Výběr podle skutečné etikety a ceny</h2>"
+            "<p>Zkontrolujte celkovou hmotnost proteinu i uvedený obsah "
+            "bílkovin, jinak se jednotková cena nedá srovnat.</p>"
+            "<p>Pokud máte dost bílkovin z běžného jídla, není důvod "
+            "kupovat proteinový prášek jen kvůli reklamě.</p>"
+            "<p>Před nákupem srovnejte aktuální cenu za porci a "
+            "zkontrolujte informace na konkrétním obalu.</p>"
+        )
+        rendered = ("<html><h1>" + title + "</h1><main>" + body +
+                    "</main></html>")
+
+        class Response(io.BytesIO):
+            status = 200
+            def __init__(self, location):
+                super().__init__(rendered.encode("utf-8"))
+                self.location = location
+            def geturl(self):
+                return self.location
+
+        for redirect in (
+            "https://xfit.cz/",
+            "https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/",
+            good_url + "?cache=2026",
+            "https://xfit.cz/" + slug + "-duplicate/",
+            "https://xfit.cz:444/" + slug + "/",
+            "https://other.example/" + slug + "/",
+        ):
+            with self.subTest(redirect=redirect), \
+                 patch("scripts.wp_publish.urllib.request.urlopen",
+                       side_effect=lambda *a, **k: Response(redirect)):
+                with self.assertRaisesRegex(
+                        PublishError, "different canonical page"):
+                    verify_public(good_url, title, body)
+
+        # Existing website canonicalization from xfit.cz to www.xfit.cz
+        # must remain valid when the article path is unchanged.
+        with patch("scripts.wp_publish.urllib.request.urlopen",
+                   side_effect=lambda *a, **k: Response(
+                       "https://www.xfit.cz/" + slug)):
+            self.assertTrue(verify_public(good_url, title, body))
+
+    def test_public_url_input_rejects_query_credentials_or_homepage(self):
+        from scripts.wp_publish import verify_public
+        from unittest.mock import patch
+        with patch("scripts.wp_publish.urllib.request.urlopen") as get:
+            for invalid in (
+                "https://xfit.cz/",
+                "https://xfit.cz/xfit-os-protein-guide/?key=invalid",
+                "https://evil@xfit.cz/xfit-os-protein-guide/",
+                "https://xfit.cz:443/xfit-os-protein-guide/",
+                "http://xfit.cz/xfit-os-protein-guide/",
+            ):
+                with self.subTest(url=invalid), self.assertRaisesRegex(
+                        PublishError, "Unexpected public URL identity"):
+                    verify_public(invalid,"Any title","<p>Any content</p>")
+            get.assert_not_called()
+
+    def test_truncated_public_html_fails_early_even_with_full_test_body(self):
+        from scripts.wp_publish import verify_public
+        from unittest.mock import patch
+        import io
+        class Response(io.BytesIO):
+            status = 200
+            def geturl(self):
+                return "https://xfit.cz/xfit-os-protein-guide/"
+        big = b"<html><h1>Protein</h1>" + b"abc " * 600000
+        body = ("<h2>Rozhodnutí na základě ceny a etikety</h2>"
+                "<p>Pro konkrétní výrobek si ověřte dostupnost "
+                "a příslušnou deklaraci jeho složení.</p>"
+                "<p>Jiná varianta může obsahovat jiné množství "
+                "bílkovin při stejné porci prášku.</p>"
+                "<p>Nejde o osobní ani zdravotní doporučení, "
+                "bílkoviny můžete přijímat také běžným jídlem.</p>")
+        with patch("scripts.wp_publish.urllib.request.urlopen",
+                   side_effect=lambda *a, **k: Response(big)):
+            with self.assertRaisesRegex(PublishError, "too large"):
+                verify_public("https://xfit.cz/xfit-os-protein-guide/","Protein",body)
+
     def test_wptexturize_punctuation_does_not_look_like_stale_body(self):
         from scripts.wp_publish import verify_public
         from unittest.mock import patch
