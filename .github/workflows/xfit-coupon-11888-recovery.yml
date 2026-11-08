@@ -1,0 +1,47 @@
+name: XFIT Coupon 11888 Exact Recovery
+# One-time recovery of the only unchanged article from 2026-11-01 wave.
+# This does not restart that 8-post wave and has no scheduled publication.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-coupon-11888-recovery.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  recover-one-post:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run all project tests including exact one-article rollback tests
+        run: |
+          python -m unittest discover -s tests -v
+          python -m unittest tests.test_coupon_recovery_11888 -v
+      - name: Prewrite read-only checksum preflight on original WP post 11888
+        run: python -m scripts.xfit_coupon_recovery_11888 snapshot
+      - name: Upload mandatory source backup before any possible WordPress write
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-coupon-11888-rollback-${{ github.run_id }}
+          path: reports/backups/xfit-coupon-11888-recovery.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: One guarded WordPress update and independent public proof
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_coupon_recovery_11888 apply | tee -a "$GITHUB_STEP_SUMMARY"
