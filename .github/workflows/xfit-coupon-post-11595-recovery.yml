@@ -1,0 +1,45 @@
+name: XFIT Coupon Post 11595 Recovery
+# One-time targeted recovery, not a new broad coupon cleanup schedule.
+# The 2026-11-08 wave already changed seven other posts; never touch them here. Linked issue #75.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-coupon-post-11595-recovery.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  recover-single-post:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: All project regression and narrow single-post recovery tests
+        run: |
+          python -m unittest discover -s tests -v
+          python -m unittest tests.test_coupon_recovery -v
+      - name: Create immutable prewrite snapshot only for WP post 11595
+        run: python -m scripts.xfit_coupon_recovery_11595 snapshot
+      - name: Mandatory rollback artifact BEFORE attempting the one POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-onepost-11595-rollback-${{ github.run_id }}
+          path: reports/backups/xfit-coupon-post-11595-recovery.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: One guarded update and authenticated/public readback; no retries on POST
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_coupon_recovery_11595 apply | tee -a "$GITHUB_STEP_SUMMARY"

@@ -1,6 +1,10 @@
 import unittest
-from scripts.xfit_coupon_cleanup import stripped,sha
+from scripts.xfit_coupon_cleanup import stripped,sha,QUARANTINE_IDS
 class CouponCleanupTests(unittest.TestCase):
+    def test_failed_post_is_quarantined_until_isolated_recovery(self):
+        self.assertIn(11595,QUARANTINE_IDS)
+        self.assertIn(11945,QUARANTINE_IDS)
+
     def test_only_explicit_2022_promo_shortcode_removed(self):
         s=(('Užitečný odstavec. '*40)+
           '[su_button url="https://xfit.cz/damske-obleceni" background="#2def4c"]'
