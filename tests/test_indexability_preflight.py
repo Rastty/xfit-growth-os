@@ -74,7 +74,7 @@ class TechnicalReadOnlyTests(unittest.TestCase):
         calls = []
         def reader(path, **kwargs):
             calls.append(path)
-            return expected[path.lstrip("/")], {"Content-Type": "text/html"}
+            return expected[path.lstrip("/").rstrip("/")], {"Content-Type": "text/html"}
         result = probe.run(reader=reader)
         self.assertEqual(result["page_count"], 6)
         self.assertEqual(len(calls), 10)
