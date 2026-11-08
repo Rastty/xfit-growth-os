@@ -22,6 +22,7 @@ PUBLISHER_NAMES = frozenset({
     "XFIT Pilates Cardio Editorial Upgrade",
     "XFIT Pilates Revision",
     "XFIT Coupon Post 11600 Recovery",
+    "XFIT Coupon Post 11595 Recovery",
     "XFIT Protein Pack-use One-post Live Release",
     "XFIT Beginner Goal Handoffs One-post Live",
 })
@@ -101,6 +102,8 @@ def inspect_log(log, run):
     production_apply = {
         "XFIT Coupon Post 11600 Recovery":
             "python -m scripts.xfit_coupon_recovery apply",
+        "XFIT Coupon Post 11595 Recovery":
+            "python -m scripts.xfit_coupon_recovery_11595 apply",
         "XFIT Protein Pack-use One-post Live Release":
             "python -m scripts.xfit_protein_pack_release apply",
         "XFIT Beginner Goal Handoffs One-post Live":
@@ -130,7 +133,23 @@ def inspect_log(log, run):
         if state == "live_verified" and entry.get("public_site_modified") is False:
             noop = True
             continue
-        if run.get("name") == "XFIT Coupon Post 11600 Recovery":
+        if run.get("name") == "XFIT Coupon Post 11595 Recovery":
+            if state != "PUBLIC_VERIFIED":
+                continue
+            # The new isolated release emits fixture receipts during tests:
+            # count ONLY the post-backup production apply and its exact post.
+            if (entry.get("post_id") != 11595 or
+                    entry.get("url") !=
+                    "https://xfit.cz/nove-trendy-v-tekutem-spalovaci-tuku-pro-fitness-nadsence/" or
+                    entry.get("shortcodes_removed") != 3 or
+                    entry.get("posts_changed") != 1 or
+                    entry.get("post_attempts") != 1 or
+                    entry.get("new_posts", 0) != 0 or
+                    entry.get("public_site_modified") is not True or
+                    entry.get("deletes") != 0 or entry.get("redirects") != 0):
+                continue
+            kind = "updated"
+        elif run.get("name") == "XFIT Coupon Post 11600 Recovery":
             if state != "PUBLIC_VERIFIED":
                 continue
             # A specific proven one-post repair; never count synthetic
