@@ -1,0 +1,46 @@
+name: XFIT Beginner Goal Handoffs One-post Live
+# One-time owner-approved update of WP post 25458, never a bulk republish.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-beginner-goals-live.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  publish-goal-handoffs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate all project guards and source-bound beginner patch tests
+        run: |
+          python -m unittest discover -s tests -v
+          python -m unittest tests.test_beginner_goal_release -v
+      - name: Read original authenticated live WordPress post and prepare rollback
+        run: python -m scripts.xfit_beginner_goal_release snapshot
+      - name: Mandatory full source backup before any WordPress mutation
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-beginner-goals-25458-rollback-${{ github.run_id }}
+          path: reports/backups/xfit-beginner-goal-handoffs-25458.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: One guarded edit and independent public readback
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_beginner_goal_release apply | tee -a "$GITHUB_STEP_SUMMARY"
