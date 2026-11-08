@@ -1,0 +1,13 @@
+{
+  "status": "editorial_proposal_not_deployed",
+  "issue": 4,
+  "wp_post_id": 25451,
+  "slug": "xfit-os-protein-guide",
+  "source_file": "content/ready/xfit-os-protein-guide.json",
+  "source_file_sha256": "bef752e44534dd3cffef24f8f703a213d9f9024d1ed3a229afe5bab6a0402f58",
+  "source_content_sha256": "46810fac0512352ab26814978c7a4213038417c5c9465f7a614f7aec7deff0d3",
+  "operation": "replace_exact_once",
+  "original": "<p><strong>Vzorec:</strong> Cena za 100 g bílkovin = cena balení × 100 ÷ (hmotnost balení v g × podíl bílkovin v desetinném tvaru).</p>",
+  "replacement": "<p><strong>Vzorec:</strong> Cena za 100 g bílkovin = cena balení × 100 ÷ (hmotnost balení v g × podíl bílkovin v desetinném tvaru).</p>\n<p><strong>Když objednáváte jen jedno balení:</strong> pro porovnání dvou samostatných objednávek nahraďte ve vzorci cenu balení celkovou částkou za dané balení v košíku po slevách, včetně dopravy a povinných poplatků. U každé nabídky použijte její vlastní celkovou částku a obsah bílkovin. Nižší cena za bílkoviny bez dopravy nemusí znamenat levnější nákup. Pokud košík obsahuje i jiné zboží, nepřičítejte celou společnou dopravu každému balení; porovnejte také celkové částky obou zamýšlených objednávek. Nepřidávejte nepotřebné doplňky jen kvůli dopravě zdarma. Pokud bílkoviny pokryjete jídlem, nemusíte objednávat nic.</p>",
+  "evidence": "Arithmetic: compare total single-pack checkout cost per equal protein quantity. No prices, products, clinical claims or assumed shipping terms."
+}
