@@ -82,6 +82,15 @@ def summarize_funnel(events, *, analytics_consent=False,
             page: "OBSERVED_ACTIONS" if any(actions.values()) else "UNKNOWN"
             for page, actions in counts.items()
         },
+        # A click alone proves nothing about start/completion instrumentation.
+        # Keep missing evidence explicit at each step before comparing advisors.
+        "action_observation_status": {
+            page: {
+                name: "OBSERVED_ACTIONS" if count else "UNKNOWN"
+                for name, count in actions.items()
+            }
+            for page, actions in counts.items()
+        },
         "unique_visitors": "UNKNOWN",
         "orders": "UNKNOWN",
         "commission": "UNKNOWN",
