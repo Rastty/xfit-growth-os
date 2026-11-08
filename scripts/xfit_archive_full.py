@@ -203,8 +203,9 @@ def main():
        "interrupted_at":failed,
        "pages_fetched":pages_fetched,
        "complete":failed is None and (
-           saw_short_page or
-           (declared_total is not None and declared_total>0 and pages_fetched>=declared_total)
+           # A short response cannot override an explicit remaining-page count.
+           (pages_fetched>=declared_total if declared_total is not None
+            else saw_short_page)
        ),
        "pagination_warning":"Page-based WordPress enumeration is not an atomic snapshot. Changes during scan can shift records; repeated IDs are deduplicated and a complete page count does not prove zero missed IDs.",
        "mutated_wordpress":False
@@ -212,7 +213,7 @@ def main():
     dest=Path(args.output);dest.parent.mkdir(parents=True,exist_ok=True)
     dest.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
     print(json.dumps({k:report[k] for k in ("scanned","repeated_pagination_post_count","complete","duplicate_title_groups","exact_body_duplicate_groups","thin_count","stale_2022_promo_posts","stale_2022_promo_shortcodes","suspected_out_of_focus_count","suspected_spam_count","declared_total_pages","interrupted_at","mutated_wordpress")},ensure_ascii=False))
-    return 2 if not rows or failed else 0
+    return 2 if not rows or not report["complete"] else 0
 
 if __name__=="__main__":
     sys.exit(main())

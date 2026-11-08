@@ -11,6 +11,32 @@ def post(i,slug,title,body):
        "modified":"2026-01-01T00:00:00","title":{"rendered":title},
        "content":{"rendered":"<p>"+body+"</p>"}}
 class ArchiveAuditTests(unittest.TestCase):
+    def test_completeness_and_exit_status_agree(self):
+        first=post(1,"kreatin","Kreatin","Praktické informace.")
+        cases=[
+            # Short page contradicts the API's remaining-page count.
+            (2,2,[([first],3)],False),
+            # Requested page limit is reached before the archive ends.
+            (1,1,[([first],3)],False),
+            # A short page without pagination metadata is still supported.
+            (2,2,[([first],0)],True),
+            # A full final page with explicit pagination metadata is complete.
+            (1,1,[([first],1)],True),
+        ]
+        for pages,size,batches,complete in cases:
+            with self.subTest(pages=pages,size=size,batches=batches), \
+                 tempfile.TemporaryDirectory() as directory:
+                output=Path(directory)/"audit.json"
+                with patch("sys.argv",["audit","--pages",str(pages),
+                                       "--size",str(size),"--output",str(output)]), \
+                     patch("scripts.xfit_archive_full.fetch",side_effect=batches), \
+                     patch("builtins.print"):
+                    self.assertEqual(main(),0 if complete else 2)
+                report=json.loads(output.read_text(encoding="utf-8"))
+                self.assertEqual(report["complete"],complete)
+                self.assertEqual(report["scanned"],1)
+                self.assertFalse(report["mutated_wordpress"])
+
     def test_rejected_page_is_not_an_empty_successful_page(self):
         error=HTTPError("https://example.invalid/",400,"Bad Request",{},None)
         with patch("scripts.xfit_archive_full.urlopen",side_effect=error) as request:
