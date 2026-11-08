@@ -105,7 +105,9 @@ def classify(post):
       "internal_link_count":internal_link_count,
       "invalid_link_count":invalid_link_count,
       "external_hosts":dict(external.most_common(10)),
-      "body_hash":hashlib.sha256(SPACE.sub(" ",body.lower()).encode("utf-8")).hexdigest() if body else "",
+      # Equal visible text does not prove equal content: source/product links,
+      # images and case-sensitive details may differ. Keep exact HTML evidence.
+      "body_hash":hashlib.sha256(body_html.encode("utf-8")).hexdigest() if body_html.strip() else "",
       "title_normalized":TITLE_NOISE.sub("",title).lower().strip(),
       "stale_2022_promo_mentions":len(STALE_PROMO.findall(body_html)),
       "stale_2022_promo_shortcode_count":len(STALE_PROMO_FULL.findall(body_html)),
