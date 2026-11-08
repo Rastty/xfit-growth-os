@@ -23,6 +23,7 @@ PUBLISHER_NAMES = frozenset({
     "XFIT Pilates Revision",
     "XFIT Coupon Post 11600 Recovery",
     "XFIT Coupon Post 11595 Recovery",
+    "XFIT Pilates GSC Query-Intent Title Onepost",
     "XFIT Protein Pack-use One-post Live Release",
     "XFIT Beginner Goal Handoffs One-post Live",
 })
@@ -104,6 +105,8 @@ def inspect_log(log, run):
             "python -m scripts.xfit_coupon_recovery apply",
         "XFIT Coupon Post 11595 Recovery":
             "python -m scripts.xfit_coupon_recovery_11595 apply",
+        "XFIT Pilates GSC Query-Intent Title Onepost":
+            "python -m scripts.xfit_pilates_gsc_title_release apply",
         "XFIT Protein Pack-use One-post Live Release":
             "python -m scripts.xfit_protein_pack_release apply",
         "XFIT Beginner Goal Handoffs One-post Live":
@@ -133,7 +136,24 @@ def inspect_log(log, run):
         if state == "live_verified" and entry.get("public_site_modified") is False:
             noop = True
             continue
-        if run.get("name") == "XFIT Coupon Post 11595 Recovery":
+        if run.get("name") == "XFIT Pilates GSC Query-Intent Title Onepost":
+            if state != "PUBLIC_VERIFIED":
+                continue
+            # Only after production apply, not the synthetic test fixtures
+            # printed before the prewrite artifact has been uploaded.
+            if (entry.get("post_id") != 3660
+                    or entry.get("url") !=
+                    "https://xfit.cz/jaky-je-rozdil-mezi-klasickym-pilates-a-power-pilates/"
+                    or entry.get("posts_changed") != 1
+                    or entry.get("post_attempts") != 1
+                    or entry.get("title_changed") is not True
+                    or entry.get("existing_html_preserved") is not True
+                    or entry.get("public_site_modified") is not True
+                    or entry.get("new_posts") != 0
+                    or entry.get("deletes") != 0 or entry.get("redirects") != 0):
+                continue
+            kind = "updated"
+        elif run.get("name") == "XFIT Coupon Post 11595 Recovery":
             if state != "PUBLIC_VERIFIED":
                 continue
             # The new isolated release emits fixture receipts during tests:
