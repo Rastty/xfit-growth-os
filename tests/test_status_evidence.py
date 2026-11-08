@@ -74,6 +74,64 @@ class StatusEvidenceTests(unittest.TestCase):
         self.assertEqual(report.count("nejnovější produkční doklad"),2)
         self.assertIn("aktualizace (4× v období)",report)
 
+    def test_pilates_title_release_counted_only_after_real_apply(self):
+        run_name = "XFIT Pilates GSC Query-Intent Title Onepost"
+        receipt = (
+            '{"state":"PUBLIC_VERIFIED","post_id":3660,"posts_changed":1,'
+            '"post_attempts":1,"title_changed":true,'
+            '"existing_html_preserved":true,"public_site_modified":true,'
+            '"new_posts":0,"deletes":0,"redirects":0,'
+            '"url":"https://xfit.cz/jaky-je-rozdil-mezi-klasickym-pilates-a-power-pilates/"}'
+        )
+        nl = chr(10)
+        actual_apply = nl.join((
+            "##[group]Run set -o pipefail",
+            "python -m scripts.xfit_pilates_gsc_title_release apply | tee -a \"$GITHUB_STEP_SUMMARY\"",
+            "##[endgroup]",
+        )) + nl
+        evidence = real_release_evidence(
+            [run(name=run_name, id=42470689675)], "fake",
+            fetch_jobs=jobs,
+            fetch_log=lambda *_: receipt + nl + actual_apply + receipt)
+        self.assertEqual(evidence["counts"]["updated"], 1)
+        self.assertEqual(evidence["counts"]["unique_changed_pages"], 1)
+        self.assertEqual(evidence["verified_events"][0]["post_id"], 3660)
+        self.assertEqual(evidence["unverified_runs"], [])
+        # Test fixtures always emit a fake successful POST before actual apply.
+        wrong = (
+            receipt, actual_apply,
+            receipt + nl + actual_apply + receipt.replace('"post_id":3660', '"post_id":3661'),
+            receipt + nl + actual_apply + receipt.replace('"posts_changed":1', '"posts_changed":2'),
+            receipt + nl + actual_apply + receipt.replace('"existing_html_preserved":true', '"existing_html_preserved":false'),
+            receipt + nl + actual_apply + receipt.replace('"title_changed":true', '"title_changed":false'),
+            receipt + nl + actual_apply + receipt.replace('"public_site_modified":true', '"public_site_modified":false'),
+            receipt + nl + actual_apply + receipt.replace('"new_posts":0', '"new_posts":1'),
+            receipt + nl + actual_apply + receipt.replace('jaky-je-rozdil-mezi-klasickym-pilates-a-power-pilates', 'jinak-nazvany-clanek'),
+        )
+        for log_text in wrong:
+            with self.subTest(probe=log_text[-80:]):
+                unverified = real_release_evidence(
+                    [run(name=run_name, id=42470689675)], "fake",
+                    fetch_jobs=jobs, fetch_log=lambda *_: log_text)
+                self.assertEqual(unverified["counts"]["updated"], 0)
+                self.assertEqual(len(unverified["unverified_runs"]), 1)
+
+    def test_pilates_noop_is_not_a_second_edit(self):
+        name = "XFIT Pilates GSC Query-Intent Title Onepost"
+        marker = "\n".join((
+            "##[group]Run set -o pipefail",
+            "python -m scripts.xfit_pilates_gsc_title_release apply",
+            "##[endgroup]",
+        )) + "\n"
+        nochange = real_release_evidence(
+            [run(name=name, id=42470689675)], "fake",
+            fetch_jobs=jobs,
+            fetch_log=lambda *_: marker +
+                '{"state":"ALREADY_APPLIED_NO_WRITE","post_id":3660,'
+                '"post_attempts":0,"public_site_modified":false}')
+        self.assertEqual(nochange["counts"]["updated"], 0)
+        self.assertEqual(nochange["verified_no_change_runs"], 1)
+
     def test_11595_verified_after_actual_apply_only(self):
         name = "XFIT Coupon Post 11595 Recovery"
         actual = ('{"state":"PUBLIC_VERIFIED","post_id":11595,'
