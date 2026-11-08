@@ -76,7 +76,7 @@ def github_activity(token, since):
     return items
 
 LANE_PREFIX={2:"ux",3:"archive",4:"editor",5:"revenue"}
-CODEX_BRANCH=re.compile(r"xfit/codex-(ux|archive|editor|revenue)-[0-9]+-[0-9]+\\Z")
+CODEX_BRANCH=re.compile(r"xfit/codex-(ux|archive|editor|revenue)-[0-9]+-[0-9]+\Z")
 
 
 def github_open_agent_prs(token):
