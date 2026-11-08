@@ -129,7 +129,7 @@ def build_document(catalog, base, sample):
       's přesnou cenou za 100 g čistého kreatinu – čistotu konkrétních '
       'výrobků ověřujte na obalu. Ceny a dostupnost se mohou měnit.</p>',
       '<h2>Než koupíte kreatin: tři rychlé otázky</h2>',
-      '<details><summary><strong>Začínám cvičit. Potřebuji ho hned?</strong></summary>'
+      '<details open><summary><strong>Začínám cvičit. Potřebuji ho hned?</strong></summary>'
       '<p>Ne. Pravidelný trénink, dostatek jídla, spánek a realistický plán mají přednost. '
       'Pokud zatím nevíte, co vám schází, začněte průvodcem '
       '<a href="https://xfit.cz/xfit-os-doplnky-pro-zacatecniky/">doplňky stravy pro začátečníky</a>. '
