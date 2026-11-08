@@ -7,6 +7,7 @@ Only uses the repository's ephemeral GitHub Actions token.
 from datetime import datetime, timedelta, timezone
 import json
 import os
+import re
 import sys
 from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
@@ -74,21 +75,67 @@ def github_activity(token, since):
             items.append(r)
     return items
 
+LANE_PREFIX={2:"ux",3:"archive",4:"editor",5:"revenue"}
+CODEX_BRANCH=re.compile(r"xfit/codex-(ux|archive|editor|revenue)-[0-9]+-[0-9]+\Z")
+
+
+def github_open_agent_prs(token):
+    """Only verified, in-repository, currently OPEN Codex proposals.
+
+    Missing PR permissions or an incomplete 100-row listing must be shown
+    as UNKNOWN, never interpreted as no active Codex proposal.
+    """
+    try:
+        pulls=get_json("https://api.github.com/repos/"+EXPECTED_REPO+
+                       "/pulls?state=open&per_page=100",token)
+        if not isinstance(pulls,list) or len(pulls)>=100:
+            return None
+        by_lane={lane:[] for lane in LANE_PREFIX.values()}
+        for p in pulls:
+            if not isinstance(p,dict) or p.get("state")!="open":
+                continue
+            head=p.get("head") or {}
+            branch=head.get("ref") or ""
+            repo=(head.get("repo") or {}).get("full_name")
+            m=CODEX_BRANCH.fullmatch(branch)
+            number=p.get("number")
+            if not m or repo!=EXPECTED_REPO or type(number) is not int or number<1:
+                continue
+            by_lane[m.group(1)].append(number)
+        return {lane:sorted(set(numbers),reverse=True)
+                for lane,numbers in by_lane.items()}
+    except (HTTPError,URLError,TimeoutError,ValueError,KeyError,TypeError):
+        return None
+
+
 def github_lanes(token):
-    """Display coding assignment truth; a prepared issue is not an active agent."""
+    """Report actual reviewable Codex PRs, NOT issue assignee guesses."""
+    open_prs=github_open_agent_prs(token)
     results=[]
     for number,label in LANES.items():
         try:
-            issue=get_json("https://api.github.com/repos/"+EXPECTED_REPO+"/issues/"+str(number),token)
+            issue=get_json("https://api.github.com/repos/"+EXPECTED_REPO+
+                           "/issues/"+str(number),token)
             if issue.get("pull_request"):
                 results.append((number,label,"issue_neplatné",""))
                 continue
-            assignees=[x.get("login","") for x in issue.get("assignees",[])]
-            agents=[n for n in assignees if "copilot" in n.lower() or "codex" in n.lower() or "claude" in n.lower()]
-            mode="AI agent přiřazen; čeká na ověření PR" if agents else "připravené zadání; žádný AI agent není přiřazen"
+            if open_prs is None:
+                mode="NEOVĚŘENO – seznam agentních PR nelze načíst"
+            else:
+                prs=open_prs.get(LANE_PREFIX[number],[])
+                if prs:
+                    links=[
+                        "[PR #"+str(n)+"](https://github.com/"+EXPECTED_REPO+
+                        "/pull/"+str(n)+")" for n in prs[:3]
+                    ]
+                    mode=", ".join(links)+" — otevřený návrh k revizi, ještě nepublikováno"
+                    if len(prs)>3:
+                        mode+=" (a další "+str(len(prs)-3)+" PR)"
+                else:
+                    mode="bez otevřeného Codex PR; případnou práci ověřují jen Actions běhy"
             results.append((number,label,mode,issue.get("html_url","")))
-        except (HTTPError,URLError,TimeoutError,ValueError,KeyError):
-            results.append((number,label,"stav nepodařilo se ověřit",""))
+        except (HTTPError,URLError,TimeoutError,ValueError,KeyError,TypeError):
+            results.append((number,label,"stav issue nepodařilo se ověřit",""))
     return results
 
 def render(runs, states, now, lanes=None, production=None):

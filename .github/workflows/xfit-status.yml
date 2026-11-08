@@ -8,11 +8,13 @@ on:
       - 'scripts/xfit_status.py'
       - 'scripts/xfit_status_evidence.py'
       - 'tests/test_status_evidence.py'
+      - 'tests/test_status_lanes.py'
   schedule:
     - cron: '13 */4 * * *'
 permissions:
   contents: read
   actions: read
+  pull-requests: read
   issues: write
 concurrency:
   group: xfit-status-comment
@@ -29,6 +31,6 @@ jobs:
         with:
           python-version: '3.12'
       - name: Validate production receipt classification before issue write
-        run: python -m unittest tests.test_status_evidence -v
+        run: python -m unittest tests.test_status_evidence tests.test_status_lanes -v
       - name: Collect evidence and post status to issue #1
         run: python -m scripts.xfit_status
