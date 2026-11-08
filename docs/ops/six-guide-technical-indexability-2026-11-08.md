@@ -21,3 +21,15 @@ The report is a sanitized JSON object. No raw HTML, external product/affiliate U
 - Do not promise indexed status or Google impressions from this code change alone.
 
 Rollback: revert only the preflight script, tests and GitHub Actions workflow. Zero WordPress writes and zero indexing side effects.
+
+## Production observation and follow-up (2026-11-08)
+
+The real [indexability audit run 42471373725](https://github.com/Rastty/xfit-growth-os/actions/runs/42471373725) checked all 6 existing guides:
+- 6/6 public HTTP 200; 6/6 self-canonical; exactly one H1 in each.
+- 6/6 lacked an explicit HTTP or HTML `noindex` in the observed response.
+- 4–6 links to each URL already occurred in the seven reviewed pages (sampling only, not full site crawl).
+- `/robots.txt` was accessible, while both `/wp-sitemap.xml` and `/sitemap_index.xml` were unavailable by the same public-client check. This **does NOT prove that no sitemap exists**.
+
+The next read-only preflight also checks `/sitemap.xml` and safely follows at most two exactly same-origin XML paths declared in `robots.txt`. Cross-domain, credential-bearing or query-parameter URLs are ignored. The output distinguishes explicit root Disallow rules from robots policy precedence; a found rule by itself is **not** sufficient to infer Google access denial.
+
+No WordPress, Search Console, GA4, affiliate, plugin or hosting changes are made by these probes. If the real sitemap can be retrieved, review URL inclusion of the six specific owned guides separately; do not infer inclusion from the root file alone.
