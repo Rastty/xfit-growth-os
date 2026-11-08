@@ -80,16 +80,18 @@ class StatusEvidenceTests(unittest.TestCase):
                 '"url":"https://xfit.cz/test-a-recenze-nejlepsich-tekutych-spalovacu-tuku-pro-fitnesscviky/",'
                 '"shortcodes_removed":3,"posts_changed":1,"post_attempts":1,'
                 '"public_site_modified":true,"deletes":0,"redirects":0}')
-        # The real logs contain a synthetic success before the actual shell
-        # apply step (from unit-test mocking), which must never count.
-        fake=actual
-        shell=("2026-11-08T07:22:47Z ##[group]Run set -o pipefail\\n"
-               "2026-11-08T07:22:47Z python -m scripts.xfit_coupon_recovery apply | tee -a \\"$GITHUB_STEP_SUMMARY\\"\\n"
-               "2026-11-08T07:22:47Z ##[endgroup]\\n")
-        good_log=(fake+"\\n"+shell+"2026-11-08T07:22:54Z "+actual)
+        # The real logs contain a synthetic success from source tests before
+        # the actual guarded apply step; that earlier value never counts.
+        nl=chr(10)
+        shell=nl.join((
+            "2026-11-08T07:22:47Z ##[group]Run set -o pipefail",
+            "2026-11-08T07:22:47Z python -m scripts.xfit_coupon_recovery apply",
+            "2026-11-08T07:22:47Z ##[endgroup]",
+        ))+nl
+        good_log=fake=actual
+        good_log=fake+nl+shell+"2026-11-08T07:22:54Z "+actual
         result=real_release_evidence(
-            [coupon_run],"fake",fetch_jobs=jobs,
-            fetch_log=lambda *_:good_log)
+            [coupon_run],"fake",fetch_jobs=jobs,fetch_log=lambda *_:good_log)
         self.assertEqual(result["counts"]["updated"],1)
         self.assertEqual(result["counts"]["unique_updated_pages"],1)
         self.assertEqual(result["counts"]["new"],0)
@@ -99,9 +101,9 @@ class StatusEvidenceTests(unittest.TestCase):
         for bad_log in (
             fake,
             shell,
-            fake+"\\n"+shell+fake.replace('"post_id":11600','"post_id":11888'),
-            fake+"\\n"+shell+fake.replace('"shortcodes_removed":3','"shortcodes_removed":1'),
-            fake+"\\n"+shell+fake.replace('"public_site_modified":true','"public_site_modified":false'),
+            fake+nl+shell+fake.replace('"post_id":11600','"post_id":11888'),
+            fake+nl+shell+fake.replace('"shortcodes_removed":3','"shortcodes_removed":1'),
+            fake+nl+shell+fake.replace('"public_site_modified":true','"public_site_modified":false'),
         ):
             with self.subTest(bad_log=bad_log[-90:]):
                 found=real_release_evidence(
@@ -111,9 +113,12 @@ class StatusEvidenceTests(unittest.TestCase):
                 self.assertEqual(len(found["unverified_runs"]),1)
 
     def test_verified_coupon_noop_counts_as_nochange_not_a_new_post(self):
-        shell=("##[group]Run set -o pipefail\\n"
-               "python -m scripts.xfit_coupon_recovery apply\\n"
-               "##[endgroup]\\n")
+        nl=chr(10)
+        shell=nl.join((
+            "##[group]Run set -o pipefail",
+            "python -m scripts.xfit_coupon_recovery apply",
+            "##[endgroup]",
+        ))+nl
         out=real_release_evidence(
             [run(name="XFIT Coupon Post 11600 Recovery")],"fake",
             fetch_jobs=jobs,
