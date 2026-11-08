@@ -1,6 +1,11 @@
 name: XFIT Codex Parallel Development
 on:
   workflow_dispatch:
+  # Re-verify the reusable-job graph immediately after a targeted fix;
+  # unrelated content commits must not trigger four paid agent lanes.
+  push:
+    branches: [main]
+    paths: ['.github/workflows/xfit-codex-parallel.yml']
   schedule:
     # Six waves every four hours UTC; 4 scoped agents each = up to 24 model calls/day.
     # An open PR for a lane skips its paid model call until reviewed.
@@ -112,6 +117,14 @@ jobs:
   parallel-lanes:
     needs: permission-gate
     if: ${{ vars.XFIT_CODEX_AGENTS_ENABLED == 'true' && needs.permission-gate.outputs.can_create_pr == 'true' }}
+    # GitHub validates permissions of ALL jobs in a reusable workflow
+    # before creating even the permission-gate job. The called open-pr
+    # job needs actions:write for a tightly scoped Code Checks dispatch.
+    # Only this calling job receives it, not permission-gate.
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write
     strategy:
       fail-fast: false
       max-parallel: 4
