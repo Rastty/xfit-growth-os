@@ -11,7 +11,7 @@ from scripts import xfit_coupon_recovery_11888 as c
 
 
 BUTTON = ('[su_button url="https://xfit.cz/produkt"]'
-          '5NM2022 starý kupon, není platný[/su_button]')
+          'Starý a neplatný kupon 5NM2022[/su_button]')
 RAW = ("<h1>Jak vybrat kreatin</h1><p>Aktualizujte informaci podle "
        "aktuálního výrobce. Nevydáváme neověřené slevy.</p>" * 8 +
        BUTTON * 3 +
