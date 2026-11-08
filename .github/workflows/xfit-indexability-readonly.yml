@@ -1,0 +1,41 @@
+name: XFIT Six-Guide Technical Indexability Readonly
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '41 7 * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-indexability-readonly.yml'
+      - 'scripts/xfit_indexability_preflight.py'
+      - 'tests/test_indexability_preflight.py'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-indexability-readonly
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile and test bounded public indexability probe
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -v
+      - name: Inspect exact six owned public pages and sitemap roots without writes
+        run: python -m scripts.xfit_indexability_preflight
+      - name: Preserve redacted technical evidence only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-six-guide-indexability-${{ github.run_id }}
+          path: reports/xfit-indexability-readonly.json
+          if-no-files-found: warn
+          retention-days: 14
