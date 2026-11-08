@@ -23,6 +23,7 @@ PUBLISHER_NAMES = frozenset({
     "XFIT Pilates Revision",
     "XFIT Coupon Post 11600 Recovery",
     "XFIT Protein Pack-use One-post Live Release",
+    "XFIT Beginner Goal Handoffs One-post Live",
 })
 COMMERCIAL = {
     "xfit-os-kreatin-poradce": 25455,
@@ -102,6 +103,8 @@ def inspect_log(log, run):
             "python -m scripts.xfit_coupon_recovery apply",
         "XFIT Protein Pack-use One-post Live Release":
             "python -m scripts.xfit_protein_pack_release apply",
+        "XFIT Beginner Goal Handoffs One-post Live":
+            "python -m scripts.xfit_beginner_goal_release apply",
     }
     if run.get("name") in production_apply:
         # Full job logs also contain synthetic PUBLIC_VERIFIED fixtures from
@@ -157,6 +160,21 @@ def inspect_log(log, run):
                     or entry.get("deletes") != 0
                     or entry.get("redirects") != 0
                     or entry.get("public_site_modified") is not True):
+                continue
+            kind = "updated"
+        elif run.get("name") == "XFIT Beginner Goal Handoffs One-post Live":
+            if state != "PUBLIC_VERIFIED":
+                continue
+            if (entry.get("post_id") != 25458
+                    or entry.get("slug") != "xfit-os-doplnky-pro-zacatecniky"
+                    or entry.get("url") != "https://xfit.cz/xfit-os-doplnky-pro-zacatecniky/"
+                    or entry.get("posts_changed") != 1
+                    or entry.get("new_posts") != 0
+                    or entry.get("post_attempts") != 1
+                    or entry.get("new_goal_links") != 4
+                    or entry.get("open_no_buy_answer") is not True
+                    or entry.get("public_site_modified") is not True
+                    or entry.get("deletes") != 0 or entry.get("redirects") != 0):
                 continue
             kind = "updated"
         elif state == "PUBLIC_VERIFIED_NEW_POST" and entry.get("new_posts") == 1:
