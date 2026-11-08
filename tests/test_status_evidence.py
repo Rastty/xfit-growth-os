@@ -74,6 +74,62 @@ class StatusEvidenceTests(unittest.TestCase):
         self.assertEqual(report.count("nejnovější produkční doklad"),2)
         self.assertIn("aktualizace (4× v období)",report)
 
+    def test_11595_verified_after_actual_apply_only(self):
+        name = "XFIT Coupon Post 11595 Recovery"
+        actual = ('{"state":"PUBLIC_VERIFIED","post_id":11595,'
+                  '"url":"https://xfit.cz/nove-trendy-v-tekutem-spalovaci-tuku-pro-fitness-nadsence/",'
+                  '"shortcodes_removed":3,"posts_changed":1,"post_attempts":1,'
+                  '"public_site_modified":true,"deletes":0,"redirects":0}')
+        nl = chr(10)
+        step = nl.join((
+            "##[group]Run set -o pipefail",
+            "python -m scripts.xfit_coupon_recovery_11595 apply",
+            "##[endgroup]",
+        )) + nl
+        result = real_release_evidence(
+            [run(name=name, id=42467009202)], "fake",
+            fetch_jobs=jobs,
+            fetch_log=lambda *_: actual + nl + step + actual)
+        self.assertEqual(result["counts"]["updated"], 1)
+        self.assertEqual(result["counts"]["unique_changed_pages"], 1)
+        self.assertEqual(result["verified_events"][0]["post_id"], 11595)
+        self.assertEqual(result["verified_no_change_runs"], 0)
+
+        invalid = (
+            actual,
+            step,
+            actual + nl + step + actual.replace('"post_id":11595', '"post_id":11600'),
+            actual + nl + step + actual.replace('"shortcodes_removed":3', '"shortcodes_removed":2'),
+            actual + nl + step + actual.replace('nove-trendy-v-tekutem-spalovaci-tuku-pro-fitness-nadsence',
+                                                   'jinak-nazvany-clanek'),
+            actual + nl + step + actual.replace('"public_site_modified":true',
+                                                   '"public_site_modified":false'),
+            actual + nl + step + actual.replace('"posts_changed":1', '"posts_changed":2'),
+        )
+        for fake in invalid:
+            with self.subTest(log=fake[-100:]):
+                check = real_release_evidence(
+                    [run(name=name, id=42467009202)], "fake",
+                    fetch_jobs=jobs, fetch_log=lambda *_: fake)
+                self.assertEqual(check["counts"]["updated"], 0)
+                self.assertEqual(len(check["unverified_runs"]), 1)
+
+    def test_11595_noop_after_apply_is_not_a_new_change(self):
+        name = "XFIT Coupon Post 11595 Recovery"
+        marker = chr(10).join((
+            "##[group]Run set -o pipefail",
+            "python -m scripts.xfit_coupon_recovery_11595 apply",
+            "##[endgroup]",
+        )) + chr(10)
+        no_op = real_release_evidence(
+            [run(name=name, id=42467009202)], "fake",
+            fetch_jobs=jobs,
+            fetch_log=lambda *_: marker +
+                '{"state":"ALREADY_CLEAN_NO_WRITE","post_id":11595,'
+                '"shortcodes_removed":0,"public_site_modified":false}')
+        self.assertEqual(no_op["counts"]["updated"], 0)
+        self.assertEqual(no_op["verified_no_change_runs"], 1)
+
     def test_coupon_production_receipt_requires_real_post_backup_and_apply_step(self):
         coupon_run=run(name="XFIT Coupon Post 11600 Recovery",id=42458541415)
         actual=('{"state":"PUBLIC_VERIFIED","post_id":11600,'
