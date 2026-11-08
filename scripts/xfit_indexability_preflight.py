@@ -9,6 +9,7 @@ import json
 import sys
 from html.parser import HTMLParser
 from pathlib import Path
+import re
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
@@ -128,6 +129,39 @@ def read_xfit_path(path, *, max_bytes=MAX_BYTES):
         return content.decode("utf-8", errors="replace"), selected
 
 
+def robots_evidence(body):
+    """Return only bounded same-origin sitemap paths and observed root disallow."""
+    if not isinstance(body, str) or len(body) > 500000:
+        raise ValueError("Unexpected robots text")
+    declared = set()
+    agents = set()
+    root_disallow = False
+    for raw in body.splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if not line or ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        key, value = key.strip().lower(), value.strip()
+        if key == "user-agent":
+            if value.lower() in ("*", "googlebot"):
+                agents.add(value.lower())
+            else:
+                agents.clear()
+        elif key == "disallow" and value == "/" and agents:
+            root_disallow = True
+        elif key == "sitemap" and len(declared) < 2:
+            parsed = urlsplit(value)
+            if (parsed.scheme == "https" and parsed.hostname == "xfit.cz"
+                    and not parsed.username and not parsed.password
+                    and parsed.port is None and not parsed.query and not parsed.fragment
+                    and re.fullmatch(r"/[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*\.xml", parsed.path)):
+                declared.add(parsed.path)
+    return {
+        "safe_same_origin_sitemap_paths": sorted(declared),
+        "observed_general_or_googlebot_root_disallow": root_disallow,
+    }
+
+
 def run(*, reader=read_xfit_path):
     pages, internal = [], {}
     for slug in OWNED + REFERERS:
@@ -149,15 +183,19 @@ def run(*, reader=read_xfit_path):
                               "visible_h1_count": None})
     # Read-only diagnostics. Do not infer sitemap inclusion of any URL.
     infrastructure = {}
+    robots_details = {"safe_same_origin_sitemap_paths": [],
+                      "observed_general_or_googlebot_root_disallow": None}
     for path, name in (
         ("/robots.txt", "robots_txt"),
         ("/wp-sitemap.xml", "wordpress_sitemap"),
         ("/sitemap_index.xml", "seo_sitemap_index"),
+        ("/sitemap.xml", "generic_sitemap"),
     ):
         try:
             body, headers = reader(path, max_bytes=MAX_BYTES)
             if name == "robots_txt":
                 status = "ACCESSIBLE" if "user-agent" in body.casefold() else "UNKNOWN_UNEXPECTED_RESPONSE"
+                robots_details = robots_evidence(body)
             else:
                 status = "ACCESSIBLE_XML" if (
                     "<sitemapindex" in body.casefold() or "<urlset" in body.casefold()
@@ -166,6 +204,25 @@ def run(*, reader=read_xfit_path):
         except (OSError, ValueError, UnicodeError, TypeError):
             status = "UNKNOWN_UNAVAILABLE"
         infrastructure[name] = status
+    declared_status = {}
+    # Only verified exact same-origin XML paths from the public robots file.
+    for path in robots_details["safe_same_origin_sitemap_paths"]:
+        if path in ("/wp-sitemap.xml", "/sitemap_index.xml", "/sitemap.xml"):
+            # Previous GET already determined the exact status.
+            existing = {
+                "/wp-sitemap.xml": "wordpress_sitemap",
+                "/sitemap_index.xml": "seo_sitemap_index",
+                "/sitemap.xml": "generic_sitemap",
+            }[path]
+            declared_status[path] = infrastructure[existing]
+            continue
+        try:
+            body, _ = reader(path, max_bytes=MAX_BYTES)
+            declared_status[path] = "ACCESSIBLE_XML" if (
+                "<sitemapindex" in body.casefold() or "<urlset" in body.casefold()
+            ) else "UNKNOWN_UNEXPECTED_RESPONSE"
+        except (OSError, ValueError, TypeError, UnicodeError):
+            declared_status[path] = "UNKNOWN_UNAVAILABLE"
     for page in pages:
         target = SITE + "/" + page["slug"] + "/"
         page["observed_internal_inlinks_from_seven_reviewed_articles"] = sum(
@@ -174,6 +231,8 @@ def run(*, reader=read_xfit_path):
         "site": SITE, "mode": "public_read_only",
         "page_count": len(pages), "pages": pages,
         "infrastructure": infrastructure,
+        "robots_details": robots_details,
+        "declared_sitemap_probes": declared_status,
         "observed_gsc_state": {
             "five": "DISCOVERED_NOT_INDEXED_2026_11_08",
             "one": "UNKNOWN_TO_GOOGLE_2026_11_08",
@@ -182,6 +241,7 @@ def run(*, reader=read_xfit_path):
         "limitations": [
             "Public 200 and self-canonical do not prove Google indexing or quality",
             "Sitemap root availability does NOT prove an individual URL is included",
+            "Root Disallow observation alone needs complete robots precedence interpretation",
             "Only seven reviewed public articles are sampled for inlinks, not full site graph",
             "UNKNOWN_FETCH is not a 404, noindex or proof of deindexation",
             "Google URL Inspection source remains authoritative for live GSC status",
