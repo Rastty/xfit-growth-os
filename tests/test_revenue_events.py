@@ -112,6 +112,32 @@ class RevenueFunnelTests(unittest.TestCase):
         self.assertEqual(result["commission"], "UNKNOWN")
         self.assertTrue(all(value == 0 for page in result["action_counts"].values()
                             for value in page.values()))
+        self.assertTrue(all(status == "UNKNOWN"
+                            for page in result["action_observation_status"].values()
+                            for status in page.values()))
+
+    def test_each_funnel_step_requires_its_own_observed_evidence(self):
+        pages = {"xfit-os-kreatin-poradce": "creatine",
+                 "xfit-os-syrovatkovy-protein-porovnani": "whey"}
+        names = ("advisor_start", "advisor_complete", "affiliate_outbound_click")
+        for page, engine in pages.items():
+            for name in names:
+                with self.subTest(page=page, name=name):
+                    fields = {"page": page, "selection_engine": engine}
+                    if name == "affiliate_outbound_click":
+                        fields.update(partner="namaximum", product_id=392)
+                    result = summarize_funnel(
+                        [{"name": name, "params": fields}],
+                        analytics_consent=True, verified_product_ids={392})
+                    for reported_page, statuses in result[
+                            "action_observation_status"].items():
+                        self.assertEqual(statuses, {
+                            step: "OBSERVED_ACTIONS"
+                            if reported_page == page and step == name else "UNKNOWN"
+                            for step in names
+                        })
+                    self.assertEqual(result["orders"], "UNKNOWN")
+                    self.assertEqual(result["commission"], "UNKNOWN")
 
     def test_observed_actions_do_not_imply_data_for_the_other_advisor(self):
         for page, engine in (("xfit-os-kreatin-poradce", "creatine"),

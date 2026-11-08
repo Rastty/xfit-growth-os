@@ -53,6 +53,14 @@ Ani tento stav nepotvrzuje úplnost měření nebo skutečný původ vstupu.
 Poradce s `UNKNOWN` nelze podle nulových počtů označit za neúspěšný ani podle
 toho upřednostnit komerční nabídky. Stavy neobsahují odpovědi ani výsledek volby.
 
+`action_observation_status` navíc uvádí stejný stav pro každou akci každého
+poradce. Samotný proklik tedy označí jako `OBSERVED_ACTIONS` pouze
+`affiliate_outbound_click`; start i dokončení zůstanou `UNKNOWN`, pokud pro ně
+nejsou záznamy. Chybějící dokončení nelze vydávat za odchod čtenáře ani za
+neúspěch cesty „nic nekoupit“. Před změnou doporučení nebo nákupních tlačítek
+je potřeba ověřit měření chybějícího kroku. Ani kladný počet nedokládá úplnost
+měření; nové stavy nepřidávají identifikátory ani výsledek volby.
+
 Ověření: `python -m unittest tests.test_revenue_events tests.test_agent_scope`.
 Stav: připraveno lokálně; CI, nasazení, veřejná stránka a měření neověřeny.
 Prokliky/objednávky/provize: UNKNOWN. Vrácení této úpravy: vrátit diff těchto
