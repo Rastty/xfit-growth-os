@@ -71,13 +71,14 @@ class TechnicalReadOnlyTests(unittest.TestCase):
         expected["robots.txt"] = "User-agent: *\nDisallow: /wp-admin/"
         expected["wp-sitemap.xml"] = '<sitemapindex><sitemap><loc>https://xfit.cz/wp-sitemap-posts-post-1.xml</loc></sitemap></sitemapindex>'
         expected["sitemap_index.xml"] = "<urlset><url><loc>https://xfit.cz/example/</loc></url></urlset>"
+        expected["sitemap.xml"] = "<sitemapindex></sitemapindex>"
         calls = []
         def reader(path, **kwargs):
             calls.append(path)
             return expected[path.lstrip("/").rstrip("/")], {"Content-Type": "text/html"}
         result = probe.run(reader=reader)
         self.assertEqual(result["page_count"], 6)
-        self.assertEqual(len(calls), 10)
+        self.assertEqual(len(calls), 11)
         self.assertEqual(result["wordpress_writes"], 0)
         self.assertEqual(result["plugins_installed"], 0)
         self.assertEqual(result["seo_mutations"], 0)
@@ -87,6 +88,43 @@ class TechnicalReadOnlyTests(unittest.TestCase):
         self.assertNotIn("<html>", serialized)
         self.assertNotIn("Disallow: /wp-admin", serialized)
         self.assertNotIn("<loc>", serialized)
+
+    def test_robots_declared_same_origin_sitemap_is_checked_but_not_other_sites(self):
+        text = (
+            "User-agent: *\nDisallow: /wp-admin/\n"
+            "Sitemap: https://xfit.cz/sitemaps/sitemap-main.xml\n"
+            "Sitemap: https://evil.example/leak.xml\n"
+            "Sitemap: https://xfit.cz/private.xml?token=secret\n"
+        )
+        evidence = probe.robots_evidence(text)
+        self.assertEqual(evidence["safe_same_origin_sitemap_paths"],
+                         ["/sitemaps/sitemap-main.xml"])
+        self.assertFalse(evidence["observed_general_or_googlebot_root_disallow"])
+        self.assertTrue(probe.robots_evidence(
+            "User-agent: Googlebot\nDisallow: /\n"
+        )["observed_general_or_googlebot_root_disallow"])
+
+        paths = {slug: page(slug) for slug in probe.OWNED + probe.REFERERS}
+        paths.update({
+            "robots.txt": text,
+            "wp-sitemap.xml": "<html>Not XML</html>",
+            "sitemap_index.xml": "<html>Not XML</html>",
+            "sitemap.xml": "<html>Not XML</html>",
+            "sitemaps/sitemap-main.xml": "<sitemapindex></sitemapindex>",
+        })
+        seen = []
+        def reader(path, **kwargs):
+            seen.append(path)
+            return paths[path.strip("/")], {}
+        report = probe.run(reader=reader)
+        self.assertEqual(report["declared_sitemap_probes"], {
+            "/sitemaps/sitemap-main.xml": "ACCESSIBLE_XML"})
+        self.assertEqual(report["infrastructure"]["generic_sitemap"],
+                         "UNKNOWN_UNEXPECTED_RESPONSE")
+        self.assertNotIn("evil.example", str(report))
+        self.assertNotIn("token=secret", str(report))
+        self.assertEqual(report["wordpress_writes"], 0)
+        self.assertEqual(len(seen), 12)
 
     def test_failed_public_fetch_is_unknown_not_unindexed(self):
         def reader(path, **kwargs):
