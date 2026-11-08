@@ -173,15 +173,47 @@ for(const spec of checks){
       clear:labelGuideLinks.length===1 &&
         labelGuideLinks[0].textContent.includes("nutriční etikety"),
     };
+    // WordPress must preserve the native HTML5 "open" attribute after
+    // publishing. A passing source unit test is NOT proof the mobile visitor
+    // actually sees the no-purchase answer without interaction.
+    const noPurchaseHeading=[...document.querySelectorAll("h2")]
+      .find(h=>h.textContent.trim().startsWith("Než koupíte"));
+    const noPurchaseQuestions=[];
+    if(noPurchaseHeading){
+      for(let el=noPurchaseHeading.nextElementSibling;
+          el && el.tagName.toLowerCase()!=="h2";
+          el=el.nextElementSibling){
+        if(el.tagName.toLowerCase()==="details")
+          noPurchaseQuestions.push(el);
+      }
+    }
+    const firstNoPurchase=noPurchaseQuestions[0];
+    const noPurchase={
+      heading:!!noPurchaseHeading,
+      questions:noPurchaseQuestions.length,
+      firstOpen:!!firstNoPurchase?.open,
+      firstSummary:!!firstNoPurchase?.querySelector("summary"),
+      answerText:(firstNoPurchase?.textContent||"").trim(),
+      remainingClosed:noPurchaseQuestions.slice(1,3)
+        .every(el=>!el.open),
+    };
     return {h1,h2,titles,viewport:inner,documentWidth:full,details,summaries,
         merchantLinks:links.length,missingSponsored,imagesMissingAlt:images.length,
         productImages:productImages.length,brokenProductImages:brokenProductImages.length,
         productImageStatus,themeImagesMissingAlt,firstProductLoaded,firstCTASize,
-        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff};
+        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,noPurchase};
   });
   if(!doc.h1.includes(spec.expected))failures.push("h1_missing_expected");
   if(doc.h2<spec.minH2)failures.push("insufficient_h2");
   if(!doc.hasViewportMeta)failures.push("mobile_viewport_missing");
+  if(spec.commercial && (!doc.noPurchase.heading ||
+      doc.noPurchase.questions!==3 || !doc.noPurchase.firstOpen ||
+      !doc.noPurchase.firstSummary || !doc.noPurchase.remainingClosed ||
+      !(spec.name==="creatine"
+        ? doc.noPurchase.answerText.includes("nekoupit nic")
+        : doc.noPurchase.answerText.includes("Proteinový prášek není") ||
+          doc.noPurchase.answerText.includes("Proteinový prášek je praktický"))))
+    failures.push("no_purchase_first_answer_not_visible_by_default");
   if(spec.commercial && (!doc.tradeoff.heading || !doc.tradeoff.goalsValid ||
        !doc.tradeoff.targetsValid || !doc.tradeoff.noMerchantLinks))
     failures.push("price_tradeoff_missing_or_invalid");
