@@ -183,6 +183,59 @@ class StatusEvidenceTests(unittest.TestCase):
         self.assertEqual(out["counts"]["updated"],0)
         self.assertEqual(out["verified_no_change_runs"],1)
 
+    def test_real_beginner_goal_release_counts_only_actual_apply(self):
+        name="XFIT Beginner Goal Handoffs One-post Live"
+        release=run(name=name,id=42464009001)
+        actual=('{"state":"PUBLIC_VERIFIED","post_id":25458,'
+                '"slug":"xfit-os-doplnky-pro-zacatecniky",'
+                '"url":"https://xfit.cz/xfit-os-doplnky-pro-zacatecniky/",'
+                '"posts_changed":1,"new_posts":0,"post_attempts":1,'
+                '"new_goal_links":4,"open_no_buy_answer":true,'
+                '"public_site_modified":true,"deletes":0,"redirects":0}')
+        nl=chr(10)
+        marker=nl.join((
+            "2026-11-08T08:41:51Z ##[group]Run set -o pipefail",
+            "2026-11-08T08:41:51Z python -m scripts.xfit_beginner_goal_release apply",
+            "2026-11-08T08:41:51Z ##[endgroup]",
+        ))+nl
+        # Unit tests printed a synthetic copy BEFORE the real apply.
+        actual_log=actual+nl+marker+"2026-11-08T08:41:57Z "+actual
+        result=real_release_evidence(
+            [release],"fake",fetch_jobs=jobs,fetch_log=lambda *_:actual_log)
+        self.assertEqual(result["counts"]["updated"],1)
+        self.assertEqual(result["counts"]["unique_updated_pages"],1)
+        self.assertEqual(result["counts"]["new"],0)
+        self.assertEqual(result["verified_events"][0]["post_id"],25458)
+        self.assertEqual(result["unverified_runs"],[])
+        for wrong in (
+            actual,
+            marker,
+            actual+nl+marker+actual.replace('"post_id":25458','"post_id":25451'),
+            actual+nl+marker+actual.replace('"new_goal_links":4','"new_goal_links":3'),
+            actual+nl+marker+actual.replace('"open_no_buy_answer":true','"open_no_buy_answer":false'),
+            actual+nl+marker+actual.replace('"public_site_modified":true','"public_site_modified":false'),
+        ):
+            with self.subTest(wrong=wrong[-100:]):
+                observed=real_release_evidence(
+                    [release],"fake",fetch_jobs=jobs,fetch_log=lambda *_:wrong)
+                self.assertEqual(observed["counts"]["updated"],0)
+                self.assertEqual(len(observed["unverified_runs"]),1)
+
+    def test_beginner_already_applied_is_zero_new_edits(self):
+        name="XFIT Beginner Goal Handoffs One-post Live"
+        marker=chr(10).join((
+            "##[group]Run set -o pipefail",
+            "python -m scripts.xfit_beginner_goal_release apply",
+            "##[endgroup]",
+        ))+chr(10)
+        out=real_release_evidence(
+            [run(name=name)],"fake",fetch_jobs=jobs,
+            fetch_log=lambda *_:marker+
+                '{"state":"ALREADY_APPLIED_NO_WRITE","post_id":25458,'
+                '"public_site_modified":false,"post_attempts":0}')
+        self.assertEqual(out["counts"]["updated"],0)
+        self.assertEqual(out["verified_no_change_runs"],1)
+
     def test_duplicate_receipt_not_double_counted_and_safe_link(self):
         r = run()
         info, noop = inspect_log(log_value(1, "secret") * 2, r)
