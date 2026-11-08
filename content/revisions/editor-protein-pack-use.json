@@ -1,0 +1,13 @@
+{
+  "status": "editorial_proposal_not_deployed",
+  "issue": 4,
+  "wp_post_id": 25451,
+  "slug": "xfit-os-protein-guide",
+  "source_file": "content/ready/xfit-os-protein-guide.json",
+  "source_file_sha256": "bef752e44534dd3cffef24f8f703a213d9f9024d1ed3a229afe5bab6a0402f58",
+  "source_content_sha256": "46810fac0512352ab26814978c7a4213038417c5c9465f7a614f7aec7deff0d3",
+  "operation": "replace_exact_once",
+  "original": "<li>Nakoupit obří balení neznámé příchutě bez možnosti vyzkoušet menší porci.</li>",
+  "replacement": "<li><strong>Koupit velké balení jen kvůli nižší jednotkové ceně.</strong> Nejdřív ověřte, zda vám konkrétní příchuť vyhovuje, a odhadněte spotřebu: hmotnost balení v g ÷ hmotnost jedné porce prášku v g = počet porcí. Počet porcí ÷ počet použití týdně = počet týdnů do spotřebování. Čistě početní příklad: 1 000 g ÷ 25 g = 40 porcí; při dvou použitích týdně balení vystačí na 20 týdnů. Nejde o doporučenou dávku ani četnost užívání. Výsledek porovnejte s datem minimální trvanlivosti a pokyny ke skladování a spotřebě po otevření na konkrétním obalu; výpočet trvanlivost neurčuje. Pokud balení nevyužijete, zvažte menší. Když příjem bílkovin pokryjete jídlem, protein nemusíte kupovat.</li>",
+  "evidence": "Pack-mass and planned-use arithmetic only, extending the existing warning about oversized unfamiliar packs. No product, price, shelf-life or clinical claim."
+}
