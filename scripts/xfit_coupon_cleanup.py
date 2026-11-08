@@ -8,7 +8,9 @@ from scripts.wp_publish import PublishError,normalized_base,wp_request
 MAX_COUNT=8
 # This post repeatedly refused a safe WP REST write while all neighbors succeeded.
 # Quarantine until its encoding/permissions are inspected independently.
-QUARANTINE_IDS={11945}
+# WP 11595 was unchanged in run 42465256593 after seven successful edits;
+# recovery is isolated to one post; see issue #75.
+QUARANTINE_IDS={11945,11595}
 BACKUP=Path("reports/backups/xfit-expired-coupon-wave01.json")
 PROMO=re.compile(r"\[su_button\b[^\]]{0,1200}\][^\[]*?5NM2022\[/su_button\]",re.I|re.S)
 def sha(s):return hashlib.sha256(s.encode("utf-8")).hexdigest()
