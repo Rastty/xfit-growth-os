@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from scripts.wp_publish import PublishError
-from scripts import xfit_coupon_recovery as recovery
+from scripts import xfit_coupon_recovery_11595 as recovery
 from scripts.xfit_coupon_cleanup import stripped, sha
 
 
