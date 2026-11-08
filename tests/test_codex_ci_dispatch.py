@@ -27,15 +27,15 @@ class CodexReadOnlyDispatchTests(unittest.TestCase):
         # GitHub validates permissions across reusable workflow boundaries
         # BEFORE scheduling jobs. Missing actions:write previously caused
         # startup_failure with zero jobs and zero usable logs.
-        caller = self.caller.split("  parallel-lanes:\\n", 1)[1]
-        call_permissions = caller.split("    permissions:\\n", 1)[1].split("    strategy:", 1)[0]
+        caller = self.caller.split("  parallel-lanes:", 1)[1]
+        call_permissions = caller.split("    permissions:", 1)[1].split("    strategy:", 1)[0]
         for required in ("actions: write", "contents: write",
                          "pull-requests: write"):
             self.assertIn(required, call_permissions)
         self.assertIn("uses: ./.github/workflows/xfit-codex-lane.yml", caller)
         self.assertIn("actions: write  # workflow_dispatch only", self.agent)
         # Do not give actions:write to preflight, which needs read only.
-        gate = self.caller.split("  permission-gate:\\n", 1)[1].split(
+        gate = self.caller.split("  permission-gate:", 1)[1].split(
             "  parallel-lanes:", 1)[0]
         self.assertIn("actions: read", gate)
         self.assertNotIn("actions: write", gate)
