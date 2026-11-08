@@ -213,15 +213,61 @@ for(const spec of checks){
       oldAdviceAbsent:!document.body.textContent.includes(
         "Nakoupit obří balení neznámé příchutě"),
     };
+    // Live WP must preserve the beginner's actual decision-to-next-step UX,
+    // not only the source JSON checked in to the public repository.
+    const beginnerHeading=document.querySelector("h2#zacatecnik-rozhodnuti");
+    const beginnerDetails=[];
+    if(beginnerHeading){
+      for(let el=beginnerHeading.nextElementSibling;
+          el && el.tagName.toLowerCase()!=="h2";
+          el=el.nextElementSibling){
+        if(el.tagName.toLowerCase()==="details")beginnerDetails.push(el);
+      }
+    }
+    const beginnerExpected=[
+      "#zacatecnik-rozpocet",
+      "https://xfit.cz/xfit-os-kreatin-nebo-protein/",
+      "https://xfit.cz/kolik-bilkovin-potrebujete-pro-budovani-svalu-pruvodce-spravnym-stravovanim/",
+      "https://xfit.cz/xfit-os-protein-guide/",
+    ];
+    const beginnerLinks=beginnerDetails.map(d=>
+      [...d.querySelectorAll("a")].map(a=>a.getAttribute("href")));
+    const beginnerGoals={
+      heading:!!beginnerHeading,
+      count:beginnerDetails.length,
+      firstOpen:!!beginnerDetails[0]?.open,
+      othersClosed:beginnerDetails.slice(1).every(d=>!d.open),
+      firstAnswersNoBuy:(beginnerDetails[0]?.textContent||"").includes("Začněte bez suplementů"),
+      firstBudgetReachable:!!document.querySelector("h2#zacatecnik-rozpocet"),
+      linkTargetsValid:beginnerLinks.length===4 &&
+        beginnerLinks.every((urls,i)=>urls.length===1 && urls[0]===beginnerExpected[i]),
+      allNativeSummaries:beginnerDetails.every(d=>!!d.querySelector("summary")),
+    };
     return {h1,h2,titles,viewport:inner,documentWidth:full,details,summaries,
         merchantLinks:links.length,missingSponsored,imagesMissingAlt:images.length,
         productImages:productImages.length,brokenProductImages:brokenProductImages.length,
         productImageStatus,themeImagesMissingAlt,firstProductLoaded,firstCTASize,
-        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,noPurchase,proteinPackUse};
+        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,noPurchase,proteinPackUse,beginnerGoals};
   });
   if(!doc.h1.includes(spec.expected))failures.push("h1_missing_expected");
   if(doc.h2<spec.minH2)failures.push("insufficient_h2");
   if(!doc.hasViewportMeta)failures.push("mobile_viewport_missing");
+  if(spec.name==="beginner" && (!doc.beginnerGoals.heading ||
+      doc.beginnerGoals.count!==4 || !doc.beginnerGoals.firstOpen ||
+      !doc.beginnerGoals.othersClosed || !doc.beginnerGoals.firstAnswersNoBuy ||
+      !doc.beginnerGoals.firstBudgetReachable ||
+      !doc.beginnerGoals.linkTargetsValid ||
+      !doc.beginnerGoals.allNativeSummaries))
+    failures.push("beginner_goal_paths_not_visible_or_incomplete");
+  if(spec.name==="beginner" && doc.beginnerGoals.count===4){
+    const secondSummary=page.locator('h2#zacatecnik-rozhodnuti ~ details summary').nth(1);
+    if(await secondSummary.count()){
+      await secondSummary.focus();
+      await page.keyboard.press("Enter");
+      if(!await secondSummary.evaluate(el=>!!el.parentElement?.open))
+        failures.push("beginner_goal_not_keyboard_accessible");
+    }else failures.push("beginner_goal_not_keyboard_accessible");
+  }
   if(spec.name==="protein-guide" &&
       (doc.proteinPackUse.count!==1 || !doc.proteinPackUse.hasArithmetic ||
        !doc.proteinPackUse.hasRealLimits || !doc.proteinPackUse.oldAdviceAbsent))
