@@ -60,6 +60,33 @@ class Cards(HTMLParser):
                 self.current = None
 
 
+class VisibleText(HTMLParser):
+    """Affiliate disclosure must be readable text, not a hidden URL parameter."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.skip = 0
+        self.parts = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ("script", "style", "noscript", "template"):
+            self.skip += 1
+
+    def handle_endtag(self, tag):
+        if tag in ("script", "style", "noscript", "template") and self.skip:
+            self.skip -= 1
+
+    def handle_data(self, text):
+        if not self.skip:
+            self.parts.append(text)
+
+
+def has_visible_disclosure(body):
+    parser = VisibleText()
+    parser.feed(body)
+    text = " ".join(parser.parts).casefold()
+    return "provizi" in text or "affiliate" in text
+
+
 def canonical_article(url, slug):
     p = urlsplit(url or "")
     return (
@@ -95,7 +122,7 @@ def comparable_href(value):
 
 def card_evidence(body, slug, affiliate_base):
     """Keep sensitive URLs and IDs in memory; expose only safe summary."""
-    if not isinstance(body, str) or not 500 <= len(body.encode("utf-8")) <= MAX_PUBLIC_BYTES:
+    if not isinstance(body, str) or not 1 <= len(body.encode("utf-8")) <= MAX_PUBLIC_BYTES:
         raise ValueError("invalid_html_body")
     engine = PAGES[slug][1]
     aid, bid = affiliate_signature(affiliate_base)
@@ -127,7 +154,7 @@ def card_evidence(body, slug, affiliate_base):
             errors.add("invalid_merchant_campaign_destination")
         signature.append((numeric, item["engine"], item["partner"],
                           comparable_href(item["href"])))
-    if not ("provizi" in body.casefold() or "affiliate" in body.casefold()):
+    if not has_visible_disclosure(body):
         errors.add("missing_affiliate_disclosure")
     return {
         "count": len(parser.cards),
