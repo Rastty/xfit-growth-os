@@ -130,7 +130,7 @@ def prepare(p, edit):
     a, b = Inspector(), Inspector()
     a.feed(raw)
     b.feed(changed)
-    if a.headers != b.headers or a.images != b.images or b.links != a.links[:0]+b.links:
+    if a.headers != b.headers or a.images != b.images:
         # The source heading/image list must remain unchanged; links are
         # checked as an exact inserted subsequence below.
         raise PublishError("Headings/images unexpectedly changed")
