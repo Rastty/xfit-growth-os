@@ -22,6 +22,7 @@ PUBLISHER_NAMES = frozenset({
     "XFIT Pilates Cardio Editorial Upgrade",
     "XFIT Pilates Revision",
     "XFIT Coupon Post 11600 Recovery",
+    "XFIT Protein Pack-use One-post Live Release",
 })
 COMMERCIAL = {
     "xfit-os-kreatin-poradce": 25455,
@@ -29,7 +30,8 @@ COMMERCIAL = {
 }
 NO_CHANGE = {"ALL_PINNED_ARTICLES_PUBLIC_VERIFIED",
              "NO_APPROVED_TARGET", "unchanged_public_verified",
-             "ALREADY_PUBLIC_VERIFIED", "ALREADY_CLEAN_NO_WRITE"}
+             "ALREADY_PUBLIC_VERIFIED", "ALREADY_CLEAN_NO_WRITE",
+             "ALREADY_APPLIED_NO_WRITE"}
 MAX_LOG_BYTES = 8_000_000
 
 
@@ -95,10 +97,16 @@ def canonical(slug, url, post_id):
 def inspect_log(log, run):
     events = []
     noop = False
-    if run.get("name") == "XFIT Coupon Post 11600 Recovery":
-        # Log unit tests emit synthetic PUBLIC_VERIFIED receipts. Count ONLY
-        # the real 'apply' step after mandatory backup artifact upload, not
-        # a test fixture printed earlier in the same successful job.
+    production_apply = {
+        "XFIT Coupon Post 11600 Recovery":
+            "python -m scripts.xfit_coupon_recovery apply",
+        "XFIT Protein Pack-use One-post Live Release":
+            "python -m scripts.xfit_protein_pack_release apply",
+    }
+    if run.get("name") in production_apply:
+        # Full job logs also contain synthetic PUBLIC_VERIFIED fixtures from
+        # unit tests. Accept receipts ONLY AFTER the real production 'apply'
+        # step, which runs after a mandatory prewrite backup artifact upload.
         step = "##[group]Run set -o pipefail"
         if step not in log:
             return [], False
@@ -106,7 +114,7 @@ def inspect_log(log, run):
         if "##[endgroup]" not in tail:
             return [], False
         command, log = tail.split("##[endgroup]", 1)
-        if "python -m scripts.xfit_coupon_recovery apply" not in command:
+        if production_apply[run["name"]] not in command:
             return [], False
     for line in log.splitlines():
         entry = _receipt(line)
@@ -132,6 +140,23 @@ def inspect_log(log, run):
                     entry.get("post_attempts") != 1 or
                     entry.get("public_site_modified") is not True or
                     entry.get("deletes") != 0 or entry.get("redirects") != 0):
+                continue
+            kind = "updated"
+        elif run.get("name") == "XFIT Protein Pack-use One-post Live Release":
+            if state != "PUBLIC_VERIFIED":
+                continue
+            # One approved existing post; reject test receipts, wrong URLs,
+            # new posts and any write beyond the exact editorial list item.
+            if (entry.get("post_id") != 25451
+                    or entry.get("slug") != "xfit-os-protein-guide"
+                    or entry.get("url") != "https://xfit.cz/xfit-os-protein-guide/"
+                    or entry.get("old_paragraphs_replaced") != 1
+                    or entry.get("posts_changed") != 1
+                    or entry.get("post_attempts") != 1
+                    or entry.get("new_posts") != 0
+                    or entry.get("deletes") != 0
+                    or entry.get("redirects") != 0
+                    or entry.get("public_site_modified") is not True):
                 continue
             kind = "updated"
         elif state == "PUBLIC_VERIFIED_NEW_POST" and entry.get("new_posts") == 1:

@@ -128,6 +128,61 @@ class StatusEvidenceTests(unittest.TestCase):
         self.assertEqual(out["counts"]["updated"],0)
         self.assertEqual(out["verified_no_change_runs"],1)
 
+    def test_real_protein_pack_update_only_after_apply_step(self):
+        name="XFIT Protein Pack-use One-post Live Release"
+        release=run(name=name,id=42460661426)
+        good=('{"state":"PUBLIC_VERIFIED","post_id":25451,'
+              '"slug":"xfit-os-protein-guide",'
+              '"url":"https://xfit.cz/xfit-os-protein-guide/",'
+              '"old_paragraphs_replaced":1,"posts_changed":1,'
+              '"post_attempts":1,"new_posts":0,"deletes":0,"redirects":0,'
+              '"public_site_modified":true}')
+        nl=chr(10)
+        marker=nl.join((
+            "2026-11-08T07:54:27Z ##[group]Run set -o pipefail",
+            "2026-11-08T07:54:27Z python -m scripts.xfit_protein_pack_release apply",
+            "2026-11-08T07:54:27Z ##[endgroup]",
+        ))+nl
+        actual_log=good+nl+marker+"2026-11-08T07:54:28Z "+good
+        out=real_release_evidence(
+            [release],"fake",fetch_jobs=jobs,
+            fetch_log=lambda *_:actual_log)
+        self.assertEqual(out["counts"]["new"],0)
+        self.assertEqual(out["counts"]["updated"],1)
+        self.assertEqual(out["counts"]["unique_updated_pages"],1)
+        self.assertEqual(out["verified_events"][0]["post_id"],25451)
+        self.assertNotIn("UNRESOLVED",str(out))
+        for bad_log in (
+            good,
+            marker,
+            good+nl+marker+good.replace('"post_id":25451','"post_id":25456'),
+            good+nl+marker+good.replace('"new_posts":0','"new_posts":1'),
+            good+nl+marker+good.replace('"old_paragraphs_replaced":1',
+                                      '"old_paragraphs_replaced":2'),
+            good+nl+marker+good.replace('"public_site_modified":true',
+                                      '"public_site_modified":false'),
+        ):
+            with self.subTest(log_tail=bad_log[-100:]):
+                invalid=real_release_evidence(
+                    [release],"fake",fetch_jobs=jobs,
+                    fetch_log=lambda *_:bad_log)
+                self.assertEqual(invalid["counts"]["updated"],0)
+                self.assertEqual(len(invalid["unverified_runs"]),1)
+
+    def test_already_applied_protein_is_noop(self):
+        marker=chr(10).join((
+            "##[group]Run set -o pipefail",
+            "python -m scripts.xfit_protein_pack_release apply",
+            "##[endgroup]",
+        ))+chr(10)
+        out=real_release_evidence(
+            [run(name="XFIT Protein Pack-use One-post Live Release")],
+            "fake",fetch_jobs=jobs,fetch_log=lambda *_:marker+
+            '{"state":"ALREADY_APPLIED_NO_WRITE","post_id":25451,'
+            '"post_attempts":0,"public_site_modified":false}')
+        self.assertEqual(out["counts"]["updated"],0)
+        self.assertEqual(out["verified_no_change_runs"],1)
+
     def test_duplicate_receipt_not_double_counted_and_safe_link(self):
         r = run()
         info, noop = inspect_log(log_value(1, "secret") * 2, r)

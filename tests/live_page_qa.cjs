@@ -5,6 +5,7 @@ const checks = [
   {name:"beginner",url:"https://xfit.cz/xfit-os-doplnky-pro-zacatecniky/",expected:"Doplňky stravy pro začátečníky",minH2:6,commercial:false},
   {name:"creatine",url:"https://xfit.cz/xfit-os-kreatin-poradce/",expected:"Jak vybrat kreatin",minH2:3,commercial:true},
   {name:"whey",url:"https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/",expected:"Srovnání syrovátkových proteinů",minH2:3,commercial:true},
+  {name:"protein-guide",url:"https://xfit.cz/xfit-os-protein-guide/",expected:"Jak vybrat protein",minH2:7,commercial:false},
   {name:"pilates-cardio",url:"https://xfit.cz/pilates-vs-kardio-co-je-lepsi-pro-hubnuti/",expected:"Pilates vs. kardio",minH2:6,commercial:false},
   {name:"creatine-kidney",url:"https://xfit.cz/kreatin-a-jeho-vliv-na-ledviny-a-jatra/",expected:"Kreatin, ledviny a játra",minH2:6,commercial:false},
   {name:"creatine-vs-protein",url:"https://xfit.cz/xfit-os-kreatin-nebo-protein/",expected:"Kreatin, nebo protein?",minH2:6,commercial:false},
@@ -197,15 +198,34 @@ for(const spec of checks){
       remainingClosed:noPurchaseQuestions.slice(1,3)
         .every(el=>!el.open),
     };
+    // Actual WordPress-rendered advice, not just the reviewed JSON or API.
+    const proteinPackItems=[...document.querySelectorAll("li")].filter(
+      li=>li.textContent.includes("Koupit velké balení jen kvůli nižší jednotkové ceně"));
+    const proteinPackText=proteinPackItems[0]?.textContent||"";
+    const proteinPackUse={
+      count:proteinPackItems.length,
+      hasArithmetic:proteinPackText.includes("1 000 g") &&
+        proteinPackText.includes("40 porcí") &&
+        proteinPackText.includes("20 týdnů"),
+      hasRealLimits:proteinPackText.includes("Nejde o doporučenou dávku") &&
+        proteinPackText.includes("po otevření") &&
+        proteinPackText.includes("protein nemusíte kupovat"),
+      oldAdviceAbsent:!document.body.textContent.includes(
+        "Nakoupit obří balení neznámé příchutě"),
+    };
     return {h1,h2,titles,viewport:inner,documentWidth:full,details,summaries,
         merchantLinks:links.length,missingSponsored,imagesMissingAlt:images.length,
         productImages:productImages.length,brokenProductImages:brokenProductImages.length,
         productImageStatus,themeImagesMissingAlt,firstProductLoaded,firstCTASize,
-        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,noPurchase};
+        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,noPurchase,proteinPackUse};
   });
   if(!doc.h1.includes(spec.expected))failures.push("h1_missing_expected");
   if(doc.h2<spec.minH2)failures.push("insufficient_h2");
   if(!doc.hasViewportMeta)failures.push("mobile_viewport_missing");
+  if(spec.name==="protein-guide" &&
+      (doc.proteinPackUse.count!==1 || !doc.proteinPackUse.hasArithmetic ||
+       !doc.proteinPackUse.hasRealLimits || !doc.proteinPackUse.oldAdviceAbsent))
+    failures.push("published_protein_pack_use_advice_not_visible_or_incomplete");
   if(spec.commercial && (!doc.noPurchase.heading ||
       doc.noPurchase.questions!==3 || !doc.noPurchase.firstOpen ||
       !doc.noPurchase.firstSummary || !doc.noPurchase.remainingClosed ||
