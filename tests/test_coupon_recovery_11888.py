@@ -117,7 +117,9 @@ class RecoveryTest(unittest.TestCase):
         with patch.object(c, "get_post", side_effect=[
             post(), post(), post()
         ]), patch.object(c, "wp_request",
-                         side_effect=PublishError("HTTP 503")) as writer:
+                         side_effect=PublishError("HTTP 503")) as writer, \
+             patch.object(c, "normalized_base",
+                          return_value="https://xfit.cz"):
             c.snapshot()
             with self.assertRaises(PublishError):
                 c.apply()
