@@ -232,6 +232,15 @@ for(const spec of checks){
     ];
     const beginnerLinks=beginnerDetails.map(d=>
       [...d.querySelectorAll("a")].map(a=>a.getAttribute("href")));
+    // The live WP frontend inserts an unrelated "#" anchor in the fourth
+    // detail. The source-bound goal links must each remain UNIQUE and exact;
+    // audit the placeholder separately rather than misclassify it as a goal.
+    const actualGoalLinks=beginnerLinks.map(urls=>urls.filter(url=>url!=="#"));
+    const placeholderLinks=beginnerDetails.map(d=>
+      [...d.querySelectorAll('a[href="#"]')].map(a=>({
+        text:(a.textContent||"").trim().slice(0,90),
+        className:String(a.className||"").slice(0,90),
+      })));
     const beginnerGoals={
       heading:!!beginnerHeading,
       count:beginnerDetails.length,
@@ -239,11 +248,12 @@ for(const spec of checks){
       othersClosed:beginnerDetails.slice(1).every(d=>!d.open),
       firstAnswersNoBuy:(beginnerDetails[0]?.textContent||"").includes("Začněte bez suplementů"),
       firstBudgetReachable:!!document.querySelector("h2#zacatecnik-rozpocet"),
-      linkTargetsValid:beginnerLinks.length===4 &&
-        beginnerLinks.every((urls,i)=>urls.length===1 && urls[0]===beginnerExpected[i]),
+      linkTargetsValid:actualGoalLinks.length===4 &&
+        actualGoalLinks.every((urls,i)=>urls.length===1 && urls[0]===beginnerExpected[i]),
       linkTargetsObserved:beginnerLinks.map(urls=>urls.map(url=>
         (url||"").slice(0,180))),
       linkTargetsExpected:beginnerExpected,
+      placeholderLinksObserved:placeholderLinks,
       allNativeSummaries:beginnerDetails.every(d=>!!d.querySelector("summary")),
     };
     return {h1,h2,titles,viewport:inner,documentWidth:full,details,summaries,
