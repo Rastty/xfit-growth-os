@@ -56,6 +56,29 @@ class ArchiveAuditTests(unittest.TestCase):
     def test_unknown_id_is_not_counted(self):
         p=post(None,"bad","Bad","Thin")
         self.assertEqual(inventory([p])["scanned"],0)
+
+    def test_equal_text_with_different_content_is_not_exact_duplicate(self):
+        pairs=[
+            ('<a href="https://example.org/source-a">Zdroj</a>',
+             '<a href="https://example.org/source-b">Zdroj</a>'),
+            ('<img src="/cvik-a.jpg" alt="Cvik">',
+             '<img src="/cvik-b.jpg" alt="Cvik">'),
+            ('Dávka 5 mg', 'Dávka 5 Mg'),
+        ]
+        for first,second in pairs:
+            with self.subTest(first=first,second=second):
+                a=inventory([post(1,"jedna","Výživa",first),
+                             post(2,"dva","Výživa",second)])
+                self.assertEqual(a["exact_body_duplicate_groups"],0)
+                # Shared titles remain a separate, weaker review signal.
+                self.assertEqual(a["duplicate_title_groups"],1)
+
+    def test_identical_image_content_is_detected_without_visible_text(self):
+        body='<img src="/cvik.jpg" alt="Provedení cviku">'
+        a=inventory([post(1,"jedna","Cvik",body),
+                     post(2,"dva","Cvik",body)])
+        self.assertEqual(a["exact_body_duplicate_groups"],1)
+
     def test_internal_links_include_relative_and_case_insensitive_hosts(self):
         links=["/kreatin/", "../protein/", "trenink/", "//www.xfit.cz/pilates/",
                "https://XFIT.CZ/vyziva/?a=1&amp;b=2"]
