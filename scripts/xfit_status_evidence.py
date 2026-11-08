@@ -21,6 +21,7 @@ PUBLISHER_NAMES = frozenset({
     "XFIT Protein Physiology Editorial Upgrade",
     "XFIT Pilates Cardio Editorial Upgrade",
     "XFIT Pilates Revision",
+    "XFIT Coupon Post 11600 Recovery",
 })
 COMMERCIAL = {
     "xfit-os-kreatin-poradce": 25455,
@@ -28,7 +29,7 @@ COMMERCIAL = {
 }
 NO_CHANGE = {"ALL_PINNED_ARTICLES_PUBLIC_VERIFIED",
              "NO_APPROVED_TARGET", "unchanged_public_verified",
-             "ALREADY_PUBLIC_VERIFIED"}
+             "ALREADY_PUBLIC_VERIFIED", "ALREADY_CLEAN_NO_WRITE"}
 MAX_LOG_BYTES = 8_000_000
 
 
@@ -94,6 +95,19 @@ def canonical(slug, url, post_id):
 def inspect_log(log, run):
     events = []
     noop = False
+    if run.get("name") == "XFIT Coupon Post 11600 Recovery":
+        # Log unit tests emit synthetic PUBLIC_VERIFIED receipts. Count ONLY
+        # the real 'apply' step after mandatory backup artifact upload, not
+        # a test fixture printed earlier in the same successful job.
+        step = "##[group]Run set -o pipefail"
+        if step not in log:
+            return [], False
+        tail = log.split(step, 1)[1]
+        if "##[endgroup]" not in tail:
+            return [], False
+        command, log = tail.split("##[endgroup]", 1)
+        if "python -m scripts.xfit_coupon_recovery apply" not in command:
+            return [], False
     for line in log.splitlines():
         entry = _receipt(line)
         if entry is None:
@@ -105,7 +119,22 @@ def inspect_log(log, run):
         if state == "live_verified" and entry.get("public_site_modified") is False:
             noop = True
             continue
-        if state == "PUBLIC_VERIFIED_NEW_POST" and entry.get("new_posts") == 1:
+        if run.get("name") == "XFIT Coupon Post 11600 Recovery":
+            if state != "PUBLIC_VERIFIED":
+                continue
+            # A specific proven one-post repair; never count synthetic
+            # test output or any unrelated URL/post as a production update.
+            if (entry.get("post_id") != 11600 or
+                    entry.get("url") !=
+                    "https://xfit.cz/test-a-recenze-nejlepsich-tekutych-spalovacu-tuku-pro-fitnesscviky/" or
+                    entry.get("shortcodes_removed") != 3 or
+                    entry.get("posts_changed") != 1 or
+                    entry.get("post_attempts") != 1 or
+                    entry.get("public_site_modified") is not True or
+                    entry.get("deletes") != 0 or entry.get("redirects") != 0):
+                continue
+            kind = "updated"
+        elif state == "PUBLIC_VERIFIED_NEW_POST" and entry.get("new_posts") == 1:
             kind = "new"
         elif state == "live_verified":
             if entry.get("public_site_modified") is not True:
