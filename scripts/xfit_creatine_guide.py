@@ -146,6 +146,11 @@ def build_document(catalog, base, sample):
       'kreatinem a kreatininem, výsledky studií a kdy řešit nález s lékařem. '
       'Při známém onemocnění ledvin či jater nebo nejasných testech vybírejte '
       'doplněk až po individuální zdravotní konzultaci.</p></details>',
+      '<p><strong>Rozpočet a doprava:</strong> Uvedené ceny a rozpočtové limity '
+      'zahrnují pouze cenu balení, bez dopravy a případných poplatků za platbu. '
+      'Konečnou částku ověřte v košíku prodejce. '
+      'Pokud by překročila váš rozpočet, nemusíte nákup dokončit ani přidávat '
+      'další zboží jen kvůli dopravě zdarma.</p>',
       price_tradeoff(chosen, product_kind="creatine"),
       budget_choices(chosen, (500, 1000, 1500), product_kind="creatine"),
       '<h2 id="xfit-offers">Kreatin monohydrát – přehled ověřených produktových nabídek</h2>',
