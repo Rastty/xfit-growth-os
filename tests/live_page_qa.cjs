@@ -241,6 +241,9 @@ for(const spec of checks){
       firstBudgetReachable:!!document.querySelector("h2#zacatecnik-rozpocet"),
       linkTargetsValid:beginnerLinks.length===4 &&
         beginnerLinks.every((urls,i)=>urls.length===1 && urls[0]===beginnerExpected[i]),
+      linkTargetsObserved:beginnerLinks.map(urls=>urls.map(url=>
+        (url||"").slice(0,180))),
+      linkTargetsExpected:beginnerExpected,
       allNativeSummaries:beginnerDetails.every(d=>!!d.querySelector("summary")),
     };
     return {h1,h2,titles,viewport:inner,documentWidth:full,details,summaries,
