@@ -30,7 +30,7 @@ jobs:
           python -m unittest discover -s tests -v
           python -m unittest tests.test_coupon_recovery -v
       - name: Create immutable prewrite snapshot only for WP post 11595
-        run: python -m scripts.xfit_coupon_recovery snapshot
+        run: python -m scripts.xfit_coupon_recovery_11595 snapshot
       - name: Mandatory rollback artifact BEFORE attempting the one POST
         uses: actions/upload-artifact@v4
         with:
@@ -42,4 +42,4 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          python -m scripts.xfit_coupon_recovery apply | tee -a "$GITHUB_STEP_SUMMARY"
+          python -m scripts.xfit_coupon_recovery_11595 apply | tee -a "$GITHUB_STEP_SUMMARY"
