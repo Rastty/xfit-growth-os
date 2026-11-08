@@ -134,17 +134,17 @@ def prepare(p, edit):
         # The source heading/image list must remain unchanged; links are
         # checked as an exact inserted subsequence below.
         raise PublishError("Headings/images unexpectedly changed")
-    a_links=[href for href,rel in a.links]
-    b_links=[href for href,rel in b.links]
-    # The reviewed old goal section contains no href; exactly four
-    # new internal URLs must appear, and all other links remain unchanged.
-    remaining=list(b_links)
-    for href in LINKS:
-        if href not in remaining:
-            raise PublishError("Expected goal destination missing from live HTML")
-        remaining.remove(href)
-    if remaining != a_links:
-        raise PublishError("Non-goal links changed")
+    # Other parts of the same article may ALREADY link to the same
+    # destinations. Removing URLs by value would erase an unrelated earlier
+    # occurrence and falsely reject a correct patch. Compare exact positions
+    # across the one immutable splice, not set/list multiset membership.
+    left,right=raw.split(old,1)
+    prefix,suffix=Inspector(),Inspector()
+    prefix.feed(left)
+    suffix.feed(right)
+    expected=prefix.links+[(href,"") for href in LINKS]+suffix.links
+    if b.links != expected:
+        raise PublishError("Non-goal link identity or order changed")
     check_document({"content":changed})
     return {"mode":"update","before":raw,"after":changed,
             "hash":digest(raw),"modified":p.get("modified_gmt")}
