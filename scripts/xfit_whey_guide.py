@@ -79,7 +79,7 @@ def build_document(catalog, base, sample):
         'skutečných bílkovin. Když produkt nepotřebujete, '
         'nemusíte kupovat nic.</p>',
         '<h2>Než koupíte protein: krátký rozhodovací rozcestník</h2>',
-        '<details><summary><strong>Musím protein kupovat, abych nabral svaly?</strong></summary>'
+        '<details open><summary><strong>Musím protein kupovat, abych nabral svaly?</strong></summary>'
         '<p>Ne. Proteinový prášek je praktický způsob doplnění bílkovin, pokud je '
         'nedokážete pohodlně získat běžným jídlem. Bez pravidelného tréninku, '
         'celkově vhodné stravy a regenerace nedává nákup sám o sobě smysl. '
