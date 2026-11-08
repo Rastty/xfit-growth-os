@@ -1,0 +1,47 @@
+name: XFIT Pilates GSC Query-Intent Title Onepost
+# Exact owner-approved title-only update, not an archive or auto-edit sweep.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-pilates-gsc-title-onepost.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run all existing safety regressions and exact one-post release tests
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -v
+      - name: Snapshot current WP title and hash article body without writes
+        run: python -m scripts.xfit_pilates_gsc_title_release snapshot
+      - name: Mandatory immutable rollback before any possible title write
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-pilates-gsc-title-3660-before-${{ github.run_id }}
+          path: reports/backups/xfit-pilates-gsc-title-3660.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Update WP 3660 title only and verify authenticated and public H1
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_pilates_gsc_title_release apply | tee -a "$GITHUB_STEP_SUMMARY"
