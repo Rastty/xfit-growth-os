@@ -7,6 +7,7 @@ Only exact xfit.cz public pages, robots.txt, and two sitemap entrypoints.
 """
 import json
 import sys
+from xml.etree import ElementTree
 from html.parser import HTMLParser
 from pathlib import Path
 import re
@@ -147,6 +148,85 @@ def read_xfit_path(path, *, max_bytes=MAX_BYTES):
         return content.decode("utf-8", errors="replace"), selected
 
 
+
+def _xml_locs(body, root_type):
+    """Read only bounded XML; reject DTD/entities and non-sitemap documents."""
+    if (not isinstance(body, str) or len(body.encode("utf-8")) > MAX_BYTES
+            or "<!DOCTYPE" in body.upper() or "<!ENTITY" in body.upper()):
+        return None
+    try:
+        tree = ElementTree.fromstring(body)
+    except ElementTree.ParseError:
+        return None
+    if tree.tag.rsplit("}", 1)[-1] != root_type:
+        return None
+    return [(el.text or "").strip() for el in tree.iter()
+            if el.tag.rsplit("}", 1)[-1] == "loc"]
+
+
+def _safe_post_sitemap_child(url):
+    if not isinstance(url, str):
+        return None
+    try:
+        p = urlsplit(url)
+    except ValueError:
+        return None
+    if (p.scheme != "https" or p.netloc != "xfit.cz"
+            or p.username or p.password or p.port is not None
+            or p.query or p.fragment):
+        return None
+    if not re.fullmatch(r"/wp-sitemap-posts-post-[0-9]{1,4}\.xml", p.path):
+        return None
+    return p.path
+
+
+def post_sitemap_inclusion(root_body, *, reader, max_children=20):
+    """Check only exact first-level XFIT post maps, never outbound URLs."""
+    empty = {slug: "UNKNOWN_NOT_PROVEN" for slug in OWNED}
+    root_locs = _xml_locs(root_body, "sitemapindex")
+    if root_locs is None:
+        return {"state": "ROOT_NOT_PARSEABLE_INDEX", "post_maps_declared": 0,
+                "post_maps_checked": 0, "post_maps_failed": 0,
+                "unsafe_or_irrelevant_locs_ignored": 0, "per_slug": empty}
+    candidates = sorted(set(filter(None, (_safe_post_sitemap_child(x)
+                                           for x in root_locs))))
+    ignored = len(root_locs) - len(candidates)
+    seen = set()
+    checked = 0
+    failed = 0
+    for path in candidates[:max_children]:
+        try:
+            child, _ = reader(path, max_bytes=MAX_BYTES)
+            locs = _xml_locs(child, "urlset")
+            if locs is None:
+                failed += 1
+                continue
+            checked += 1
+            for slug in OWNED:
+                if SITE + "/" + slug + "/" in locs:
+                    seen.add(slug)
+        except (OSError, ValueError, UnicodeError, TypeError):
+            failed += 1
+    complete = (len(candidates) > 0 and
+                len(candidates) <= max_children and failed == 0 and
+                checked == len(candidates))
+    state = ("ALL_POST_MAPS_READ" if complete else
+             "PARTIAL_OR_NO_POST_MAPS_READ")
+    return {
+        "state": state,
+        "post_maps_declared": len(candidates),
+        "post_maps_checked": checked,
+        "post_maps_failed": failed,
+        "unsafe_or_irrelevant_locs_ignored": max(0, ignored),
+        "per_slug": {
+            slug: ("INCLUDED_IN_POST_SITEMAP" if slug in seen else
+                   "NOT_OBSERVED_IN_ALL_POST_MAPS" if complete else
+                   "UNKNOWN_NOT_PROVEN")
+            for slug in OWNED
+        },
+    }
+
+
 def robots_evidence(body):
     """Return only bounded same-origin sitemap paths and observed root disallow."""
     if not isinstance(body, str) or len(body) > 500000:
@@ -201,6 +281,7 @@ def run(*, reader=read_xfit_path):
                               "visible_h1_count": None})
     # Read-only diagnostics. Do not infer sitemap inclusion of any URL.
     infrastructure = {}
+    wp_sitemap_root = None
     robots_details = {"safe_same_origin_sitemap_paths": [],
                       "observed_general_or_googlebot_root_disallow": None}
     for path, name in (
@@ -219,6 +300,8 @@ def run(*, reader=read_xfit_path):
                     "<sitemapindex" in body.casefold() or "<urlset" in body.casefold()
                     or "<ns0:sitemapindex" in body.casefold()
                 ) else "UNKNOWN_UNEXPECTED_RESPONSE"
+                if name == "wordpress_sitemap" and status == "ACCESSIBLE_XML":
+                    wp_sitemap_root = body
         except (OSError, ValueError, UnicodeError, TypeError) as exc:
             status = sitemap_fetch_failure(exc)
         infrastructure[name] = status
@@ -241,6 +324,7 @@ def run(*, reader=read_xfit_path):
             ) else "UNKNOWN_UNEXPECTED_RESPONSE"
         except (OSError, ValueError, TypeError, UnicodeError) as exc:
             declared_status[path] = sitemap_fetch_failure(exc)
+    child_membership = post_sitemap_inclusion(wp_sitemap_root, reader=reader)
     for page in pages:
         target = SITE + "/" + page["slug"] + "/"
         page["observed_internal_inlinks_from_seven_reviewed_articles"] = sum(
@@ -251,6 +335,7 @@ def run(*, reader=read_xfit_path):
         "infrastructure": infrastructure,
         "robots_details": robots_details,
         "declared_sitemap_probes": declared_status,
+        "post_sitemap_inclusion": child_membership,
         "observed_gsc_state": {
             "five": "DISCOVERED_NOT_INDEXED_2026_11_08",
             "one": "UNKNOWN_TO_GOOGLE_2026_11_08",
@@ -259,6 +344,8 @@ def run(*, reader=read_xfit_path):
         "limitations": [
             "Public 200 and self-canonical do not prove Google indexing or quality",
             "Sitemap root availability does NOT prove an individual URL is included",
+            "Sitemap XML membership is not proof of Google discovery or indexation",
+            "NOT_OBSERVED means only that a bounded current public post map lacked a URL",
             "Root Disallow observation alone needs complete robots precedence interpretation",
             "Only seven reviewed public articles are sampled for inlinks, not full site graph",
             "UNKNOWN_FETCH is not a 404, noindex or proof of deindexation",
