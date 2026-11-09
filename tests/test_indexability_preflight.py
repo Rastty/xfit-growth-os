@@ -167,7 +167,7 @@ class TechnicalReadOnlyTests(unittest.TestCase):
         def reader(path, **kwargs):
             seen.append(path)
             if path == "/robots.txt":
-                return ("User-agent: *\\nSitemap: https://xfit.cz/wp-sitemap.xml\\n", {})
+                return ("User-agent: *\nSitemap: https://xfit.cz/wp-sitemap.xml\n", {})
             if path == "/wp-sitemap.xml":
                 raise HTTPError("https://xfit.cz/wp-sitemap.xml", 404,
                                 "Not Found", {}, None)
