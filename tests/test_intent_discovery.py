@@ -131,6 +131,9 @@ class LegacyRoutingDiscoveryTests(unittest.TestCase):
             self.assertEqual(qs["search"],["kreatin"])
             self.assertEqual(qs["status"],["publish"])
             self.assertEqual(qs["context"],["edit"])
+            # Search only real article titles: avoid 11k archive content mentions.
+            self.assertEqual(qs["search_columns[]"],["post_title"])
+            self.assertEqual(qs["per_page"],["100"])
             calls.append(int(qs["page"][0]))
             page=int(qs["page"][0])
             return ([{"id":page*100+i,"slug":"kreatin-post-"+str(i),
