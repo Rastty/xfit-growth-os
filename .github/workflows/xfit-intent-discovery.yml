@@ -33,6 +33,7 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
+          from scripts.xfit_intent_discovery import public_review_shortlist
           r=json.loads(Path("reports/xfit-internal-routing-opportunities.json").read_text())
           assert r["remote_writes"] == 0
           assert len(r["priority_legacy_link_checks"]) == 2
@@ -51,6 +52,7 @@ jobs:
               "incomplete_topics": r["search_topics_incomplete"],
               "saturated_topics": r["search_results_saturated_topics"],
               "priority_checks": r["priority_legacy_link_checks"],
+              "review_only_shortlist": public_review_shortlist(r,per_topic=5),
               "remote_writes": 0,
           },ensure_ascii=False))
           PY
