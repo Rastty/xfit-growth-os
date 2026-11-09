@@ -81,5 +81,47 @@ class LegacyRoutingDiscoveryTests(unittest.TestCase):
         self.assertTrue(all(x["next_action"]=="RECHECK_SOURCE" for x in result))
 
 
+    def test_cross_topic_pages_get_both_relevant_ideas_without_fake_links(self):
+        slug="kreatin-a-protein-pruvodce"
+        body=("<p>Original useful explanation.</p>" * 75 +
+              "https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/" +
+              '<a href="https://xfit.cz/xfit-os-kreatin-poradce/">Kreatin</a>')
+        doc=post(slug,body)
+        doc["title"]={"raw":"Kreatin a protein: co vybrat?"}
+        ranked=discovery.rank_search_results({"kreatin":[doc],"protein":[doc]})
+        self.assertEqual(len(ranked["candidates"]),2)
+        by_topic={c["topic"]:c for c in ranked["candidates"]}
+        self.assertTrue(by_topic["kreatin"]["already_has_target_link"])
+        self.assertFalse(by_topic["protein"]["already_has_target_link"])
+        self.assertEqual(by_topic["protein"]["next_action"],
+                         "EDITORIAL_REVIEW_BEFORE_ONE_POST")
+        self.assertEqual(ranked["search_coverage_complete"],True)
+        self.assertNotIn(body, str(ranked))
+
+    def test_protein_only_search_result_does_not_get_irrelevant_creatine_link(self):
+        slug="protein-podle-etikety"
+        doc=post(slug,"<p>Useful protein explanation.</p>" * 75)
+        doc["title"]={"raw":"Protein podle etikety: co porovnat"}
+        result=discovery.rank_search_results({"kreatin":[doc],"protein":[]})
+        self.assertEqual(result["candidates"],[])
+
+    def test_exact_page_cap_must_not_claim_complete_discovery(self):
+        slug="kreatin-a-protein"
+        doc=post(slug,"<p>Useful details.</p>" * 80)
+        doc["title"]={"raw":"Kreatin a protein"}
+        result=discovery.rank_search_results({
+            "kreatin":[doc]*discovery.SEARCH_LIMIT,"protein":[]})
+        self.assertEqual(result["search_results_saturated_topics"],["kreatin"])
+        self.assertFalse(result["search_coverage_complete"])
+        self.assertEqual(result["candidate_count_before_limit"],1)
+
+    def test_unverified_canonical_never_becomes_edit_candidate(self):
+        slug="kreatin-test"
+        doc=post(slug,"<p>Useful details.</p>" * 75,url_host="elsewhere.cz")
+        doc["title"]={"raw":"Jak vybrat kreatin"}
+        result=discovery.rank_search_results({"kreatin":[doc],"protein":[]})
+        self.assertEqual(result["candidates"],[])
+
+
 if __name__=="__main__":
     unittest.main()
