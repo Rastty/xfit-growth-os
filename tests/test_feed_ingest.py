@@ -52,11 +52,11 @@ class AffiliateFeedTests(unittest.TestCase):
           <URL>https://www.namaximum.cz/p/creatine?variant=22</URL></SHOPITEM>
         <SHOPITEM><ITEM_ID>31</ITEM_ID>
           <PRODUCTNAME>Whey WPC 500g Vanilla &amp;amp; Almond</PRODUCTNAME>
-          <CATEGORYTEXT>Syrovátkové proteiny</CATEGORYTEXT><PRICE_VAT>399</PRICE_VAT>
+          <CATEGORYTEXT>Whey proteiny</CATEGORYTEXT><PRICE_VAT>399</PRICE_VAT>
           <URL>https://www.namaximum.cz/p/whey?variant=31</URL></SHOPITEM>
         <SHOPITEM><ITEM_ID>32</ITEM_ID>
           <PRODUCTNAME>Whey WPC 1000g Vanilla &amp;amp; Almond</PRODUCTNAME>
-          <CATEGORYTEXT>Syrovátkové proteiny</CATEGORYTEXT><PRICE_VAT>699</PRICE_VAT>
+          <CATEGORYTEXT>Whey proteiny</CATEGORYTEXT><PRICE_VAT>699</PRICE_VAT>
           <URL>https://www.namaximum.cz/p/whey?variant=32</URL></SHOPITEM>
         </SHOP>"""
         items, skipped = parse_feed(sample)
@@ -96,11 +96,11 @@ class AffiliateFeedTests(unittest.TestCase):
         sample = b"""<SHOP>
         <SHOPITEM><ITEM_ID>77</ITEM_ID>
           <PRODUCTNAME>Whey WPC 500g &amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp;gt;</PRODUCTNAME>
-          <CATEGORYTEXT>Syrovátkové proteiny</CATEGORYTEXT><PRICE_VAT>399</PRICE_VAT>
+          <CATEGORYTEXT>Whey proteiny</CATEGORYTEXT><PRICE_VAT>399</PRICE_VAT>
           <URL>https://www.namaximum.cz/p/whey?variant=77</URL></SHOPITEM>
         <SHOPITEM><ITEM_ID>78</ITEM_ID>
           <PRODUCTNAME>Whey WPC 1000g Plain</PRODUCTNAME>
-          <CATEGORYTEXT>Syrovátkové proteiny</CATEGORYTEXT><PRICE_VAT>699</PRICE_VAT>
+          <CATEGORYTEXT>Whey proteiny</CATEGORYTEXT><PRICE_VAT>699</PRICE_VAT>
           <URL>https://www.namaximum.cz/p/whey?variant=78</URL></SHOPITEM>
         </SHOP>"""
         items,_=parse_feed(sample)
