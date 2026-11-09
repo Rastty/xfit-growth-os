@@ -165,6 +165,38 @@ for(const spec of checks){
         el.textContent.includes("Aktuální cenu, složení a dostupnost ověřte")
       ),
     };
+    // A source-level nav tag isn't enough: prove the exact HTML anchors and
+    // their intended targets survive real 375px WordPress/theme rendering.
+    // Only inspect links; never trigger a merchant click or analytics event.
+    const quickNavs=[...document.querySelectorAll('nav[aria-label="Rychlá navigace poradcem"]')];
+    const quickLinks=quickNavs.length===1 ? [...quickNavs[0].querySelectorAll("a")] : [];
+    const quickExpected=["#xfit-need","#xfit-offers"];
+    const quickNav={
+      count:quickNavs.length,
+      countLinks:quickLinks.length,
+      exactTargets:quickLinks.length===2 && quickLinks.every((a,i)=>
+        a.getAttribute("href")===quickExpected[i] &&
+        a.getAttribute("target")===null &&
+        !a.hasAttribute("onclick")),
+      noBuyOpen:document.querySelector("details#xfit-need")?.open===true,
+      offerHeadingExists:!!document.querySelector("h2#xfit-offers"),
+      resolvedOnce:quickExpected.every(href=>
+        document.querySelectorAll('[id="'+href.slice(1)+'"]').length===1),
+      noMerchantLinks:quickLinks.every(a=>
+        (a.getAttribute("href")||"").startsWith("#")),
+    };
+    const checkoutParagraphs=[...document.querySelectorAll("p")].filter(p=>
+      p.textContent.includes("Když objednáváte jen jedno balení"));
+    const proteinCheckout={
+      count:checkoutParagraphs.length,
+      contentValid:checkoutParagraphs.length===1 && [
+        "včetně dopravy a povinných poplatků",
+        "nepřičítejte celou společnou dopravu každému balení",
+        "Nepřidávejte nepotřebné doplňky",
+        "nemusíte objednávat nic",
+      ].every(term=>checkoutParagraphs[0].textContent.includes(term)),
+      noNewCommercialLink:checkoutParagraphs.every(p=>!p.querySelector("a[href^='http']")),
+    };
     const labelGuideLinks=[...document.querySelectorAll('a[href="https://xfit.cz/xfit-os-cena-proteinu-podle-etikety/"]')];
     const firstDecisionHeading=document.querySelector("h2");
     const labelGuideBridge={
@@ -260,7 +292,7 @@ for(const spec of checks){
         merchantLinks:links.length,missingSponsored,imagesMissingAlt:images.length,
         productImages:productImages.length,brokenProductImages:brokenProductImages.length,
         productImageStatus,themeImagesMissingAlt,firstProductLoaded,firstCTASize,
-        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,noPurchase,proteinPackUse,beginnerGoals};
+        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,noPurchase,proteinPackUse,proteinCheckout,quickNav,beginnerGoals};
   });
   if(!doc.h1.includes(spec.expected))failures.push("h1_missing_expected");
   if(doc.h2<spec.minH2)failures.push("insufficient_h2");
@@ -285,6 +317,14 @@ for(const spec of checks){
       (doc.proteinPackUse.count!==1 || !doc.proteinPackUse.hasArithmetic ||
        !doc.proteinPackUse.hasRealLimits || !doc.proteinPackUse.oldAdviceAbsent))
     failures.push("published_protein_pack_use_advice_not_visible_or_incomplete");
+  if(spec.name==="protein-guide" && (!doc.proteinCheckout.contentValid ||
+      doc.proteinCheckout.count!==1 || !doc.proteinCheckout.noNewCommercialLink))
+    failures.push("published_protein_checkout_total_advice_missing_or_incomplete");
+  if(spec.commercial && (doc.quickNav.count!==1 ||
+      doc.quickNav.countLinks!==2 || !doc.quickNav.exactTargets ||
+      !doc.quickNav.noBuyOpen || !doc.quickNav.offerHeadingExists ||
+      !doc.quickNav.resolvedOnce || !doc.quickNav.noMerchantLinks))
+    failures.push("live_mobile_adviser_shortcuts_missing_or_invalid");
   if(spec.commercial && (!doc.noPurchase.heading ||
       doc.noPurchase.questions!==3 || !doc.noPurchase.firstOpen ||
       !doc.noPurchase.firstSummary || !doc.noPurchase.remainingClosed ||
