@@ -187,26 +187,31 @@ def post_sitemap_inclusion(root_body, *, reader, max_children=20):
     if root_locs is None:
         return {"state": "ROOT_NOT_PARSEABLE_INDEX", "post_maps_declared": 0,
                 "post_maps_checked": 0, "post_maps_failed": 0,
-                "unsafe_or_irrelevant_locs_ignored": 0, "per_slug": empty}
+                "unsafe_or_irrelevant_locs_ignored": 0,
+                "post_map_checks": [], "per_slug": empty}
     candidates = sorted(set(filter(None, (_safe_post_sitemap_child(x)
                                            for x in root_locs))))
     ignored = len(root_locs) - len(candidates)
     seen = set()
     checked = 0
     failed = 0
+    checks = []
     for path in candidates[:max_children]:
         try:
             child, _ = reader(path, max_bytes=MAX_BYTES)
             locs = _xml_locs(child, "urlset")
             if locs is None:
                 failed += 1
+                checks.append({"file": path, "status": "INVALID_OR_NON_URLSET"})
                 continue
             checked += 1
+            checks.append({"file": path, "status": "ACCESSIBLE_URLSET"})
             for slug in OWNED:
                 if SITE + "/" + slug + "/" in locs:
                     seen.add(slug)
-        except (OSError, ValueError, UnicodeError, TypeError):
+        except (OSError, ValueError, UnicodeError, TypeError) as exc:
             failed += 1
+            checks.append({"file": path, "status": sitemap_fetch_failure(exc)})
     complete = (len(candidates) > 0 and
                 len(candidates) <= max_children and failed == 0 and
                 checked == len(candidates))
@@ -217,6 +222,8 @@ def post_sitemap_inclusion(root_body, *, reader, max_children=20):
         "post_maps_declared": len(candidates),
         "post_maps_checked": checked,
         "post_maps_failed": failed,
+        "post_maps_not_attempted": max(0, len(candidates) - max_children),
+        "post_map_checks": checks,
         "unsafe_or_irrelevant_locs_ignored": max(0, ignored),
         "per_slug": {
             slug: ("INCLUDED_IN_POST_SITEMAP" if slug in seen else
