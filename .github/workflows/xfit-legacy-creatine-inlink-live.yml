@@ -1,0 +1,46 @@
+name: XFIT Legacy Creatine Inlink Onepost Live
+# Exactly one legacy article, WP 4224; no bulk edits or URL changes.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-legacy-creatine-inlink-live.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  publish-reviewed-onepost-handoff:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify all source protections and one-post rollback tests
+        run: |
+          python -m unittest discover -s tests -v
+          python -m unittest tests.test_legacy_creatine_handoff_release -v
+      - name: Read pinned legacy article and save original full content before write
+        run: python -m scripts.xfit_legacy_creatine_handoff_release snapshot
+      - name: Mandatory prewrite rollback artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-legacy-creatine-4224-rollback-${{ github.run_id }}
+          path: reports/backups/xfit-legacy-creatine-4224.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Write at most one exact link and verify authenticated and public
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_legacy_creatine_handoff_release apply | tee -a "$GITHUB_STEP_SUMMARY"
