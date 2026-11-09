@@ -271,5 +271,60 @@ class LegacyRoutingDiscoveryTests(unittest.TestCase):
         self.assertNotIn("delete",str(report))
 
 
+    def test_all_protein_title_synonyms_are_searched_and_deduplicated(self):
+        from urllib.parse import parse_qs
+        queries=[]
+        def fake(base,path):
+            q=parse_qs(path.split("?",1)[1])
+            term=q["search"][0]
+            queries.append(term)
+            self.assertEqual(q["search_columns[]"],["post_title"])
+            self.assertEqual(q["context"],["edit"])
+            self.assertEqual(q["status"],["publish"])
+            rows={
+                "protein":[{"id":101},{"id":102}],
+                "bílkovin":[{"id":102},{"id":103}],
+                "bilkovin":[{"id":103},{"id":104}],
+            }
+            return rows[term]
+        rows,meta=discovery.fetch_campaign_posts(
+            "protein",request=fake,base="https://xfit.cz")
+        self.assertEqual(queries,["protein","bílkovin","bilkovin"])
+        self.assertEqual([row["id"] for row in rows],[101,102,103,104])
+        self.assertEqual(meta["status"],"COMPLETE")
+        self.assertEqual(meta["unique_rows"],4)
+        self.assertEqual(set(meta["per_title_query"]),set(queries))
+        self.assertTrue(all(x["status"]=="COMPLETE"
+                            for x in meta["per_title_query"].values()))
+
+    def test_one_incomplete_synonym_preserves_incomplete_topic_coverage(self):
+        from urllib.parse import parse_qs
+        def fake(base,path):
+            q=parse_qs(path.split("?",1)[1])
+            term=q["search"][0]
+            return [{"id":201}] if term=="bílkovin" else []
+        rows,meta=discovery.fetch_campaign_posts(
+            "protein",request=fake,base="https://xfit.cz",
+            page_size=1,max_pages=1)
+        self.assertEqual([r["id"] for r in rows],[201])
+        self.assertEqual(meta["status"],"PAGE_CAP_REACHED")
+        self.assertEqual(meta["per_title_query"]["bílkovin"]["status"],
+                         "PAGE_CAP_REACHED")
+        report=discovery.rank_search_results(
+            {"protein":rows,"kreatin":[]},
+            coverage={"protein":meta,"kreatin":{"status":"COMPLETE"}})
+        self.assertFalse(report["search_coverage_complete"])
+        self.assertEqual(report["search_topics_incomplete"],["protein"])
+        self.assertEqual(report["search_results_saturated_topics"],["protein"])
+
+    def test_arbitrary_or_cross_campaign_search_term_is_rejected(self):
+        def never(*args,**kwargs):
+            raise AssertionError("unexpected WordPress request")
+        for term in ("email","creatine","",None,123):
+            with self.subTest(term=term), self.assertRaises(ValueError):
+                discovery.fetch_topic_posts(
+                    "protein",request=never,search_term=term)
+
+
 if __name__=="__main__":
     unittest.main()
