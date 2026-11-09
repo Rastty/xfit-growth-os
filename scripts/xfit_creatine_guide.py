@@ -128,13 +128,18 @@ def build_document(catalog, base, sample):
       'je často nejpraktičtější volbou kreatin monohydrát. '
       'Tento přehled srovnává nabídky podle ceny a hmotnosti balení, '
       'nikoli podle marketingových superlativů.</p>',
+      '<nav aria-label="Rychlá navigace poradcem"><ul style="padding-left:24px;">'
+      '<li><a href="#xfit-need" style="display:inline-block;padding:12px 0;">'
+      'Potřebuji vůbec doplněk?</a></li>'
+      '<li><a href="#xfit-offers" style="display:inline-block;padding:12px 0;">'
+      'Porovnat balení a ceny</a></li></ul></nav>',
       catalog_retrieval_notice(catalog),
       '<p><strong>Jak používat výběr:</strong> Porovnejte cenu za 100 g prášku, '
       'velikost balení a celkovou cenu. Nezaměňujte cenu za 100 g výrobku '
       's přesnou cenou za 100 g čistého kreatinu – čistotu konkrétních '
       'výrobků ověřujte na obalu. Ceny a dostupnost se mohou měnit.</p>',
       '<h2>Než koupíte kreatin: tři rychlé otázky</h2>',
-      '<details open><summary><strong>Začínám cvičit. Potřebuji ho hned?</strong></summary>'
+      '<details id="xfit-need" open><summary><strong>Začínám cvičit. Potřebuji ho hned?</strong></summary>'
       '<p>Ne. Pravidelný trénink, dostatek jídla, spánek a realistický plán mají přednost. '
       'Pokud zatím nevíte, co vám schází, začněte průvodcem '
       '<a href="https://xfit.cz/xfit-os-doplnky-pro-zacatecniky/">doplňky stravy pro začátečníky</a>. '
