@@ -8,6 +8,8 @@ on:
       - 'scripts/xfit_whey_guide.py'
       - 'scripts/wp_publish.py'
       - 'tests/test_publisher.py'
+      - 'scripts/xfit_creatine_guide.py'
+      - 'scripts/xfit_affil_deeplink.py'
       - 'scripts/xfit_click_metadata.py'
       - 'scripts/xfit_budget_choices.py'
       - 'scripts/xfit_price_tradeoff.py'
