@@ -21,7 +21,7 @@ def clean(text):return " ".join(plain(text or "").split())
 # These are editorial review candidates, not permission for automatic WP writes.
 PRIORITY_LEGACY=(
     ("nejlepsi-zpusoby-jak-kombinovat-kreatin-s-dalsimi-doplnky-stravy-a-treninkovymi-metodami-pro-uspech-v-fitness",
-     "https://xfit.cz/xfit-os-kreatin-poradce/", "creative-training-decision"),
+     "https://xfit.cz/xfit-os-kreatin-poradce/", "creatine-training-decision"),
     ("kreatin-monohydrat-a-jeho-bezpecnostni-rizika-pri-uzivani-jak-se-chranit-pred-nezadoucimi-ucinky",
      "https://xfit.cz/kreatin-a-jeho-vliv-na-ledviny-a-jatra/", "safety-evidence-handoff"),
 )
@@ -89,38 +89,79 @@ def inspect_priority(*,request=None,base=None):
         out.append(item)
     return out
 
-def main():
-    result={"state":"internal_link_opportunities_read_only",
-        "audited_queries":list(CAMPAIGNS),"candidates":[],
-        "priority_legacy_link_checks":inspect_priority(),
-        "remote_writes":0}
-    seen=set()
-    for topic,url in CAMPAIGNS.items():
-        q=urlencode({"search":topic,"context":"edit","status":"publish","per_page":70,
-           "_fields":"id,slug,title,content,excerpt,modified,date,link"})
-        rows=wp_request(normalized_base(),"posts?"+q)
+
+SEARCH_LIMIT=70
+TOPIC_TERMS={
+    "kreatin":("kreatin","creatine"),
+    "protein":("protein","bílkovin","bilkovin"),
+}
+
+def rank_search_results(rows_by_topic):
+    """Pure read-only ranking: never assign creatine CTAs to protein-only titles.
+
+    Each (post, topic) pair is one editorial idea, not a request to write to WP.
+    A result hitting the page-size cap is explicitly an incomplete discovery.
+    """
+    candidates=[]
+    saturated=[]
+    for topic,target in CAMPAIGNS.items():
+        rows=rows_by_topic[topic]
+        if len(rows)>=SEARCH_LIMIT:
+            saturated.append(topic)
+        seen=set()
         for p in rows:
-            id=p.get("id");slug=p.get("slug") or ""
-            if id in seen or slug in ALREADY or slug.startswith("xfit-os-"):
+            slug=p.get("slug") or ""
+            post_id=p.get("id")
+            if (post_id in seen or slug in ALREADY
+                    or slug.startswith("xfit-os-")
+                    or not verified_post_identity(p,slug)):
                 continue
-            seen.add(id)
+            seen.add(post_id)
             body=(p.get("content") or {}).get("raw") or ""
             title=clean((p.get("title") or {}).get("raw",""))
-            lower=(title+" "+slug).casefold()
-            if len(body)<1500 or not any(t in lower for t in ("kreatin","creatine","protein","bílkovin","bilkovin")):
+            title_and_slug=(title+" "+slug).casefold()
+            if (len(body)<1500
+                    or not any(term in title_and_slug
+                               for term in TOPIC_TERMS[topic])):
                 continue
-            target=CAMPAIGNS[topic]
-            missing=target not in body
-            both=all(x not in body for x in CAMPAIGNS.values())
-            score=(3 if any(t in lower for t in ("jak vybrat","jaký","jakou","koupit","účinky","účinnost","dávkování","zkušenosti")) else 0)
-            score+=(2 if "kreatin" in lower or "protein" in lower else 0)
+            actual_links=links(body)
+            missing=target not in actual_links
+            score=(3 if any(term in title_and_slug for term in (
+                "jak vybrat","jaký","jakou","koupit","účinky","účinnost",
+                "dávkování","zkušenosti")) else 0)
+            score+=2  # Relevant topic is proven in canonical title/slug.
             score+=1 if missing else 0
-            result["candidates"].append({"id":id,"slug":slug,"title":title[:125],
-              "topic":topic,"body_chars":len(body),"already_has_target_link":not missing,
-              "already_has_any_product_guide_link":not both,
-              "ranking_heuristic":score,"link":p.get("link")})
-    result["candidates"].sort(key=lambda x:(-x["ranking_heuristic"],-x["body_chars"]))
-    result["candidates"]=result["candidates"][:55]
+            candidates.append({
+                "id":post_id,"slug":slug,"title":title[:125],
+                "topic":topic,"body_chars":len(body),
+                "already_has_target_link":not missing,
+                "already_has_any_product_guide_link":any(
+                    u in actual_links for u in CAMPAIGNS.values()),
+                "ranking_heuristic":score,"link":p.get("link"),
+                "next_action":("ALREADY_LINKED" if not missing else
+                               "EDITORIAL_REVIEW_BEFORE_ONE_POST"),
+            })
+    candidates.sort(key=lambda x:(-x["ranking_heuristic"],
+                                  -x["body_chars"],x["slug"],x["topic"]))
+    return {"candidates":candidates[:55],
+            "candidate_count_before_limit":len(candidates),
+            "search_results_saturated_topics":saturated,
+            "search_coverage_complete":not bool(saturated)}
+
+
+def main():
+    rows_by_topic={}
+    for topic in CAMPAIGNS:
+        q=urlencode({"search":topic,"context":"edit","status":"publish",
+                     "per_page":SEARCH_LIMIT,
+                     "_fields":"id,slug,status,title,content,excerpt,modified,date,link"})
+        rows_by_topic[topic]=wp_request(normalized_base(),"posts?"+q)
+    ranked=rank_search_results(rows_by_topic)
+    result={"state":"internal_link_opportunities_read_only",
+            "audited_queries":list(CAMPAIGNS),
+            "priority_legacy_link_checks":inspect_priority(),
+            "remote_writes":0,**ranked}
     print(json.dumps(result,ensure_ascii=False))
+
 if __name__=="__main__":
     main()
