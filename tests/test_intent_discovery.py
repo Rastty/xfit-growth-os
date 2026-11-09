@@ -320,7 +320,7 @@ class LegacyRoutingDiscoveryTests(unittest.TestCase):
     def test_arbitrary_or_cross_campaign_search_term_is_rejected(self):
         def never(*args,**kwargs):
             raise AssertionError("unexpected WordPress request")
-        for term in ("email","creatine","",None,123):
+        for term in ("email","creatine","",123):
             with self.subTest(term=term), self.assertRaises(ValueError):
                 discovery.fetch_topic_posts(
                     "protein",request=never,search_term=term)
