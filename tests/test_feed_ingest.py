@@ -36,6 +36,83 @@ class AffiliateFeedTests(unittest.TestCase):
         self.assertIsNone(offers[0]["affiliate_url"])
         self.assertFalse(offers[0]["publish_ready"])
 
+    def test_nested_xml_html_entity_is_normalized_once_for_both_live_advisers(self):
+        from html.parser import HTMLParser
+        from scripts.xfit_creatine_guide import build_document as creatine_document
+        from scripts.xfit_whey_guide import build_document as whey_document
+
+        sample = b"""<SHOP>
+        <SHOPITEM><ITEM_ID>21</ITEM_ID>
+          <PRODUCTNAME>Creatine Monohydrate 400g Natural Melon &amp;amp; Kiwi</PRODUCTNAME>
+          <CATEGORYTEXT>Kreatin</CATEGORYTEXT><PRICE_VAT>299</PRICE_VAT>
+          <URL>https://www.namaximum.cz/p/creatine?variant=21</URL></SHOPITEM>
+        <SHOPITEM><ITEM_ID>22</ITEM_ID>
+          <PRODUCTNAME>Creatine Monohydrate 1000g Natural Melon &amp;amp; Kiwi</PRODUCTNAME>
+          <CATEGORYTEXT>Kreatin</CATEGORYTEXT><PRICE_VAT>599</PRICE_VAT>
+          <URL>https://www.namaximum.cz/p/creatine?variant=22</URL></SHOPITEM>
+        <SHOPITEM><ITEM_ID>31</ITEM_ID>
+          <PRODUCTNAME>Whey WPC 500g Vanilla &amp;amp; Almond</PRODUCTNAME>
+          <CATEGORYTEXT>Syrovátkové proteiny</CATEGORYTEXT><PRICE_VAT>399</PRICE_VAT>
+          <URL>https://www.namaximum.cz/p/whey?variant=31</URL></SHOPITEM>
+        <SHOPITEM><ITEM_ID>32</ITEM_ID>
+          <PRODUCTNAME>Whey WPC 1000g Vanilla &amp;amp; Almond</PRODUCTNAME>
+          <CATEGORYTEXT>Syrovátkové proteiny</CATEGORYTEXT><PRICE_VAT>699</PRICE_VAT>
+          <URL>https://www.namaximum.cz/p/whey?variant=32</URL></SHOPITEM>
+        </SHOP>"""
+        items, skipped = parse_feed(sample)
+        self.assertEqual(len(items),4)
+        self.assertEqual(skipped, {})
+        self.assertEqual(items[0]["title"],
+                         "Creatine Monohydrate 400g Natural Melon & Kiwi")
+        self.assertEqual(items[2]["title"],"Whey WPC 500g Vanilla & Almond")
+        base=("https://www.namaximum.cz/?utm_medium=affiliate"
+              "&utm_campaign=affial.com&utm_source=pap&a_aid=TEST&a_bid=TEST")
+        product=base.replace(".cz/",".cz/p/approved")
+        catalog={"merchant":"namaximum.cz","merchant_match":True,
+                 "products":items}
+        class Visible(HTMLParser):
+            def __init__(self):
+                super().__init__(convert_charrefs=True)
+                self.data=[]
+            def handle_data(self, value):
+                self.data.append(value)
+        for build, text in ((creatine_document,"Melon & Kiwi"),
+                            (whey_document,"Vanilla & Almond")):
+            with self.subTest(builder=build.__module__):
+                html_body=build(catalog,base,product)["content"]
+                self.assertNotIn("&amp;amp;",html_body)
+                self.assertIn("&amp;",html_body)
+                parser=Visible()
+                parser.feed(html_body)
+                self.assertIn(text," ".join(parser.data))
+                self.assertIn('rel="sponsored nofollow',html_body)
+        # Actual tracked URLs and prices stay sourced from the merchant XML.
+        self.assertTrue(all(x["source_url"].startswith(
+            "https://www.namaximum.cz/p/") for x in items))
+
+    def test_entity_normalization_never_interprets_product_title_as_markup(self):
+        from html.parser import HTMLParser
+        from scripts.xfit_whey_guide import build_document
+        sample = b"""<SHOP>
+        <SHOPITEM><ITEM_ID>77</ITEM_ID>
+          <PRODUCTNAME>Whey WPC 500g &amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp;gt;</PRODUCTNAME>
+          <CATEGORYTEXT>Syrovátkové proteiny</CATEGORYTEXT><PRICE_VAT>399</PRICE_VAT>
+          <URL>https://www.namaximum.cz/p/whey?variant=77</URL></SHOPITEM>
+        <SHOPITEM><ITEM_ID>78</ITEM_ID>
+          <PRODUCTNAME>Whey WPC 1000g Plain</PRODUCTNAME>
+          <CATEGORYTEXT>Syrovátkové proteiny</CATEGORYTEXT><PRICE_VAT>699</PRICE_VAT>
+          <URL>https://www.namaximum.cz/p/whey?variant=78</URL></SHOPITEM>
+        </SHOP>"""
+        items,_=parse_feed(sample)
+        self.assertIn("<script>",items[0]["title"])
+        base=("https://www.namaximum.cz/?utm_medium=affiliate"
+              "&utm_campaign=affial.com&utm_source=pap&a_aid=TEST&a_bid=TEST")
+        doc=build_document({"merchant":"namaximum.cz","merchant_match":True,
+                            "products":items},base,base.replace(".cz/",".cz/p/test"))
+        self.assertNotIn("<script>",doc["content"])
+        self.assertIn("&lt;script&gt;",doc["content"])
+        self.assertIn('rel="sponsored nofollow',doc["content"])
+
     def test_foreign_merchant_url_skipped(self):
         sample=b"<SHOP><SHOPITEM><PRODUCTNAME>Protein</PRODUCTNAME><PRICE_VAT>299</PRICE_VAT><URL>https://other-shop.example/p</URL></SHOPITEM></SHOP>"
         offers, skipped=parse_feed(sample)
