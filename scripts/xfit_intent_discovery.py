@@ -294,6 +294,40 @@ def fetch_campaign_posts(topic, *, request=None, base=None,
     }
 
 
+def public_review_shortlist(report, *, per_topic=5):
+    """Safe actionable source identifiers, not bulk-edit permission.
+
+    Excludes medical-intent candidates (already filtered by ranking), pages
+    with an existing target and all raw HTML, traffic or affiliate URLs.
+    """
+    if type(per_topic) is not int or not 1<=per_topic<=10:
+        raise ValueError("Invalid bounded review limit")
+    if not isinstance(report,dict) or not isinstance(report.get("candidates"),list):
+        raise ValueError("Invalid intent discovery result")
+    output={}
+    for topic in CAMPAIGNS:
+        output[topic]=[]
+        for c in report["candidates"]:
+            if (not isinstance(c,dict) or c.get("topic")!=topic
+                    or c.get("next_action")!="EDITORIAL_REVIEW_BEFORE_ONE_POST"
+                    or c.get("already_has_target_link") is not False):
+                continue
+            if (type(c.get("id")) is not int or c["id"]<=0
+                    or not isinstance(c.get("slug"),str)
+                    or not isinstance(c.get("title"),str)
+                    or not c["slug"] or not c["title"]):
+                continue
+            output[topic].append({
+                "wp_post_id":c["id"],
+                "slug":c["slug"],
+                "title":c["title"][:125],
+                "candidate_only":True,
+            })
+            if len(output[topic])>=per_topic:
+                break
+    return output
+
+
 def main():
     rows_by_topic={}
     coverage={}
