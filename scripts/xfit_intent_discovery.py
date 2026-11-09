@@ -83,7 +83,7 @@ def inspect_priority(*,request=None):
                                  "target_already_linked":already,
                                  "next_action":("ALREADY_LINKED" if already else
                                                 "EDITORIAL_REVIEW_BEFORE_ONE_POST")})
-        except (PublishError,OSError,ValueError,TypeError,KeyError):
+        except (PublishError,OSError,ValueError,TypeError,KeyError,AttributeError):
             # Public diagnostics may not reveal credentials or response bodies.
             pass
         out.append(item)
