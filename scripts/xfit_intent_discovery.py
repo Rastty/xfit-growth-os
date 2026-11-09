@@ -96,6 +96,13 @@ TOPIC_TERMS={
     "kreatin":("kreatin","creatine"),
     "protein":("protein","bílkovin","bilkovin"),
 }
+# REST title search is term-based: searching only "protein" misses articles
+# whose genuine title says "bílkoviny". Each term has separate bounded
+# pagination; deduplicate by canonical WP post ID before editorial ranking.
+SEARCH_TERMS={
+    "kreatin":("kreatin","creatine"),
+    "protein":("protein","bílkovin","bilkovin"),
+}
 # Safety/medical-intent posts should lead to independent explanations,
 # never automatically to a commercial offer comparison.
 MEDICAL_INTENT_TERMS=(
@@ -201,13 +208,17 @@ def rank_search_results(rows_by_topic, *, coverage=None):
 
 
 def fetch_topic_posts(topic, *, request=None, base=None,
-                      page_size=SEARCH_LIMIT, max_pages=MAX_SEARCH_PAGES):
+                      page_size=SEARCH_LIMIT, max_pages=MAX_SEARCH_PAGES,
+                      search_term=None):
     """Bounded, read-only, complete-until-proven-otherwise WP search paging.
 
     No WP mutation, no retries of POST. Never print raw WP response/content.
     A partial result on failure/cap is not assumed to be complete.
     """
-    if (topic not in CAMPAIGNS or type(page_size) is not int
+    if search_term is None:
+        search_term=topic  # Preserve callers of the original single-term scan.
+    if (topic not in CAMPAIGNS or search_term not in SEARCH_TERMS[topic]
+            or type(page_size) is not int
             or not 1<=page_size<=100 or type(max_pages) is not int
             or not 1<=max_pages<=MAX_SEARCH_PAGES):
         raise ValueError("Invalid bounded source scan parameters")
@@ -220,7 +231,7 @@ def fetch_topic_posts(topic, *, request=None, base=None,
         # WP REST Posts Controller (WordPress 6.2+) can restrict search to
         # post_title. Default search includes post_content and silently
         # buries high-intent titles behind hundreds of incidental mentions.
-        q=urlencode({"search":topic,"context":"edit","status":"publish",
+        q=urlencode({"search":search_term,"context":"edit","status":"publish",
                      "search_columns[]":"post_title",
                      "page":page,"per_page":page_size,
                      "_fields":"id,slug,status,title,content,modified,link"})
@@ -253,11 +264,41 @@ def fetch_topic_posts(topic, *, request=None, base=None,
                  "unique_rows":len(rows)}
 
 
+def fetch_campaign_posts(topic, *, request=None, base=None,
+                         page_size=SEARCH_LIMIT, max_pages=MAX_SEARCH_PAGES):
+    """Read all approved title synonyms, deduplicate, and retain every cap/error.
+
+    A failed synonym scan never turns the combined inventory into COMPLETE.
+    No WP write is available on this discovery path.
+    """
+    if topic not in CAMPAIGNS:
+        raise ValueError("Unsupported campaign")
+    merged=[]
+    seen=set()
+    query_coverage={}
+    for term in SEARCH_TERMS[topic]:
+        rows,info=fetch_topic_posts(
+            topic,request=request,base=base,page_size=page_size,
+            max_pages=max_pages,search_term=term)
+        query_coverage[term]=info
+        for row in rows:
+            if row["id"] not in seen:
+                merged.append(row)
+                seen.add(row["id"])
+    statuses=[item["status"] for item in query_coverage.values()]
+    status=("PAGE_CAP_REACHED" if "PAGE_CAP_REACHED" in statuses
+            else next((item for item in statuses if item!="COMPLETE"),"COMPLETE"))
+    return merged,{
+        "status":status,"unique_rows":len(merged),
+        "per_title_query":query_coverage,
+    }
+
+
 def main():
     rows_by_topic={}
     coverage={}
     for topic in CAMPAIGNS:
-        rows_by_topic[topic],coverage[topic]=fetch_topic_posts(topic)
+        rows_by_topic[topic],coverage[topic]=fetch_campaign_posts(topic)
     ranked=rank_search_results(rows_by_topic,coverage=coverage)
     result={"state":"internal_link_opportunities_read_only",
             "audited_queries":list(CAMPAIGNS),
