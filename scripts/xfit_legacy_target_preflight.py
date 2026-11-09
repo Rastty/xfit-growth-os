@@ -11,7 +11,7 @@ import re
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
-from scripts.wp_publish import wp_request, normalized_base
+from scripts.wp_publish import wp_request, normalized_base, PublishError
 
 POST_ID = 10835
 SLUG = "kde-koupit-nejlevnejsi-kreatin-pro-fitness"
@@ -139,7 +139,7 @@ def main():
             + "?context=edit&_fields=id,slug,status,title,content,link"
         )
         result = review(post)
-    except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
+    except (PublishError, OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
         # Exception message can contain a token-bearing request URL.
         result = {"candidate_wp_id": POST_ID, "source_state": "READ_UNAVAILABLE",
                   "error_class": type(exc).__name__, "decision": "BLOCKED_UNVERIFIED",
