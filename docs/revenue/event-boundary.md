@@ -11,12 +11,19 @@ Pomáhá připravit měření užitečnosti poradce a prokliků bez sběru jeho 
 - `affiliate_outbound_click`: navíc `partner=namaximum` a kladné celočíselné
   katalogové `product_id`. Identifikátor musí pocházet z katalogu, ne od uživatele.
 
-Proklik vyžaduje také argument `verified_product_ids`: `set` nebo `frozenset`
-kladných celočíselných ID z odděleně ověřeného katalogu partnera NaMaximum.
+Proklik vyžaduje také argument `verified_product_ids_by_page`: slovník schválených slugů
+na `set` nebo `frozenset` kladných celočíselných ID z odděleně ověřeného
+katalogu partnera NaMaximum, filtrovaného pro daného poradce.
 Například pro katalog obsahující ID 392 volající předá
-`verified_product_ids=frozenset({392})`. Jde pouze o příklad volání, nikoli
+`verified_product_ids_by_page={"xfit-os-kreatin-poradce": frozenset({392})}`.
+Jde pouze o příklad volání, nikoli
 doklad aktuální nabídky. Chybějící seznam, neznámé ID i neplatné položky se
-odmítnou. Seznam se neposílá v parametrech události. Nesmí se vytvářet ze
+odmítnou. ID ověřené pouze pro druhého poradce se také odmítne; tím se
+brání připsání chybně označeného produktového tlačítka jinému poradci.
+Jde o změnu offline rozhraní: původní společný set se nyní odmítá.
+Slovník musí vzniknout z ověřeného výběru produktů pro každého poradce,
+ne pouhým zkopírováním celého feedu pod oba slugy. Seznam se neposílá
+v parametrech události. Nesmí se vytvářet ze
 samotného kliknutí nebo vstupu uživatele; tím by ověření ztratilo význam.
 
 Souhlas musí v budoucí integraci dodat consent manager; výchozí stav nic
@@ -33,7 +40,7 @@ aktuálnost, skladovou dostupnost, affiliate atribuci ani deduplikaci.
 Budoucí transport musí samostatně omezit automatická metadata (URL, referrer,
 identifikátory); validátor kontroluje pouze zde sestavené parametry.
 
-`summarize_funnel(events, analytics_consent=True, verified_product_ids=...)`
+`summarize_funnel(events, analytics_consent=True, verified_product_ids_by_page=...)`
 lokálně shrne pozorované události ve formátu `{"name": ..., "params": ...}`.
 Každý záznam znovu ověří stejnou validační hranicí; při neplatném záznamu
 odmítne celý souhrn. Bez výslovného souhlasu ani nezačne číst vstup.

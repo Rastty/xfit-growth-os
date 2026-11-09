@@ -9,13 +9,13 @@ PARTNERS = {"namaximum"}
 
 
 def build_event(event_name, fields, *, analytics_consent=False,
-                verified_product_ids=None):
+                verified_product_ids_by_page=None):
     """Return minimal validated parameters, or None without explicit consent.
 
     Callers must supply actual observed actions, never synthetic conversions.
     Consent must come from the site's consent manager, not a default opt-in.
     Unknown keys fail closed: never forward quiz answers, URLs or user IDs.
-    Clicks require catalog IDs from a separately validated merchant feed.
+    Clicks require IDs from the separately validated catalog for that advisor.
     """
     if type(analytics_consent) is not bool:
         raise ValueError("consent must be boolean")
@@ -44,18 +44,23 @@ def build_event(event_name, fields, *, analytics_consent=False,
         # Only catalog item numbers, never free text or tracking URLs.
         if type(product_id) is not int or not 1 <= product_id <= 2**31 - 1:
             raise ValueError("product_id must be a positive catalog integer")
-        if (type(verified_product_ids) not in (set, frozenset)
-                or any(type(item) is not int or not 1 <= item <= 2**31 - 1
-                       for item in verified_product_ids)):
-            raise ValueError("verified catalog IDs must be an integer set")
-        if product_id not in verified_product_ids:
-            raise ValueError("product is not in the verified catalog")
+        if (type(verified_product_ids_by_page) is not dict
+                or any(type(key) is not str or key not in PAGES
+                       for key in verified_product_ids_by_page)):
+            raise ValueError("verified catalogs must be keyed by advisor page")
+        for catalog in verified_product_ids_by_page.values():
+            if (type(catalog) not in (set, frozenset)
+                    or any(type(item) is not int or not 1 <= item <= 2**31 - 1
+                           for item in catalog)):
+                raise ValueError("verified catalog IDs must be an integer set")
+        if product_id not in verified_product_ids_by_page.get(page, set()):
+            raise ValueError("product is not in the verified advisor catalog")
         params.update(partner=partner, product_id=product_id)
     return {"name": event_name, "params": params}
 
 
 def summarize_funnel(events, *, analytics_consent=False,
-                     verified_product_ids=None):
+                     verified_product_ids_by_page=None):
     """Count observed actions per advisor, never infer people or earnings.
 
     Revalidate every record instead of trusting a previously built payload.
@@ -71,7 +76,7 @@ def summarize_funnel(events, *, analytics_consent=False,
             raise ValueError("unsupported event record")
         validated = build_event(
             event["name"], event["params"], analytics_consent=True,
-            verified_product_ids=verified_product_ids,
+            verified_product_ids_by_page=verified_product_ids_by_page,
         )
         counts[validated["params"]["page"]][validated["name"]] += 1
     return {

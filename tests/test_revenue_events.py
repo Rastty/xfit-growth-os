@@ -30,7 +30,9 @@ class RevenueEventTests(unittest.TestCase):
     def test_click_uses_only_catalog_identifiers(self):
         fields = dict(self.fields, partner="namaximum", product_id=392)
         result = build_event("affiliate_outbound_click", fields,
-                             analytics_consent=True, verified_product_ids={392})
+                             analytics_consent=True,
+                             verified_product_ids_by_page={
+                                 "xfit-os-kreatin-poradce": {392}})
         self.assertEqual(result["params"], fields)
         fields["product_id"] = 999
         self.assertEqual(result["params"]["product_id"], 392)
@@ -41,12 +43,39 @@ class RevenueEventTests(unittest.TestCase):
                         {"392"}, {0, 392}, {2**31, 392}):
             with self.subTest(catalog=catalog), self.assertRaises(ValueError):
                 build_event("affiliate_outbound_click", fields,
-                            analytics_consent=True, verified_product_ids=catalog)
+                            analytics_consent=True,
+                            verified_product_ids_by_page={self.fields["page"]: catalog})
         result = build_event("affiliate_outbound_click", fields,
                              analytics_consent=True,
-                             verified_product_ids=frozenset({392, 393}))
+                             verified_product_ids_by_page={
+                                 self.fields["page"]: frozenset({392, 393})})
         self.assertEqual(result["params"], fields)
-        self.assertNotIn("verified_product_ids", result["params"])
+        self.assertNotIn("verified_product_ids_by_page", result["params"])
+
+    def test_click_requires_catalog_for_its_own_advisor(self):
+        catalogs = {"xfit-os-kreatin-poradce": {392},
+                    "xfit-os-syrovatkovy-protein-porovnani": {393}}
+        for page, engine, own_id, other_id in (
+                ("xfit-os-kreatin-poradce", "creatine", 392, 393),
+                ("xfit-os-syrovatkovy-protein-porovnani", "whey", 393, 392)):
+            fields = dict(page=page, selection_engine=engine,
+                          partner="namaximum", product_id=own_id)
+            with self.subTest(page=page):
+                self.assertIsNotNone(build_event(
+                    "affiliate_outbound_click", fields, analytics_consent=True,
+                    verified_product_ids_by_page=catalogs))
+                fields["product_id"] = other_id
+                event = {"name": "affiliate_outbound_click", "params": fields}
+                with self.assertRaises(ValueError):
+                    summarize_funnel([event], analytics_consent=True,
+                                     verified_product_ids_by_page=catalogs)
+        for catalogs in (None, {392}, {}, {"unknown": {392}},
+                         {"xfit-os-syrovatkovy-protein-porovnani": {392}}):
+            with self.subTest(catalogs=catalogs), self.assertRaises(ValueError):
+                build_event("affiliate_outbound_click",
+                            dict(self.fields, partner="namaximum", product_id=392),
+                            analytics_consent=True,
+                            verified_product_ids_by_page=catalogs)
 
     def test_denied_consent_does_not_require_catalog(self):
         fields = dict(self.fields, partner="namaximum", product_id=392)
@@ -68,7 +97,9 @@ class RevenueEventTests(unittest.TestCase):
         for fields in invalid:
             with self.subTest(fields=fields), self.assertRaises(ValueError):
                 build_event("affiliate_outbound_click", fields,
-                            analytics_consent=True, verified_product_ids={392})
+                            analytics_consent=True,
+                             verified_product_ids_by_page={
+                                 "xfit-os-kreatin-poradce": {392}})
         for name in ("purchase", "commission", "health_answer", None):
             with self.subTest(name=name), self.assertRaises(ValueError):
                 build_event(name, self.fields, analytics_consent=True)
@@ -90,7 +121,8 @@ class RevenueFunnelTests(unittest.TestCase):
                  "params": dict(creatine, partner="namaximum", product_id=392)}
         events.extend([click, click])
         result = summarize_funnel(iter(events), analytics_consent=True,
-                                  verified_product_ids={392})
+                                  verified_product_ids_by_page={
+                                      "xfit-os-kreatin-poradce": {392}})
         self.assertEqual(result["action_counts"][creatine["page"]], {
             "advisor_start": 1, "advisor_complete": 1,
             "affiliate_outbound_click": 2,
@@ -128,7 +160,8 @@ class RevenueFunnelTests(unittest.TestCase):
                         fields.update(partner="namaximum", product_id=392)
                     result = summarize_funnel(
                         [{"name": name, "params": fields}],
-                        analytics_consent=True, verified_product_ids={392})
+                        analytics_consent=True,
+                        verified_product_ids_by_page={page: {392}})
                     for reported_page, statuses in result[
                             "action_observation_status"].items():
                         self.assertEqual(statuses, {
@@ -182,4 +215,5 @@ class RevenueFunnelTests(unittest.TestCase):
         for event in invalid:
             with self.subTest(event=event), self.assertRaises(ValueError):
                 summarize_funnel([event], analytics_consent=True,
-                                 verified_product_ids={392})
+                                 verified_product_ids_by_page={
+                                      "xfit-os-kreatin-poradce": {392}})
