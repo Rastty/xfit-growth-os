@@ -83,6 +83,26 @@ class ArchiveAuditTests(unittest.TestCase):
         p=post(None,"bad","Bad","Thin")
         self.assertEqual(inventory([p])["scanned"],0)
 
+    def test_invalid_ids_do_not_hide_behind_a_complete_page_count(self):
+        for invalid_id in (None,0,-1,"2",True,False):
+            with self.subTest(id=invalid_id), tempfile.TemporaryDirectory() as directory:
+                output=Path(directory)/"audit.json"
+                valid=post(1,"protein","Protein","Praktické informace.")
+                invalid=post(invalid_id,"kreatin","Kreatin","Další informace.")
+                with patch("sys.argv",["audit","--pages","1","--size","2",
+                                       "--output",str(output)]), \
+                     patch("scripts.xfit_archive_full.fetch",return_value=([valid,invalid],1)), \
+                     patch("builtins.print") as printed:
+                    self.assertEqual(main(),2)
+                report=json.loads(output.read_text(encoding="utf-8"))
+                self.assertFalse(report["complete"])
+                self.assertEqual(report["invalid_post_id_count"],1)
+                self.assertEqual(report["scanned"],1)
+                self.assertEqual(report["raw_page_records"],2)
+                self.assertEqual(report["repeated_pagination_post_count"],0)
+                self.assertFalse(report["mutated_wordpress"])
+                self.assertEqual(json.loads(printed.call_args.args[0])["invalid_post_id_count"],1)
+
     def test_equal_text_with_different_content_is_not_exact_duplicate(self):
         pairs=[
             ('<a href="https://example.org/source-a">Zdroj</a>',

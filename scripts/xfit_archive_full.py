@@ -123,9 +123,11 @@ def inventory(posts):
     # finding against itself (observed on prior audit for post 5300).
     seen={}
     repeated_ids=[]
+    invalid_post_id_count=0
     for post in posts:
         id=post.get("id")
-        if not isinstance(id,int) or id<=0:
+        if type(id) is not int or id<=0:
+            invalid_post_id_count+=1
             continue
         if id in seen:
             repeated_ids.append(id)
@@ -151,6 +153,7 @@ def inventory(posts):
     return {
       "scanned":len(rows),
       "raw_page_records":len(posts),
+      "invalid_post_id_count":invalid_post_id_count,
       "repeated_pagination_post_count":len(repeated_ids),
       "repeated_pagination_post_ids_sample":sorted(set(repeated_ids))[:30],
       "duplicate_title_groups":len(duplicates),
@@ -202,7 +205,7 @@ def main():
        "declared_total_pages":declared_total,
        "interrupted_at":failed,
        "pages_fetched":pages_fetched,
-       "complete":failed is None and (
+       "complete":failed is None and report["invalid_post_id_count"]==0 and (
            # A short response cannot override an explicit remaining-page count.
            (pages_fetched>=declared_total if declared_total is not None
             else saw_short_page)
@@ -212,7 +215,7 @@ def main():
     })
     dest=Path(args.output);dest.parent.mkdir(parents=True,exist_ok=True)
     dest.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
-    print(json.dumps({k:report[k] for k in ("scanned","repeated_pagination_post_count","complete","duplicate_title_groups","exact_body_duplicate_groups","thin_count","stale_2022_promo_posts","stale_2022_promo_shortcodes","suspected_out_of_focus_count","suspected_spam_count","declared_total_pages","interrupted_at","mutated_wordpress")},ensure_ascii=False))
+    print(json.dumps({k:report[k] for k in ("scanned","invalid_post_id_count","repeated_pagination_post_count","complete","duplicate_title_groups","exact_body_duplicate_groups","thin_count","stale_2022_promo_posts","stale_2022_promo_shortcodes","suspected_out_of_focus_count","suspected_spam_count","declared_total_pages","interrupted_at","mutated_wordpress")},ensure_ascii=False))
     return 2 if not rows or not report["complete"] else 0
 
 if __name__=="__main__":
