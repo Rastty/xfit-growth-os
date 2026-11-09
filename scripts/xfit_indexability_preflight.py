@@ -11,7 +11,8 @@ from html.parser import HTMLParser
 from pathlib import Path
 import re
 from urllib.parse import urlsplit
-from urllib.request import Request, urlopen
+from urllib.error import HTTPError
+from urllib.request import Request, build_opener, HTTPRedirectHandler
 
 SITE = "https://xfit.cz"
 OWNED = (
@@ -104,6 +105,23 @@ def assess_html(slug, body, headers=None):
     }
 
 
+class NoRedirect(HTTPRedirectHandler):
+    """Never request a second host or path when public endpoints redirect."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def sitemap_fetch_failure(exc):
+    """Public, redacted diagnostic classification; never expose exception URLs."""
+    if isinstance(exc, HTTPError):
+        if exc.code in (301, 302, 303, 307, 308):
+            return "HTTP_REDIRECT_" + str(exc.code)
+        if exc.code in (400, 401, 403, 404, 405, 410, 429, 500, 502, 503, 504):
+            return "HTTP_" + str(exc.code)
+        return "HTTP_OTHER"
+    return "UNKNOWN_UNAVAILABLE"
+
+
 def read_xfit_path(path, *, max_bytes=MAX_BYTES):
     if not isinstance(path, str) or not path.startswith("/") or path.startswith("//"):
         raise ValueError("Unexpected XFIT path")
@@ -114,7 +132,7 @@ def read_xfit_path(path, *, max_bytes=MAX_BYTES):
         "Cache-Control": "no-cache",
         "Pragma": "no-cache",
     })
-    with urlopen(req, timeout=25) as response:
+    with build_opener(NoRedirect()).open(req, timeout=25) as response:
         final = urlsplit(response.geturl())
         if (response.status != 200 or final.scheme != "https"
                 or final.hostname not in ALLOWED or final.path != path
@@ -201,8 +219,8 @@ def run(*, reader=read_xfit_path):
                     "<sitemapindex" in body.casefold() or "<urlset" in body.casefold()
                     or "<ns0:sitemapindex" in body.casefold()
                 ) else "UNKNOWN_UNEXPECTED_RESPONSE"
-        except (OSError, ValueError, UnicodeError, TypeError):
-            status = "UNKNOWN_UNAVAILABLE"
+        except (OSError, ValueError, UnicodeError, TypeError) as exc:
+            status = sitemap_fetch_failure(exc)
         infrastructure[name] = status
     declared_status = {}
     # Only verified exact same-origin XML paths from the public robots file.
@@ -221,8 +239,8 @@ def run(*, reader=read_xfit_path):
             declared_status[path] = "ACCESSIBLE_XML" if (
                 "<sitemapindex" in body.casefold() or "<urlset" in body.casefold()
             ) else "UNKNOWN_UNEXPECTED_RESPONSE"
-        except (OSError, ValueError, TypeError, UnicodeError):
-            declared_status[path] = "UNKNOWN_UNAVAILABLE"
+        except (OSError, ValueError, TypeError, UnicodeError) as exc:
+            declared_status[path] = sitemap_fetch_failure(exc)
     for page in pages:
         target = SITE + "/" + page["slug"] + "/"
         page["observed_internal_inlinks_from_seven_reviewed_articles"] = sum(
@@ -244,6 +262,8 @@ def run(*, reader=read_xfit_path):
             "Root Disallow observation alone needs complete robots precedence interpretation",
             "Only seven reviewed public articles are sampled for inlinks, not full site graph",
             "UNKNOWN_FETCH is not a 404, noindex or proof of deindexation",
+            "HTTP_4XX/5XX is the exact observed status at probe time, not persistent absence",
+            "HTTP_REDIRECT_3XX is a no-follow redirect observation; target was not fetched",
             "Google URL Inspection source remains authoritative for live GSC status",
         ],
         "wordpress_writes": 0, "plugins_installed": 0,
