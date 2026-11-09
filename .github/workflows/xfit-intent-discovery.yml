@@ -39,6 +39,8 @@ jobs:
           print(json.dumps({
               "state": r["state"],
               "public_candidate_count": len(r["candidates"]),
+              "search_coverage_complete": r["search_coverage_complete"],
+              "saturated_topics": r["search_results_saturated_topics"],
               "priority_checks": r["priority_legacy_link_checks"],
               "remote_writes": 0,
           },ensure_ascii=False))
