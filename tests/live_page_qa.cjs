@@ -50,6 +50,19 @@ for(const spec of checks){
       host:new URL(n.currentSrc||n.src).hostname,loaded:n.complete&&n.naturalWidth>0,
       renderedHeight:Math.round(n.getBoundingClientRect().height),
       naturalWidth:n.naturalWidth}));
+    // Browser textContent is decoded visible text: an '&amp;' here means
+    // a customer actually sees broken product-name entities. Source HTML may
+    // legitimately contain '&amp;' to represent an ordinary '&' character.
+    // Don't click ads or merchant links; check only on-page retail card names.
+    const productNameEntityLeak=[...document.querySelectorAll(".xfit-product-card h3")]
+      .map(el=>(el.textContent||"").trim())
+      .filter(text=>/&(?:amp|lt|gt|quot|apos|#[0-9]+);/i.test(text))
+      .slice(0,5);
+    const productTitleDisplay={
+      cardNamesChecked:document.querySelectorAll(".xfit-product-card h3").length,
+      visibleEntityLeaks:productNameEntityLeak,
+      literalMarkupEscaped:!document.querySelector(".xfit-product-card h3 script"),
+    };
     const firstCard=document.querySelector(".xfit-product-card");
     const firstCardImage=firstCard?.querySelector("img");
     const firstCardLink=firstCard?.querySelector('a[href*="namaximum.cz"]');
@@ -328,7 +341,7 @@ for(const spec of checks){
         merchantLinks:links.length,missingSponsored,imagesMissingAlt:images.length,
         productImages:productImages.length,brokenProductImages:brokenProductImages.length,
         productImageStatus,themeImagesMissingAlt,firstProductLoaded,firstCTASize,
-        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,noPurchase,proteinPackUse,proteinCheckout,quickNav,offTopicPlacement,beginnerGoals};
+        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,noPurchase,proteinPackUse,proteinCheckout,productTitleDisplay,quickNav,offTopicPlacement,beginnerGoals};
   });
   if(!doc.h1.includes(spec.expected))failures.push("h1_missing_expected");
   if(doc.h2<spec.minH2)failures.push("insufficient_h2");
@@ -397,6 +410,9 @@ for(const spec of checks){
       !doc.labelGuideBridge.early || !doc.labelGuideBridge.clear))
     failures.push("whey_label_price_education_link_missing_or_not_early");
   if(spec.commercial && !doc.merchantLinks)failures.push("merchant_links_missing");
+  if(spec.commercial && (doc.productTitleDisplay.visibleEntityLeaks.length ||
+     !doc.productTitleDisplay.literalMarkupEscaped))
+    failures.push("visible_product_title_entity_leak_or_markup");
   if(spec.commercial && doc.missingSponsored)failures.push("sponsored_rel_missing");
   if(spec.commercial && doc.brokenProductImages)failures.push("broken_product_images_"+doc.brokenProductImages);
   if(spec.commercial && !doc.firstProductLoaded)failures.push("first_product_photo_not_loaded_after_scroll");
