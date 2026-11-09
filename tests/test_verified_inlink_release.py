@@ -26,7 +26,7 @@ def post(*, body=None, post_id=CFG.post_id, slug=CFG.slug,
 
 class VerifiedInlinkTests(unittest.TestCase):
     def test_allowlist_contains_only_exact_safety_post(self):
-        self.assertEqual(list(release.ALLOWLIST),["creatine_safety_2139"])
+        self.assertEqual(set(release.ALLOWLIST),{"creatine_safety_2139","creatine_price_10835"})
         self.assertEqual(CFG.post_id,2139)
         self.assertEqual(CFG.target,
                          "https://xfit.cz/kreatin-a-jeho-vliv-na-ledviny-a-jatra/")
@@ -118,6 +118,87 @@ class VerifiedInlinkTests(unittest.TestCase):
                 with self.assertRaises(PublishError):
                     release.apply(CFG)
             writer.assert_not_called()
+
+
+PRICE = release.ALLOWLIST["creatine_price_10835"]
+
+
+def price_post(*, body=None, title="Kde koupit nejlevnější kreatin pro fitness?",
+               modified="2026-11-09T20:00:00"):
+    if body is None:
+        body = ("<h2>Nejlevnější kreatin pro fitness</h2>"
+                + "<p>Užitečný a původní obsah srovnání ceny a balení.</p>" * 55)
+    return {
+        "id": 10835, "slug": PRICE.slug, "status": "publish",
+        "link": PRICE.url, "title": {"raw": title},
+        "content": {"raw": body}, "modified_gmt": modified,
+    }
+
+
+class PriceHandoffTests(unittest.TestCase):
+    def test_exact_allowlist_and_helpful_content(self):
+        self.assertEqual(PRICE.post_id, 10835)
+        self.assertEqual(PRICE.slug,"kde-koupit-nejlevnejsi-kreatin-pro-fitness")
+        self.assertEqual(PRICE.target,"https://xfit.cz/xfit-os-kreatin-poradce/")
+        self.assertEqual(PRICE.paragraph.count(PRICE.target),1)
+        self.assertIn("dopravy",PRICE.paragraph)
+        self.assertIn("nekupujte jej",PRICE.paragraph)
+        self.assertIn("nejnižší ceny na celém trhu",PRICE.paragraph)
+        self.assertNotIn("a_aid",PRICE.paragraph)
+        self.assertNotIn("namaximum",PRICE.paragraph.casefold())
+
+    def test_preserves_legacy_source_and_never_repeats_anchor(self):
+        old=price_post()
+        state=release.prepare(PRICE,old)
+        self.assertEqual(state["mode"],"update")
+        self.assertEqual(state["after"],state["before"]+"\n"+PRICE.paragraph)
+        self.assertIn(PRICE.target,release.real_links(state["after"]))
+        self.assertTrue(release.public_verified(PRICE,reader=lambda _:PRICE.paragraph))
+        done=price_post(body=state["after"])
+        self.assertEqual(release.prepare(PRICE,done)["mode"],"already_linked")
+
+    def test_identity_and_race_guards_block_unreviewed_mutation(self):
+        for changed in (
+            {"id":10836}, {"status":"draft"}, {"slug":"wrong"},
+            {"title":{"raw":"Zcela nesouvisející článek"}},
+            {"link":"https://xfit.cz/other-page/"},
+        ):
+            with self.subTest(changed=changed):
+                item=price_post()
+                item.update(changed)
+                with self.assertRaises(PublishError):
+                    release.prepare(PRICE,item)
+        original=price_post()
+        with tempfile.TemporaryDirectory() as folder, patch.object(
+                release.Handoff,"backup",property(lambda self:Path(folder)/"b.json")):
+            with patch.object(release,"remote",return_value=original):
+                release.snapshot(PRICE)
+            changed=price_post(body=original["content"]["raw"]+"<p>New editor update.</p>")
+            with patch.object(release,"remote",return_value=changed), \
+                 patch.object(release,"wp_request") as writer:
+                with self.assertRaises(PublishError):
+                    release.apply(PRICE)
+            writer.assert_not_called()
+
+    def test_precise_onepost_write_and_public_readback_with_full_backup(self):
+        old=price_post()
+        updated=release.prepare(PRICE,old)["after"]
+        new=price_post(body=updated,modified="2026-11-09T20:01:00")
+        with tempfile.TemporaryDirectory() as folder, patch.object(
+                release.Handoff,"backup",property(lambda self:Path(folder)/"b.json")):
+            with patch.object(release,"remote",return_value=old):
+                release.snapshot(PRICE)
+            backup=json.loads(PRICE.backup.read_text(encoding="utf-8"))
+            self.assertEqual(backup["original_raw"],old["content"]["raw"])
+            self.assertEqual(backup["remote_writes"],0)
+            with patch.object(release,"remote",side_effect=[old,new]), \
+                 patch.object(release,"normalized_base",return_value="https://xfit.cz"), \
+                 patch.object(release,"wp_request",return_value={"id":10835,"status":"publish"}) as writer, \
+                 patch.object(release,"public_verified",return_value=True) as public:
+                release.apply(PRICE)
+            writer.assert_called_once()
+            self.assertEqual(writer.call_args.kwargs["payload"],{"content":updated})
+            public.assert_called_once_with(PRICE)
 
 
 if __name__=="__main__":
