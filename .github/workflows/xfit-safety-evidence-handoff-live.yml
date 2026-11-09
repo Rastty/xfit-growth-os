@@ -1,0 +1,46 @@
+name: XFIT Legacy Creatine Safety Evidence Onepost Live
+# Exactly one legacy article WP 2139; helpful evidence link, never a sales CTA.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-safety-evidence-handoff-live.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  publish-one-evidence-link:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate the full codebase and allowlisted source-preservation gate
+        run: |
+          python -m unittest discover -s tests -v
+          python -m unittest tests.test_verified_inlink_release -v
+      - name: Read pinned legacy WordPress source and snapshot before possible write
+        run: python -m scripts.xfit_verified_inlink_release creatine_safety_2139 snapshot
+      - name: Mandatory full prewrite rollback artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-legacy-safety-2139-rollback-${{ github.run_id }}
+          path: reports/backups/xfit-reviewed-inlink-creatine_safety_2139.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: One exact evidence handoff with authenticated and public verification
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_verified_inlink_release creatine_safety_2139 apply | tee -a "$GITHUB_STEP_SUMMARY"
