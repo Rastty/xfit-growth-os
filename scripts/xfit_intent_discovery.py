@@ -60,7 +60,7 @@ def verified_post_identity(post,slug):
             and u.path=="/"+slug+"/")
 
 
-def inspect_priority(*,request=None):
+def inspect_priority(*,request=None,base=None):
     """Exactly two bounded WP GETs. Return no article body, secrets or traffic."""
     request=request or wp_request
     out=[]
@@ -69,7 +69,7 @@ def inspect_priority(*,request=None):
               "target":target,"state":"UNKNOWN_NO_VERIFIED_SOURCE",
               "target_already_linked":None,"next_action":"RECHECK_SOURCE"}
         try:
-            rows=request(normalized_base(),"posts?"+urlencode({
+            rows=request(normalized_base() if base is None else base,"posts?"+urlencode({
                 "slug":slug,"status":"publish","context":"edit","per_page":2,
                 "_fields":"id,slug,status,link,title,content,modified"}))
             matches=[p for p in rows if verified_post_identity(p,slug)]
