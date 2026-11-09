@@ -326,5 +326,45 @@ class LegacyRoutingDiscoveryTests(unittest.TestCase):
                     "protein",request=never,search_term=term)
 
 
+    def test_public_shortlist_contains_only_verified_unlinked_identities(self):
+        candidates=[
+            {"topic":"protein","id":100,"slug":"kolik-bilkovin","title":"Kolik bílkovin",
+             "next_action":"EDITORIAL_REVIEW_BEFORE_ONE_POST",
+             "already_has_target_link":False,
+             "content":"PRIVATE RAW HTML","affiliate_url":"SECRET"},
+            {"topic":"protein","id":200,"slug":"protein-already","title":"Protein již propojen",
+             "next_action":"ALREADY_LINKED","already_has_target_link":True},
+            {"topic":"protein","id":300,"slug":"protein-health","title":"Protein nemoc",
+             "next_action":"EDITORIAL_REVIEW_BEFORE_ONE_POST",
+             "already_has_target_link":True},
+            {"topic":"kreatin","id":400,"slug":"kreatin-trenink","title":"Kreatin trénink",
+             "next_action":"EDITORIAL_REVIEW_BEFORE_ONE_POST",
+             "already_has_target_link":False},
+            {"topic":"protein","id":500,"slug":"protein-vyber","title":"Výběr proteinu",
+             "next_action":"EDITORIAL_REVIEW_BEFORE_ONE_POST",
+             "already_has_target_link":False},
+        ]
+        result=discovery.public_review_shortlist(
+            {"candidates":candidates},per_topic=1)
+        self.assertEqual(result["protein"],[{
+            "wp_post_id":100,"slug":"kolik-bilkovin",
+            "title":"Kolik bílkovin","candidate_only":True}])
+        self.assertEqual(result["kreatin"],[{
+            "wp_post_id":400,"slug":"kreatin-trenink",
+            "title":"Kreatin trénink","candidate_only":True}])
+        self.assertNotIn("SECRET",str(result))
+        self.assertNotIn("PRIVATE",str(result))
+        self.assertNotIn("affiliate_url",str(result))
+
+    def test_public_shortlist_rejects_invalid_caps_and_input(self):
+        for cap in (0,11,True,1.2):
+            with self.subTest(cap=cap),self.assertRaises(ValueError):
+                discovery.public_review_shortlist({"candidates":[]},
+                                                    per_topic=cap)
+        for invalid in (None,[],{},{"candidates":"not a list"}):
+            with self.subTest(data=invalid),self.assertRaises(ValueError):
+                discovery.public_review_shortlist(invalid)
+
+
 if __name__=="__main__":
     unittest.main()
