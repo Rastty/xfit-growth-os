@@ -40,6 +40,11 @@ jobs:
               "state": r["state"],
               "public_candidate_count": len(r["candidates"]),
               "candidate_count_before_limit": r["candidate_count_before_limit"],
+              "candidate_count_by_topic": {
+                  topic: sum(c["topic"] == topic for c in r["candidates"])
+                  for topic in r["audited_queries"]
+              },
+              "medical_intent_excluded": r["medical_intent_excluded"],
               "searched_post_rows": r["searched_post_rows"],
               "topic_pagination": r["topic_pagination"],
               "search_coverage_complete": r["search_coverage_complete"],
