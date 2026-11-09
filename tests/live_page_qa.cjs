@@ -230,6 +230,42 @@ for(const spec of checks){
       remainingClosed:noPurchaseQuestions.slice(1,3)
         .every(el=>!el.open),
     };
+    // Dynamic third-party content can inject off-topic links after load.
+    // Record only rendered label, origin host/path, and a short CSS class;
+    // never read or log visitor IDs, URL query parameters, or ad click tokens.
+    // Informational only: provenance must be reviewed before a theme change.
+    const suspectLabels=new Set([
+      "Učebnice biologie","Studovat ekonomii","Kurz matematiky",
+      "Výživový plán","Vybrat vitamíny","Spočítat online",
+      "Porovnat ceny","Najít materiály"
+    ]);
+    const suspectLinks=[...document.querySelectorAll("a")]
+      .filter(a=>suspectLabels.has((a.textContent||"").trim()))
+      .slice(0,12).map(a=>{
+        let dest=null;
+        try{
+          const url=new URL(a.getAttribute("href")||"",location.href);
+          dest={host:url.hostname,path:url.pathname.slice(0,90)};
+        }catch(_err){}
+        return {label:(a.textContent||"").trim(),
+                destination:dest,
+                parent_tag:a.parentElement?.tagName||"",
+                parent_class:String(a.parentElement?.className||"").slice(0,110)};
+      });
+    const suspectHeadings=[...document.querySelectorAll("div,span,h2,h3,h4,aside")]
+      .filter(el=>el.children.length===0 &&
+        (el.textContent||"").trim()==="Zjistit více")
+      .slice(0,4).map(el=>({
+        tag:el.tagName,
+        parent_class:String(el.parentElement?.className||"").slice(0,110),
+      }));
+    const scriptHosts=[...new Set([...document.querySelectorAll("script[src]")]
+      .map(node=>{
+        try{return new URL(node.src,location.href).hostname;}
+        catch(_err){return null;}
+      }).filter(Boolean))].sort().slice(0,24);
+    const offTopicPlacement={suspectLinks,suspectHeadings,scriptHosts,
+      click_actions:0,consent_actions:0};
     // Actual WordPress-rendered advice, not just the reviewed JSON or API.
     const proteinPackItems=[...document.querySelectorAll("li")].filter(
       li=>li.textContent.includes("Koupit velké balení jen kvůli nižší jednotkové ceně"));
@@ -292,7 +328,7 @@ for(const spec of checks){
         merchantLinks:links.length,missingSponsored,imagesMissingAlt:images.length,
         productImages:productImages.length,brokenProductImages:brokenProductImages.length,
         productImageStatus,themeImagesMissingAlt,firstProductLoaded,firstCTASize,
-        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,noPurchase,proteinPackUse,proteinCheckout,quickNav,beginnerGoals};
+        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,noPurchase,proteinPackUse,proteinCheckout,quickNav,offTopicPlacement,beginnerGoals};
   });
   if(!doc.h1.includes(spec.expected))failures.push("h1_missing_expected");
   if(doc.h2<spec.minH2)failures.push("insufficient_h2");
