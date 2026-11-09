@@ -46,8 +46,8 @@ def validate_example(base, sample):
     # Dynamic-link generators may rewrite the canonical product route and
     # omit variant=392. The essential proof is a NON-HOMEPAGE NaMaximum
     # product with the same campaign attribution IDs as the base link.
-    if p.path.rstrip("/") in ("", "/"):
-        raise PublishError("Affiliate sample must link to a product page, not homepage")
+    if p.port is not None or p.path.rstrip("/") in ("", "/") or p.path.startswith("//"):
+        raise PublishError("Affiliate sample must be a normal HTTPS product route")
     if q.get("utm_medium") not in (["affiliate"], []):
         raise PublishError("Affiliate sample uses unexpected traffic medium")
     # Sample direct-query tracking params must correspond to base campaign.
@@ -58,11 +58,16 @@ def build_tracked_url(source_url, base, sample):
     validate_example(base, sample)
     product = urlsplit(source_url)
     if (product.scheme != "https" or product.hostname not in PRODUCT_HOSTS or
-        product.username or product.password or product.fragment):
-        raise PublishError("Invalid product destination host")
+        product.username or product.password or product.fragment or
+        product.port is not None or not product.path or
+        product.path.rstrip("/") in ("", "/") or product.path.startswith("//")):
+        raise PublishError("Invalid exact product destination")
+    # Avoid merchant-homepage CTAs, nonstandard ports and broken/ambiguous
+    # product variants; a tracked link must still resolve to ONE actual offer.
     source_params = parse_qsl(product.query, keep_blank_values=True)
-    if any(k.lower() not in ALLOWED_PRODUCT_PARAMS for k, _ in source_params):
-        raise PublishError("Unexpected URL parameters in product feed")
+    if (any(k not in ALLOWED_PRODUCT_PARAMS or not v for k, v in source_params)
+            or len(source_params) > 1):
+        raise PublishError("Ambiguous URL parameters in product feed")
     bp = urlsplit(base)
     base_params = parse_qs(bp.query)
     outgoing = source_params + [(k, base_params[k][0]) for k in AFFIL_KEYS]
