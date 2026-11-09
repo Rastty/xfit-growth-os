@@ -96,6 +96,16 @@ TOPIC_TERMS={
     "kreatin":("kreatin","creatine"),
     "protein":("protein","bílkovin","bilkovin"),
 }
+# Safety/medical-intent posts should lead to independent explanations,
+# never automatically to a commercial offer comparison.
+MEDICAL_INTENT_TERMS=(
+    "rizik","bezpečnost","bezpecnost","vedlejší","vedlejsi",
+    "nežádouc","nezadouc","ledvin","játr","jatr","kreatinin",
+    "kontraindikac","onemocn","poškoz","poskoz","těhot","tehot",
+    "krev","diagnost","alerg","léky","leky",
+)
+CANDIDATE_DISPLAY_LIMIT=55
+MIN_SLOTS_PER_TOPIC=25
 
 def rank_search_results(rows_by_topic, *, coverage=None):
     """Pure read-only ranking; unverified or incomplete source is never called complete.
@@ -109,6 +119,7 @@ def rank_search_results(rows_by_topic, *, coverage=None):
     saturated=[]
     incomplete=[]
     audited_posts={}
+    medical_excluded={topic:0 for topic in CAMPAIGNS}
     for topic,target in CAMPAIGNS.items():
         rows=rows_by_topic[topic]
         if coverage is not None:
@@ -137,6 +148,9 @@ def rank_search_results(rows_by_topic, *, coverage=None):
                     or not any(term in title_and_slug
                                for term in TOPIC_TERMS[topic])):
                 continue
+            if any(term in title_and_slug for term in MEDICAL_INTENT_TERMS):
+                medical_excluded[topic]+=1
+                continue
             actual_links=links(body)
             missing=target not in actual_links
             score=(3 if any(term in title_and_slug for term in (
@@ -156,8 +170,30 @@ def rank_search_results(rows_by_topic, *, coverage=None):
             })
     candidates.sort(key=lambda x:(-x["ranking_heuristic"],
                                   -x["body_chars"],x["slug"],x["topic"]))
-    return {"candidates":candidates[:55],
+    # The first topic often has longer generated articles. Global truncation
+    # would hide all protein ideas regardless of actual user demand. Preserve
+    # separate reader-intent lanes, then fill remaining slots fairly.
+    selected=[]
+    chosen=set()
+    for topic in CAMPAIGNS:
+        for item in (x for x in candidates if x["topic"]==topic):
+            if sum(x["topic"]==topic for x in selected)>=MIN_SLOTS_PER_TOPIC:
+                break
+            key=(item["id"],item["topic"])
+            selected.append(item)
+            chosen.add(key)
+    for item in candidates:
+        if len(selected)>=CANDIDATE_DISPLAY_LIMIT:
+            break
+        key=(item["id"],item["topic"])
+        if key not in chosen:
+            selected.append(item)
+            chosen.add(key)
+    selected.sort(key=lambda x:(-x["ranking_heuristic"],
+                                -x["body_chars"],x["slug"],x["topic"]))
+    return {"candidates":selected,
             "candidate_count_before_limit":len(candidates),
+            "medical_intent_excluded":medical_excluded,
             "searched_post_rows":audited_posts,
             "search_results_saturated_topics":saturated,
             "search_topics_incomplete":incomplete,
