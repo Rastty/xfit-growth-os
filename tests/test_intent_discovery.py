@@ -123,5 +123,97 @@ class LegacyRoutingDiscoveryTests(unittest.TestCase):
         self.assertEqual(result["candidates"],[])
 
 
+    def test_pagination_gets_all_pages_then_proves_completion(self):
+        calls=[]
+        def fake(base,path):
+            from urllib.parse import parse_qs
+            qs=parse_qs(path.split("?",1)[1])
+            self.assertEqual(qs["search"],["kreatin"])
+            self.assertEqual(qs["status"],["publish"])
+            self.assertEqual(qs["context"],["edit"])
+            calls.append(int(qs["page"][0]))
+            page=int(qs["page"][0])
+            return ([{"id":page*100+i,"slug":"kreatin-post-"+str(i),
+                     "status":"publish"} for i in range(100)]
+                    if page==1 else
+                    [{"id":205,"slug":"kreatin-post-205","status":"publish"}])
+        rows,report=discovery.fetch_topic_posts(
+            "kreatin",request=fake,base="https://xfit.cz")
+        self.assertEqual(calls,[1,2])
+        self.assertEqual(len(rows),101)
+        self.assertEqual(report,{"status":"COMPLETE","pages_fetched":2,
+                                 "unique_rows":101})
+
+    def test_maximum_page_requires_explicit_incomplete_status(self):
+        def fake(base,path):
+            return [{"id":x+1} for x in range(2)]
+        rows,coverage=discovery.fetch_topic_posts(
+            "protein",request=fake,base="https://xfit.cz",
+            page_size=2,max_pages=2)
+        self.assertEqual(len(rows),2)
+        self.assertEqual(coverage["status"],"PAGE_CAP_REACHED")
+        ranked=discovery.rank_search_results(
+            {"kreatin":[],"protein":rows},
+            coverage={"kreatin":{"status":"COMPLETE"},
+                      "protein":coverage})
+        self.assertEqual(ranked["search_topics_incomplete"],["protein"])
+        self.assertFalse(ranked["search_coverage_complete"])
+        self.assertEqual(ranked["search_results_saturated_topics"],["protein"])
+
+    def test_partial_api_error_is_preserved_as_unknown_not_complete(self):
+        calls=[]
+        def fake(base,path):
+            from urllib.parse import parse_qs
+            page=int(parse_qs(path.split("?",1)[1])["page"][0])
+            calls.append(page)
+            if page==2:
+                raise ValueError("private raw API error secret")
+            return [{"id":i+1} for i in range(100)]
+        rows,meta=discovery.fetch_topic_posts(
+            "protein",request=fake,base="https://xfit.cz")
+        self.assertEqual(calls,[1,2])
+        self.assertEqual(meta,{"status":"READ_ERROR","pages_fetched":1,
+                               "unique_rows":100})
+        self.assertNotIn("private",str(meta))
+        self.assertEqual(len(rows),100)
+
+    def test_repeated_ids_dont_count_twice_or_create_more_review_targets(self):
+        def fake(base,path):
+            from urllib.parse import parse_qs
+            page=int(parse_qs(path.split("?",1)[1])["page"][0])
+            rows=[{"id":i+1} for i in range(100)]
+            return rows if page==1 else rows[:8]+[{"id":401}]
+        rows,meta=discovery.fetch_topic_posts(
+            "kreatin",request=fake,base="https://xfit.cz")
+        self.assertEqual(len(rows),101)
+        self.assertEqual(meta["status"],"COMPLETE")
+        self.assertEqual(meta["unique_rows"],101)
+
+    def test_invalid_pagination_input_never_calls_wordpress(self):
+        def never(*args):
+            raise AssertionError("unexpected WP request")
+        for topic,per_page,max_pages in [
+            ("unknown",100,2),("kreatin",101,2),("protein",0,2),
+            ("kreatin",100,discovery.MAX_SEARCH_PAGES+1),
+            ("protein",True,2),("protein",100,False),
+        ]:
+            with self.subTest(topic=topic,per_page=per_page,max_pages=max_pages):
+                with self.assertRaises(ValueError):
+                    discovery.fetch_topic_posts(topic,request=never,
+                                                page_size=per_page,
+                                                max_pages=max_pages)
+
+    def test_full_pagination_proves_completeness_even_over_first_page_limit(self):
+        slug="kreatin-vyber"
+        doc=post(slug,"<p>Useful creatine instructions.</p>"*100)
+        doc["title"]={"raw":"Jak vybrat kreatin"}
+        data=discovery.rank_search_results(
+            {"kreatin":[doc],"protein":[]},
+            coverage={"kreatin":{"status":"COMPLETE"},
+                      "protein":{"status":"COMPLETE"}})
+        self.assertTrue(data["search_coverage_complete"])
+        self.assertEqual(data["search_topics_incomplete"],[])
+
+
 if __name__=="__main__":
     unittest.main()
