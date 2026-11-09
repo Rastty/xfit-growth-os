@@ -160,7 +160,7 @@ class PriceHandoffTests(unittest.TestCase):
     def test_identity_and_race_guards_block_unreviewed_mutation(self):
         for changed in (
             {"id":10836}, {"status":"draft"}, {"slug":"wrong"},
-            {"title":{"raw":"Nejde o kreatin"}},
+            {"title":{"raw":"Zcela nesouvisející článek"}},
             {"link":"https://xfit.cz/other-page/"},
         ):
             with self.subTest(changed=changed):
