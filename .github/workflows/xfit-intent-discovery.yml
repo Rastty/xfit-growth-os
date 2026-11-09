@@ -1,9 +1,14 @@
 name: XFIT High Intent Internal Link Discovery
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '17 8 * * 2'
   push:
     branches: [main]
-    paths: ['.github/workflows/xfit-intent-discovery.yml']
+    paths:
+      - '.github/workflows/xfit-intent-discovery.yml'
+      - 'scripts/xfit_intent_discovery.py'
+      - 'tests/test_intent_discovery.py'
 permissions:
   contents: read
 jobs:
@@ -19,5 +24,32 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Validate exact legacy URL and no-write behavior
+        run: python -m unittest tests.test_intent_discovery -v
       - name: Identify relevant existing pages without publishing
-        run: python -m scripts.xfit_intent_discovery
+        run: |
+          mkdir -p reports
+          python -m scripts.xfit_intent_discovery > reports/xfit-internal-routing-opportunities.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path("reports/xfit-internal-routing-opportunities.json").read_text())
+          assert r["remote_writes"] == 0
+          assert len(r["priority_legacy_link_checks"]) == 2
+          print(json.dumps({
+              "state": r["state"],
+              "public_candidate_count": len(r["candidates"]),
+              "search_coverage_complete": r["search_coverage_complete"],
+              "saturated_topics": r["search_results_saturated_topics"],
+              "priority_checks": r["priority_legacy_link_checks"],
+              "remote_writes": 0,
+          },ensure_ascii=False))
+          PY
+      - name: Upload limited read-only editorial opportunities
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-routing-opportunities-${{ github.run_id }}
+          path: reports/xfit-internal-routing-opportunities.json
+          if-no-files-found: ignore
+          retention-days: 14
