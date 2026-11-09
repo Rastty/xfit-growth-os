@@ -218,5 +218,58 @@ class LegacyRoutingDiscoveryTests(unittest.TestCase):
         self.assertEqual(data["search_topics_incomplete"],[])
 
 
+    def test_editorial_shortlist_has_room_for_both_product_topics(self):
+        def make(topic,i,body_size):
+            slug=f"{topic}-test-{i}"
+            p=post(slug,"<p>"+("Useful topic details. "*body_size)+"</p>",
+                   post_id=(i+1000 if topic=="kreatin" else i+5000))
+            p["title"]={"raw":f"Jak vybrat {topic} číslo {i}?"}
+            return p
+        # Before the guard, very long creatine posts monopolized all 55 rows.
+        rows={"kreatin":[make("kreatin",i,300) for i in range(80)],
+              "protein":[make("protein",i,90) for i in range(40)]}
+        report=discovery.rank_search_results(
+            rows,coverage={topic:{"status":"COMPLETE"} for topic in rows})
+        self.assertEqual(len(report["candidates"]),55)
+        by_topic={t:sum(x["topic"]==t for x in report["candidates"])
+                  for t in rows}
+        self.assertGreaterEqual(by_topic["protein"],25)
+        self.assertGreaterEqual(by_topic["kreatin"],25)
+        self.assertEqual(report["candidate_count_before_limit"],120)
+        self.assertTrue(report["search_coverage_complete"])
+
+    def test_medical_question_is_not_sent_directly_to_product_sales(self):
+        for term in ("rizika","bezpečnost","vedlejší-účinky",
+                     "ledviny","krevní-testy","alergie","těhotenství"):
+            slug="kreatin-a-"+term
+            p=post(slug,"<p>Useful independent scientific context.</p>"*65)
+            p["title"]={"raw":"Kreatin a "+term}
+            report=discovery.rank_search_results(
+                {"kreatin":[p],"protein":[]},
+                coverage={"kreatin":{"status":"COMPLETE"},
+                          "protein":{"status":"COMPLETE"}})
+            self.assertEqual(report["candidates"],[],slug)
+            self.assertEqual(report["medical_intent_excluded"]["kreatin"],1)
+        self.assertTrue(report["search_coverage_complete"])
+
+    def test_protein_allergy_article_excluded_from_whey_sales_shortlist(self):
+        slug="protein-a-alergie"
+        p=post(slug,"<p>Useful allergy advice.</p>"*90,post_id=7200)
+        p["title"]={"raw":"Protein a alergie"}
+        report=discovery.rank_search_results({"kreatin":[],"protein":[p]})
+        self.assertEqual(report["candidates"],[])
+        self.assertEqual(report["medical_intent_excluded"]["protein"],1)
+
+    def test_medical_exclusion_is_not_a_deletion_or_noindex_action(self):
+        p=post("kreatin-bezpecnost",
+               "<p>Medical facts in original WordPress content.</p>"*75)
+        p["title"]={"raw":"Kreatin bezpečnost"}
+        report=discovery.rank_search_results({"kreatin":[p],"protein":[]})
+        self.assertEqual(report["candidates"],[])
+        self.assertEqual(report["searched_post_rows"]["kreatin"],1)
+        self.assertNotIn("noindex",str(report))
+        self.assertNotIn("delete",str(report))
+
+
 if __name__=="__main__":
     unittest.main()
