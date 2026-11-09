@@ -48,6 +48,26 @@ class CreatineGuideTests(unittest.TestCase):
     def test_unknown_param_fails(self):
         with self.assertRaises(PublishError):
             build_tracked_url("https://www.namaximum.cz/p?evil=yes",BASE,SAMPLE)
+    def test_affiliate_url_must_be_exact_single_product_destination(self):
+        # Previously these could be tracked as if they were product offers.
+        for invalid in (
+            "https://www.namaximum.cz/",
+            "https://www.namaximum.cz:8443/p/creatine?variant=392",
+            "https://www.namaximum.cz//redirect-product?variant=392",
+            "https://www.namaximum.cz/p/creatine?variant=392&variant=401",
+            "https://www.namaximum.cz/p/creatine?VARIANT=392",
+            "https://www.namaximum.cz/p/creatine?variant=",
+        ):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(PublishError):
+                    build_tracked_url(invalid, BASE, SAMPLE)
+        valid="https://www.namaximum.cz/p/creatine?variant=392"
+        self.assertIn("variant=392",build_tracked_url(valid,BASE,SAMPLE))
+
+    def test_nonstandard_port_in_approved_example_is_rejected(self):
+        invalid=SAMPLE.replace("www.namaximum.cz/", "www.namaximum.cz:8443/")
+        with self.assertRaises(PublishError):
+            validate_example(BASE,invalid)
     def test_shortlist_and_transparency(self):
         guide=build_document(self.catalog,BASE,SAMPLE)
         self.assertIn('rel="sponsored nofollow noopener noreferrer"',guide["content"])
