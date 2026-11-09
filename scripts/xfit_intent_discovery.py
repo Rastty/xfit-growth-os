@@ -181,7 +181,11 @@ def fetch_topic_posts(topic, *, request=None, base=None,
     status="PAGE_CAP_REACHED"
     pages=0
     for page in range(1,max_pages+1):
+        # WP REST Posts Controller (WordPress 6.2+) can restrict search to
+        # post_title. Default search includes post_content and silently
+        # buries high-intent titles behind hundreds of incidental mentions.
         q=urlencode({"search":topic,"context":"edit","status":"publish",
+                     "search_columns[]":"post_title",
                      "page":page,"per_page":page_size,
                      "_fields":"id,slug,status,title,content,modified,link"})
         try:
