@@ -144,5 +144,52 @@ class TechnicalReadOnlyTests(unittest.TestCase):
             probe.assess_html("not-owned", page(probe.OWNED[0]))
 
 
+    def test_sitemap_failure_class_preserves_exact_status_without_private_detail(self):
+        from urllib.error import HTTPError
+        for code, expected in ((301, "HTTP_REDIRECT_301"),
+                               (302, "HTTP_REDIRECT_302"),
+                               (403, "HTTP_403"),
+                               (404, "HTTP_404"),
+                               (429, "HTTP_429"),
+                               (503, "HTTP_503"),
+                               (418, "HTTP_OTHER")):
+            with self.subTest(status=code):
+                err = HTTPError("https://xfit.cz/wp-sitemap.xml?secret=PRIVATE",
+                                code, "untrusted PRIVATE", {}, None)
+                self.assertEqual(probe.sitemap_fetch_failure(err), expected)
+                self.assertNotIn("PRIVATE", probe.sitemap_fetch_failure(err))
+        self.assertEqual(probe.sitemap_fetch_failure(OSError("PRIVATE")),
+                         "UNKNOWN_UNAVAILABLE")
+
+    def test_declared_sitemap_http_404_is_not_conflated_with_network_error(self):
+        from urllib.error import HTTPError
+        seen = []
+        def reader(path, **kwargs):
+            seen.append(path)
+            if path == "/robots.txt":
+                return ("User-agent: *\\nSitemap: https://xfit.cz/wp-sitemap.xml\\n", {})
+            if path == "/wp-sitemap.xml":
+                raise HTTPError("https://xfit.cz/wp-sitemap.xml", 404,
+                                "Not Found", {}, None)
+            if path in ("/sitemap_index.xml", "/sitemap.xml"):
+                raise OSError("network outage")
+            slug = path.strip("/")
+            return page(slug), {}
+        report = probe.run(reader=reader)
+        self.assertEqual(report["infrastructure"]["wordpress_sitemap"], "HTTP_404")
+        self.assertEqual(report["infrastructure"]["seo_sitemap_index"],
+                         "UNKNOWN_UNAVAILABLE")
+        self.assertEqual(report["declared_sitemap_probes"]["/wp-sitemap.xml"],
+                         "HTTP_404")
+        self.assertEqual(seen.count("/wp-sitemap.xml"), 1)
+        self.assertEqual(report["seo_mutations"], 0)
+        self.assertNotIn("Not Found", str(report))
+
+    def test_sitemap_redirects_are_never_followed(self):
+        handler = probe.NoRedirect()
+        self.assertIsNone(handler.redirect_request(
+            None, None, 302, "redirect", {},
+            "https://untrusted.example/offsite.xml"))
+
 if __name__ == "__main__":
     unittest.main()
