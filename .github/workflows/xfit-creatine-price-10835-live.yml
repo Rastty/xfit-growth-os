@@ -1,0 +1,46 @@
+name: XFIT Legacy Creatine Price 10835 Onepost Live
+# One pre-reviewed archive article only; no bulk changes, no unrelated writes.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-creatine-price-10835-live.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  publish-reviewed-budget-guide-link:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: All tests and verified source preservation gate
+        run: |
+          python -m unittest discover -s tests -v
+          python -m unittest tests.test_verified_inlink_release -v
+      - name: Backup exact WordPress post 10835 before any release
+        run: python -m scripts.xfit_verified_inlink_release creatine_price_10835 snapshot
+      - name: Mandatory immutable prewrite original source backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-legacy-creatine-price-10835-rollback-${{ github.run_id }}
+          path: reports/backups/xfit-reviewed-inlink-creatine_price_10835.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Single source-preserving WordPress POST and exact public verification
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_verified_inlink_release creatine_price_10835 apply | tee -a "$GITHUB_STEP_SUMMARY"
