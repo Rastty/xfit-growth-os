@@ -61,7 +61,36 @@ _SAFETY_PARAGRAPH = (
     'Kreatin není nutnou součástí tréninku a tento odkaz není doporučení '
     'doplněk koupit.</p>'
 )
+_PRICE_SLUG = "kde-koupit-nejlevnejsi-kreatin-pro-fitness"
+_PRICE_URL = "https://xfit.cz/xfit-os-kreatin-poradce/"
+_PRICE_MARKER = "xfit-creatine-price-guide-20261109"
+_PRICE_SENTENCE = "Jak porovnat cenu kreatinu bez zbytečného přeplácení"
+_PRICE_PARAGRAPH = (
+    '<p data-xfit-handoff="' + _PRICE_MARKER + '">'
+    '<strong>' + _PRICE_SENTENCE + '?</strong> '
+    'Při hledání nejlevnějšího kreatinu zvažte nejen cenu balení, '
+    'ale také gramáž, cenu za 100 g prášku a konečnou cenu '
+    'včetně dopravy. Přehledná '
+    '<a href="' + _PRICE_URL + '">pomůcka k porovnání balení '
+    'kreatinu monohydrátu</a> ukazuje rozdíl mezi nejnižší '
+    'jednorázovou útratou a nejnižší cenou za 100 g prášku '
+    'na konkrétních katalogových nabídkách. Nejde o srovnání '
+    'všech obchodů a čistotu jednotlivých produktů je potřeba '
+    'ověřit na etiketě. Pokud kreatin nepotřebujete, nekupujte jej; '
+    'tento odkaz není doporučení k nákupu ani příslib '
+    'nejnižší ceny na celém trhu.</p>'
+)
 ALLOWLIST = {
+    "creatine_price_10835": Handoff(
+        key="creatine_price_10835",
+        post_id=10835,
+        slug=_PRICE_SLUG,
+        title_term="kreatin",
+        target=_PRICE_URL,
+        marker=_PRICE_MARKER,
+        sentence=_PRICE_SENTENCE,
+        paragraph=_PRICE_PARAGRAPH,
+    ),
     "creatine_safety_2139": Handoff(
         key="creatine_safety_2139",
         post_id=2139,
