@@ -90,24 +90,37 @@ def inspect_priority(*,request=None,base=None):
     return out
 
 
-SEARCH_LIMIT=70
+SEARCH_LIMIT=100
+MAX_SEARCH_PAGES=8  # 800 posts per keyword; cap is a hard stop, not complete discovery.
 TOPIC_TERMS={
     "kreatin":("kreatin","creatine"),
     "protein":("protein","bílkovin","bilkovin"),
 }
 
-def rank_search_results(rows_by_topic):
-    """Pure read-only ranking: never assign creatine CTAs to protein-only titles.
+def rank_search_results(rows_by_topic, *, coverage=None):
+    """Pure read-only ranking; unverified or incomplete source is never called complete.
 
-    Each (post, topic) pair is one editorial idea, not a request to write to WP.
-    A result hitting the page-size cap is explicitly an incomplete discovery.
+    Each (post, topic) pair is an editorial idea, NOT permission to write WP.
+    With explicit page metadata, completeness is determined by completed
+    pagination, not by combined result length. Without metadata (unit tests),
+    a full page is conservatively UNKNOWN coverage.
     """
     candidates=[]
     saturated=[]
+    incomplete=[]
+    audited_posts={}
     for topic,target in CAMPAIGNS.items():
         rows=rows_by_topic[topic]
-        if len(rows)>=SEARCH_LIMIT:
+        if coverage is not None:
+            state=coverage[topic]["status"]
+            if state=="PAGE_CAP_REACHED":
+                saturated.append(topic)
+            if state!="COMPLETE":
+                incomplete.append(topic)
+        elif len(rows)>=SEARCH_LIMIT:
             saturated.append(topic)
+            incomplete.append(topic)
+        audited_posts[topic]=len(rows)
         seen=set()
         for p in rows:
             slug=p.get("slug") or ""
@@ -145,21 +158,71 @@ def rank_search_results(rows_by_topic):
                                   -x["body_chars"],x["slug"],x["topic"]))
     return {"candidates":candidates[:55],
             "candidate_count_before_limit":len(candidates),
+            "searched_post_rows":audited_posts,
             "search_results_saturated_topics":saturated,
-            "search_coverage_complete":not bool(saturated)}
+            "search_topics_incomplete":incomplete,
+            "search_coverage_complete":not bool(incomplete)}
+
+
+def fetch_topic_posts(topic, *, request=None, base=None,
+                      page_size=SEARCH_LIMIT, max_pages=MAX_SEARCH_PAGES):
+    """Bounded, read-only, complete-until-proven-otherwise WP search paging.
+
+    No WP mutation, no retries of POST. Never print raw WP response/content.
+    A partial result on failure/cap is not assumed to be complete.
+    """
+    if (topic not in CAMPAIGNS or type(page_size) is not int
+            or not 1<=page_size<=100 or type(max_pages) is not int
+            or not 1<=max_pages<=MAX_SEARCH_PAGES):
+        raise ValueError("Invalid bounded source scan parameters")
+    request=request or wp_request
+    rows=[]
+    seen=set()
+    status="PAGE_CAP_REACHED"
+    pages=0
+    for page in range(1,max_pages+1):
+        q=urlencode({"search":topic,"context":"edit","status":"publish",
+                     "page":page,"per_page":page_size,
+                     "_fields":"id,slug,status,title,content,modified,link"})
+        try:
+            response=request(normalized_base() if base is None else base,
+                             "posts?"+q)
+            if not isinstance(response,list) or len(response)>page_size:
+                status="INVALID_RESPONSE"
+                break
+            # Partial or empty page ends a complete search. The next page
+            # beyond a full response is still needed to PROVE termination.
+            for item in response:
+                if not isinstance(item,dict):
+                    raise ValueError("Invalid source row")
+                ident=item.get("id")
+                if type(ident) is not int or ident<=0:
+                    raise ValueError("Invalid source identity")
+                if ident not in seen:
+                    rows.append(item)
+                    seen.add(ident)
+            pages+=1
+            if len(response)<page_size:
+                status="COMPLETE"
+                break
+        except (PublishError,OSError,ValueError,TypeError,KeyError,
+                AttributeError):
+            status="READ_ERROR"
+            break
+    return rows,{"status":status,"pages_fetched":pages,
+                 "unique_rows":len(rows)}
 
 
 def main():
     rows_by_topic={}
+    coverage={}
     for topic in CAMPAIGNS:
-        q=urlencode({"search":topic,"context":"edit","status":"publish",
-                     "per_page":SEARCH_LIMIT,
-                     "_fields":"id,slug,status,title,content,excerpt,modified,date,link"})
-        rows_by_topic[topic]=wp_request(normalized_base(),"posts?"+q)
-    ranked=rank_search_results(rows_by_topic)
+        rows_by_topic[topic],coverage[topic]=fetch_topic_posts(topic)
+    ranked=rank_search_results(rows_by_topic,coverage=coverage)
     result={"state":"internal_link_opportunities_read_only",
             "audited_queries":list(CAMPAIGNS),
             "priority_legacy_link_checks":inspect_priority(),
+            "topic_pagination":coverage,
             "remote_writes":0,**ranked}
     print(json.dumps(result,ensure_ascii=False))
 
