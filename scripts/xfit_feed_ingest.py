@@ -9,6 +9,7 @@ import argparse
 from collections import Counter
 from datetime import datetime, timezone
 from io import BytesIO
+import html
 import json
 import math
 import os
@@ -79,7 +80,12 @@ def parse_feed(xml_bytes):
     for i, el in enumerate(items):
         if i >= MAX_ITEMS:
             raise ValueError("Feed exceeds maximum item count")
-        title = value(el, "PRODUCTNAME", "PRODUCT", "NAME")
+        # XML parsing decodes entities once. Some merchants double-encode
+        # human-facing product names (e.g. '&amp;amp;' in source XML).
+        # Decode ONE additional HTML entity layer at the trusted ingest
+        # boundary; downstream HTML renderers must still escape the text.
+        # Do not decode merchant URLs, tracking params or arbitrary markup.
+        title = html.unescape(value(el, "PRODUCTNAME", "PRODUCT", "NAME"))
         price = parse_price(value(el, "PRICE_VAT", "PRICE"))
         category = value(el, "CATEGORYTEXT", "CATEGORY")
         if not title or price is None:
