@@ -39,7 +39,11 @@ jobs:
           print(json.dumps({
               "state": r["state"],
               "public_candidate_count": len(r["candidates"]),
+              "candidate_count_before_limit": r["candidate_count_before_limit"],
+              "searched_post_rows": r["searched_post_rows"],
+              "topic_pagination": r["topic_pagination"],
               "search_coverage_complete": r["search_coverage_complete"],
+              "incomplete_topics": r["search_topics_incomplete"],
               "saturated_topics": r["search_results_saturated_topics"],
               "priority_checks": r["priority_legacy_link_checks"],
               "remote_writes": 0,
