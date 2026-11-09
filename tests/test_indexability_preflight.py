@@ -231,6 +231,25 @@ class TechnicalReadOnlyTests(unittest.TestCase):
         self.assertEqual(full["per_slug"][probe.OWNED[1]], "INCLUDED_IN_POST_SITEMAP")
         self.assertEqual(full["per_slug"][probe.OWNED[2]],
                          "NOT_OBSERVED_IN_ALL_POST_MAPS")
+        self.assertEqual(full["post_map_checks"], [
+            {"file": "/wp-sitemap-posts-post-1.xml", "status": "ACCESSIBLE_URLSET"},
+            {"file": "/wp-sitemap-posts-post-2.xml", "status": "ACCESSIBLE_URLSET"},
+        ])
+        from urllib.error import HTTPError
+        def failing_reader(path, **kwargs):
+            if path.endswith("-2.xml"):
+                raise HTTPError("https://xfit.cz" + path + "?secret=DO_NOT_LEAK",
+                                503, "PRIVATE", {}, None)
+            return reader(path, **kwargs)
+        partial = probe.post_sitemap_inclusion(root, reader=failing_reader)
+        self.assertEqual(partial["post_maps_failed"], 1)
+        self.assertEqual(partial["post_map_checks"][1], {
+            "file": "/wp-sitemap-posts-post-2.xml", "status": "HTTP_503"})
+        self.assertEqual(partial["per_slug"][probe.OWNED[1]],
+                         "UNKNOWN_NOT_PROVEN")
+        self.assertNotIn("PRIVATE", str(partial))
+        self.assertNotIn("DO_NOT_LEAK", str(partial))
+
         self.assertEqual(probe.post_sitemap_inclusion(
             '<!DOCTYPE x [<!ENTITY e SYSTEM "file:///etc/passwd">]><sitemapindex/>',
             reader=reader)["state"], "ROOT_NOT_PARSEABLE_INDEX")
