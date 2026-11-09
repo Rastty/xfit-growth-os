@@ -72,18 +72,24 @@ class TechnicalReadOnlyTests(unittest.TestCase):
         expected["wp-sitemap.xml"] = '<sitemapindex><sitemap><loc>https://xfit.cz/wp-sitemap-posts-post-1.xml</loc></sitemap></sitemapindex>'
         expected["sitemap_index.xml"] = "<urlset><url><loc>https://xfit.cz/example/</loc></url></urlset>"
         expected["sitemap.xml"] = "<sitemapindex></sitemapindex>"
+        expected["wp-sitemap-posts-post-1.xml"] = (
+            "<urlset><url><loc>https://xfit.cz/" + probe.OWNED[0] +
+            "/</loc></url></urlset>")
         calls = []
         def reader(path, **kwargs):
             calls.append(path)
             return expected[path.lstrip("/").rstrip("/")], {"Content-Type": "text/html"}
         result = probe.run(reader=reader)
         self.assertEqual(result["page_count"], 6)
-        self.assertEqual(len(calls), 11)
+        self.assertEqual(len(calls), 12)
         self.assertEqual(result["wordpress_writes"], 0)
         self.assertEqual(result["plugins_installed"], 0)
         self.assertEqual(result["seo_mutations"], 0)
         self.assertEqual(result["pages"][0]["observed_internal_inlinks_from_seven_reviewed_articles"], 7)
         self.assertEqual(result["infrastructure"]["wordpress_sitemap"], "ACCESSIBLE_XML")
+        self.assertEqual(result["post_sitemap_inclusion"]["post_maps_checked"], 1)
+        self.assertEqual(result["post_sitemap_inclusion"]["per_slug"][probe.OWNED[0]],
+                         "INCLUDED_IN_POST_SITEMAP")
         serialized = str(result)
         self.assertNotIn("<html>", serialized)
         self.assertNotIn("Disallow: /wp-admin", serialized)
@@ -190,6 +196,44 @@ class TechnicalReadOnlyTests(unittest.TestCase):
         self.assertIsNone(handler.redirect_request(
             None, None, 302, "redirect", {},
             "https://untrusted.example/offsite.xml"))
+
+    def test_post_sitemap_inclusion_rejects_foreign_unsafe_and_truncated(self):
+        root = (
+            "<sitemapindex>"
+            "<sitemap><loc>https://xfit.cz/wp-sitemap-posts-post-1.xml</loc></sitemap>"
+            "<sitemap><loc>https://xfit.cz/wp-sitemap-posts-post-2.xml</loc></sitemap>"
+            "<sitemap><loc>https://evil.example/wp-sitemap-posts-post-3.xml</loc></sitemap>"
+            "<sitemap><loc>https://xfit.cz/wp-sitemap-posts-post-4.xml?secret=X</loc></sitemap>"
+            "<sitemap><loc>https://xfit.cz/wp-sitemap-users-1.xml</loc></sitemap>"
+            "</sitemapindex>"
+        )
+        seen = []
+        def reader(path, **kwargs):
+            seen.append(path)
+            if path.endswith("-1.xml"):
+                return ("<urlset><url><loc>https://xfit.cz/" +
+                        probe.OWNED[0] + "/</loc></url></urlset>", {})
+            return ("<urlset><url><loc>https://xfit.cz/" +
+                    probe.OWNED[1] + "/</loc></url></urlset>", {})
+        report = probe.post_sitemap_inclusion(root, reader=reader, max_children=1)
+        self.assertEqual(seen, ["/wp-sitemap-posts-post-1.xml"])
+        self.assertEqual(report["post_maps_declared"], 2)
+        self.assertEqual(report["post_maps_checked"], 1)
+        self.assertEqual(report["per_slug"][probe.OWNED[0]],
+                         "INCLUDED_IN_POST_SITEMAP")
+        self.assertEqual(report["per_slug"][probe.OWNED[1]],
+                         "UNKNOWN_NOT_PROVEN")
+        self.assertEqual(report["state"], "PARTIAL_OR_NO_POST_MAPS_READ")
+        self.assertNotIn("evil.example", str(report))
+        self.assertNotIn("secret=X", str(report))
+        full = probe.post_sitemap_inclusion(root, reader=reader, max_children=20)
+        self.assertEqual(full["state"], "ALL_POST_MAPS_READ")
+        self.assertEqual(full["per_slug"][probe.OWNED[1]], "INCLUDED_IN_POST_SITEMAP")
+        self.assertEqual(full["per_slug"][probe.OWNED[2]],
+                         "NOT_OBSERVED_IN_ALL_POST_MAPS")
+        self.assertEqual(probe.post_sitemap_inclusion(
+            '<!DOCTYPE x [<!ENTITY e SYSTEM "file:///etc/passwd">]><sitemapindex/>',
+            reader=reader)["state"], "ROOT_NOT_PARSEABLE_INDEX")
 
 if __name__ == "__main__":
     unittest.main()
