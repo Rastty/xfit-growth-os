@@ -27,7 +27,7 @@ class LegacyRoutingDiscoveryTests(unittest.TestCase):
             if "slug=" + slug in path:
                 return [post(slug, body)]
             return []
-        result = discovery.inspect_priority(request=fake)
+        result = discovery.inspect_priority(request=fake,base="https://xfit.cz")
         self.assertEqual(len(calls), 2)
         self.assertEqual(result[0]["state"], "SOURCE_VERIFIED")
         self.assertEqual(result[0]["target_already_linked"], False)
@@ -46,7 +46,7 @@ class LegacyRoutingDiscoveryTests(unittest.TestCase):
             if "slug=" + slug in path:
                 return [post(slug, body, 2026)]
             return []
-        result = discovery.inspect_priority(request=fake)
+        result = discovery.inspect_priority(request=fake,base="https://xfit.cz")
         self.assertTrue(result[1]["target_already_linked"])
         self.assertEqual(result[1]["next_action"], "ALREADY_LINKED")
         self.assertEqual(result[1]["wp_post_id"], 2026)
@@ -66,7 +66,7 @@ class LegacyRoutingDiscoveryTests(unittest.TestCase):
                 doc.update(changed)
                 def fake(base,path):
                     return [doc] if "slug=" + slug in path else []
-                result = discovery.inspect_priority(request=fake)
+                result = discovery.inspect_priority(request=fake,base="https://xfit.cz")
                 self.assertEqual(result[0]["state"],
                                  "UNKNOWN_NO_VERIFIED_SOURCE")
                 self.assertNotEqual(result[0]["next_action"],
@@ -75,7 +75,7 @@ class LegacyRoutingDiscoveryTests(unittest.TestCase):
     def test_api_failure_remains_unknown_without_echoing_exception(self):
         def broken(base,path):
             raise ValueError("SECRET or private content")
-        result = discovery.inspect_priority(request=broken)
+        result = discovery.inspect_priority(request=broken,base="https://xfit.cz")
         self.assertEqual(len(result), 2)
         self.assertNotIn("SECRET", str(result))
         self.assertTrue(all(x["next_action"]=="RECHECK_SOURCE" for x in result))
