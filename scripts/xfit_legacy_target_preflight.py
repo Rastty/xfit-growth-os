@@ -65,7 +65,7 @@ class Visible(HTMLParser):
 
 def clean_heading(heading):
     # Headings are public, but only a bounded preview is needed for review.
-    heading = re.sub(r"https?://\\S+|[\\w.+-]+@[\\w.-]+", "[redacted]", heading)
+    heading = re.sub(r"https?://\S+|[\w.+-]+@[\w.-]+", "[redacted]", heading)
     return heading[:135]
 
 
