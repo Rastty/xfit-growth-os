@@ -85,11 +85,30 @@ class TradeoffTests(unittest.TestCase):
         self.assertIn("1 758,00 Kč",body)
         self.assertIn("1 699,00 Kč",body)
         self.assertIn("59,00 Kč",body)
+        self.assertIn("Pokud potřebujete jen 1000 g prášku",body)
+        self.assertIn("jedno menší balení stojí 879,00 Kč místo 1 699,00 Kč",body)
+        self.assertIn("jedné objednávky 2 menších balení",body)
+        self.assertIn("o 59,00 Kč vyšší",body)
+        self.assertIn("při větším rozdílu už nebude levnější",body)
+        self.assertIn("Skutečné poplatky ověřte v obou variantách košíku",body)
         self.assertIn("neověřuje stejné složení",body)
         self.assertIn("trvanlivost po otevření",body)
         self.assertIn("ani cenu dopravy",body)
         self.assertNotIn('<a href="https://',body)
         self.assertNotIn("<script",body)
+
+    def test_checkout_threshold_uses_real_price_cents_not_rounded_per100g(self):
+        cards=[
+            selected(201,"Whey 2kg",1699.01,2000,84.95),
+            selected(202,"Whey 1kg",879.01,1000,87.90),
+        ]
+        body=price_tradeoff(cards, product_kind="whey")
+        self.assertIn("2 menší balení po 1000 g",body)
+        self.assertIn("1 758,02 Kč",body)
+        self.assertIn("1 699,01 Kč",body)
+        self.assertIn("59,01 Kč",body)
+        self.assertIn("jedno menší balení stojí 879,01 Kč",body)
+        self.assertNotIn("59,00 Kč",body)
 
     def test_noninteger_pack_multiple_does_not_claim_fake_equal_mass_savings(self):
         # 1kg versus 400g: 2.5 small packs can't be purchased in reality.
