@@ -102,9 +102,20 @@ def price_tradeoff(selected, *, product_kind):
                         '; jedno větší balení ' + str(large_g) +
                         ' g stojí ' + money(u_total) +
                         '. Rozdíl v ceně balení je ' + money(saving) +
-                        ' ve prospěch většího balení. Tento model neověřuje '
-                        'stejné složení, využití celé zásoby, '
-                        'trvanlivost po otevření ani cenu dopravy.</p>'
+                        ' ve prospěch většího balení. '
+                        'Pokud potřebujete jen ' + str(small_g) +
+                        ' g prášku, jedno menší balení stojí ' +
+                        money(p_total) + ' místo ' + money(u_total) +
+                        ' za větší. Při porovnání jedné objednávky ' +
+                        str(whole_packs) + ' menších balení s jedním '
+                        'větším balením se výhoda většího vyrovná, '
+                        'pokud jeho doprava a další poplatky budou '
+                        'o ' + money(saving) +
+                        ' vyšší; při větším rozdílu už nebude levnější. '
+                        'Skutečné poplatky ověřte v obou variantách košíku. '
+                        'Tento model neověřuje stejné složení, '
+                        'využití celé zásoby, trvanlivost po otevření '
+                        'ani cenu dopravy.</p>'
                     )
     caveat = (
         'Nejde o cenu čistých bílkovin: tu zjistíte až z výživové etikety. '
