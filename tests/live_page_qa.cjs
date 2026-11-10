@@ -312,10 +312,10 @@ for(const spec of checks){
       [...proteinChoiceTables[0].querySelectorAll("tbody tr")]:[];
     const firstProteinChoice=(proteinChoiceRows[0]?
       [...proteinChoiceRows[0].querySelectorAll("td")]:[])
-      .map(td=>(td.textContent||"").normalize("NFC").replace(/\\s+/g," ").trim());
+      .map(td=>(td.textContent||"").normalize("NFC").replace(/\s+/g," ").trim());
     const secondProteinChoice=(proteinChoiceRows[1]?
       [...proteinChoiceRows[1].querySelectorAll("td")]:[])
-      .map(td=>(td.textContent||"").normalize("NFC").replace(/\\s+/g," ").trim());
+      .map(td=>(td.textContent||"").normalize("NFC").replace(/\s+/g," ").trim());
     const proteinFoodFirst={
       tableCount:proteinChoiceTables.length,
       rowCount:proteinChoiceRows.length,
