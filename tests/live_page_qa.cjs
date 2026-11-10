@@ -312,10 +312,18 @@ for(const spec of checks){
       [...proteinChoiceTables[0].querySelectorAll("tbody tr")]:[];
     const firstProteinChoice=(proteinChoiceRows[0]?
       [...proteinChoiceRows[0].querySelectorAll("td")]:[])
-      .map(td=>(td.textContent||"").trim());
+      .map(td=>(td.textContent||"").normalize("NFC").replace(/\s+/g," ").trim());
+    const secondProteinChoice=(proteinChoiceRows[1]?
+      [...proteinChoiceRows[1].querySelectorAll("td")]:[])
+      .map(td=>(td.textContent||"").normalize("NFC").replace(/\s+/g," ").trim());
     const proteinFoodFirst={
       tableCount:proteinChoiceTables.length,
       rowCount:proteinChoiceRows.length,
+      theadRows:proteinChoiceTables[0]?.querySelectorAll("thead tr").length||0,
+      // Fixed public article labels only; bounded output contains no IDs,
+      // visitor inputs, merchant URLs, campaign parameters or cookies.
+      firstCellsPreview:firstProteinChoice.map(s=>s.slice(0,120)),
+      secondCellsPreview:secondProteinChoice.map(s=>s.slice(0,120)),
       noBuyFirst:firstProteinChoice.length===3 &&
         firstProteinChoice[0]==="Bílkoviny už pokryjete běžným jídlem" &&
         firstProteinChoice[1]==="Žádný proteinový doplněk" &&
