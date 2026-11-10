@@ -130,20 +130,28 @@ def get_public_html(url):
 def inspect_plugins(*, wp_fetch=wp_request):
     """Best effort; lack of administrator plugins.read permission != no CMP."""
     try:
+        # Read ALL installed plugins, not just active ones: an already
+        # uploaded but inactive XFIT package could be activated through the
+        # separately authorized native WordPress REST route. Still no writes.
         response = wp_fetch(
             normalized_base(),
-            "plugins?per_page=100&status=active&_fields=plugin,status,version",
+            "plugins?per_page=100&_fields=plugin,status,version",
         )
         if not isinstance(response, list):
             raise ValueError("Unexpected plugins inventory")
         active = []
         webtoffee_major = None
+        xfit_seen = []
         for item in response:
             if not isinstance(item, dict):
                 continue
-            if item.get("status") != "active" or not isinstance(item.get("plugin"), str):
+            if not isinstance(item.get("plugin"), str):
                 continue
             slug = item["plugin"].casefold()
+            if slug == "xfit-analytics/xfit-analytics.php":
+                xfit_seen.append(item.get("status"))
+            if item.get("status") != "active":
+                continue
             active.append(slug)
             if any(term in slug for term in
                    ("cookie-law-info", "webtoffee", "gdpr-cookie-consent")):
@@ -152,8 +160,19 @@ def inspect_plugins(*, wp_fetch=wp_request):
                     match = re.match(r"^([0-9]{1,2})\.", version)
                     if match:
                         webtoffee_major = int(match.group(1))
+        # A full first page may be incomplete if the site has >100 plugins.
+        # Do not claim absence unless the finite inventory is exhaustive.
+        if len(xfit_seen) == 1 and xfit_seen[0] in ("active", "inactive"):
+            xfit_state = "INSTALLED_" + xfit_seen[0].upper()
+        elif xfit_seen:
+            xfit_state = "UNKNOWN_PLUGIN_INVENTORY_CONFLICT"
+        elif len(response) >= 100:
+            xfit_state = "UNKNOWN_INVENTORY_MAY_BE_PAGINATED"
+        else:
+            xfit_state = "NOT_INSTALLED"
         return {
             "inventory_status": "READ_ONLY_VISIBLE",
+            "xfit_analytics_plugin_state": xfit_state,
             "recognized_active_providers": sorted(
                 key for key, patterns in PLUGIN_SIGNATURES.items()
                 if any(part in name for name in active for part in patterns)
@@ -164,6 +183,7 @@ def inspect_plugins(*, wp_fetch=wp_request):
     except (PublishError, ValueError, OSError):
         return {
             "inventory_status": "UNKNOWN_NO_AUTHORIZED_INVENTORY",
+            "xfit_analytics_plugin_state": "UNKNOWN_NO_AUTHORIZED_INVENTORY",
             "recognized_active_providers": [],
             "active_plugin_count": None,
             "webtoffee_major_version": None,
