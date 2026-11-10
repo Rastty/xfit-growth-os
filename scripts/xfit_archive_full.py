@@ -80,7 +80,7 @@ def classify(post):
     page_url=post.get("link") or "https://xfit.cz/"
     try:
         page=urlsplit(page_url)
-        page_path_query=(page.path,page.query)
+        page_path_query=(page.path.rstrip("/") or "/",page.query)
     except ValueError:
         page_url="https://xfit.cz/"
         page_path_query=None
@@ -103,7 +103,7 @@ def classify(post):
             if host.lower() in ("xfit.cz","www.xfit.cz"):
                 # A permalink or fragment pointing back to this article is
                 # not evidence of a route to another useful archive page.
-                if (p.path,p.query)!=page_path_query:
+                if (p.path.rstrip("/") or "/",p.query)!=page_path_query:
                     internal_link_count+=1
             else:
                 external[host.lower()]+=1
