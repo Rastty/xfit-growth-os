@@ -128,7 +128,7 @@ def build_document(catalog, base, sample):
              if item["image"] else "")
         label="Nejnižší jednotková cena ve výběru" if index==0 else "Další velikost nebo typ prášku"
         parts.append('<article class="xfit-product-card" id="xfit-offer-'+str(index+1)+'" style="border:1px solid #dce5e8;'
-            'border-radius:12px;padding:16px;margin:16px 0;background:#ffffff;">'
+            'border-radius:12px;padding:16px;margin:16px 0;background:#ffffff;overflow-wrap:anywhere;">'
             '<h3>'+title+'</h3>'+img+
             '<p><strong>'+label+'</strong></p>'
             '<p>Typ podle názvu: '+kind+'</p>'
