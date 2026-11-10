@@ -25,6 +25,7 @@ PUBLISHER_NAMES = frozenset({
     "XFIT Coupon Post 11595 Recovery",
     "XFIT Pilates GSC Query-Intent Title Onepost",
     "XFIT Protein Pack-use One-post Live Release",
+    "XFIT Protein Table Opt-out One-post Live Release",
     "XFIT Beginner Goal Handoffs One-post Live",
 })
 COMMERCIAL = {
@@ -109,6 +110,8 @@ def inspect_log(log, run):
             "python -m scripts.xfit_pilates_gsc_title_release apply",
         "XFIT Protein Pack-use One-post Live Release":
             "python -m scripts.xfit_protein_pack_release apply",
+        "XFIT Protein Table Opt-out One-post Live Release":
+            "python -m scripts.xfit_protein_table_optout_release apply",
         "XFIT Beginner Goal Handoffs One-post Live":
             "python -m scripts.xfit_beginner_goal_release apply",
     }
@@ -193,6 +196,23 @@ def inspect_log(log, run):
                     or entry.get("slug") != "xfit-os-protein-guide"
                     or entry.get("url") != "https://xfit.cz/xfit-os-protein-guide/"
                     or entry.get("old_paragraphs_replaced") != 1
+                    or entry.get("posts_changed") != 1
+                    or entry.get("post_attempts") != 1
+                    or entry.get("new_posts") != 0
+                    or entry.get("deletes") != 0
+                    or entry.get("redirects") != 0
+                    or entry.get("public_site_modified") is not True):
+                continue
+            kind = "updated"
+        elif run.get("name") == "XFIT Protein Table Opt-out One-post Live Release":
+            if state != "PUBLIC_VERIFIED":
+                continue
+            # Count only a post-backup production apply receipt for the pinned
+            # protein decision table; pre-release unit tests print fixtures.
+            if (entry.get("post_id") != 25451
+                    or entry.get("slug") != "xfit-os-protein-guide"
+                    or entry.get("url") != "https://xfit.cz/xfit-os-protein-guide/"
+                    or entry.get("new_table_rows_inserted") != 1
                     or entry.get("posts_changed") != 1
                     or entry.get("post_attempts") != 1
                     or entry.get("new_posts") != 0
