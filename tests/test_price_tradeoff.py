@@ -71,6 +71,44 @@ class TradeoffTests(unittest.TestCase):
         self.assertNotIn("onclick",body)
         self.assertNotIn("<script",body)
 
+    def test_equal_mass_compares_whole_packs_without_implying_same_protein(self):
+        # 1x 2kg whey vs 2x 1kg: a comparable amount of powder, but
+        # necessarily NOT proof of identical nutrients or shipping.
+        cards=[
+            selected(201,"Whey 2kg",1699,2000,84.95),
+            selected(202,"Whey 1kg",879,1000,87.90),
+            selected(203,"Whey alternative 1kg",1000,1000,100),
+        ]
+        body=price_tradeoff(cards,product_kind="whey")
+        self.assertEqual(body.count('data-xfit-tradeoff="same-mass"'),1)
+        self.assertIn("2 menší balení po 1000 g",body)
+        self.assertIn("1 758,00 Kč",body)
+        self.assertIn("1 699,00 Kč",body)
+        self.assertIn("59,00 Kč",body)
+        self.assertIn("neověřuje stejné složení",body)
+        self.assertIn("trvanlivost po otevření",body)
+        self.assertIn("ani cenu dopravy",body)
+        self.assertNotIn('<a href="https://',body)
+        self.assertNotIn("<script",body)
+
+    def test_noninteger_pack_multiple_does_not_claim_fake_equal_mass_savings(self):
+        # 1kg versus 400g: 2.5 small packs can't be purchased in reality.
+        cards=[
+            selected(201,"Creatine 1kg",549,1000,54.9),
+            selected(202,"Creatine 400g",269,400,67.25),
+        ]
+        body=price_tradeoff(cards,product_kind="creatine")
+        self.assertIn('data-xfit-tradeoff="difference"',body)
+        self.assertNotIn('data-xfit-tradeoff="same-mass"',body)
+
+    def test_more_than_five_small_packs_does_not_promote_bulk_stockpiling(self):
+        cards=[
+            selected(201,"Creatine 1kg",400,1000,40),
+            selected(202,"Creatine 100g",100,100,100),
+        ]
+        body=price_tradeoff(cards,product_kind="creatine")
+        self.assertNotIn('data-xfit-tradeoff="same-mass"',body)
+
     def test_same_winner_has_no_duplicate_link_or_misleading_saving(self):
         cards=[
             selected(101,"Velké balení 1 kg",400,1000,40),
