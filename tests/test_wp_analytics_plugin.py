@@ -10,7 +10,7 @@ from scripts import build_xfit_wp_plugin as package
 class AnalyticsPluginPackageTests(unittest.TestCase):
     def test_package_contains_only_three_approved_first_party_files(self):
         with tempfile.TemporaryDirectory() as tmp:
-            zip_path = Path(tmp) / "xfit-analytics-0.1.1.zip"
+            zip_path = Path(tmp) / "xfit-analytics-0.1.2.zip"
             receipt = package.build(zip_path)
             self.assertEqual(receipt["status"], "INSTALLABLE_PLUGIN_PACKAGE_BUILT")
             self.assertFalse(receipt["wp_installed"])
@@ -34,9 +34,9 @@ class AnalyticsPluginPackageTests(unittest.TestCase):
         php = (package.ROOT / "wordpress-plugin/xfit-analytics/xfit-analytics.php"
                ).read_text(encoding="utf-8")
         self.assertTrue(php.startswith("<?php"))
-        self.assertIn("Version: 0.1.1", php)
-        self.assertIn("$version = '0.1.1'", php)
-        self.assertEqual(package.VERSION, "0.1.1")
+        self.assertIn("Version: 0.1.2", php)
+        self.assertIn("$version = '0.1.2'", php)
+        self.assertEqual(package.VERSION, "0.1.2")
         self.assertIn("Plugin Name: XFIT Verified Affiliate Click Analytics", php)
         self.assertIn("is_singular( 'post' )", php)
         self.assertIn("'xfit-os-kreatin-poradce'", php)
