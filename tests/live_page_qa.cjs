@@ -165,6 +165,53 @@ for(const spec of checks){
       ),
       noMerchantLinks:tradeoffLinks.every(a=>a.getAttribute("href")?.startsWith("#"))
     };
+    // Read only the visible public product cards, so a scheduled QA stays
+    // valid when the merchant feed legitimately updates prices or pack sizes.
+    // No merchant navigation, clicks or affiliate URLs enter test output.
+    const sameMassRows=[...document.querySelectorAll(
+      'p[data-xfit-tradeoff="same-mass"]')];
+    const buyerPrice=(node)=>{
+      const a=node?.querySelector('a[href^="#xfit-offer-"]');
+      const card=a?document.getElementById((a.getAttribute("href")||"").slice(1)):null;
+      const text=[...(card?.querySelectorAll("p")||[])]
+        .map(p=>p.textContent||"").find(t=>t.includes("Cena:")&&t.includes("Balení:"));
+      const match=text?.match(/Cena:\s*([\d\s\u00a0\u202f]+,\d{2})\s*Kč[^\d]*Balení:\s*(\d+)\s*g/);
+      if(!match)return null;
+      const amount=Number(match[1].replace(/\s/g,"").replace(",","."));
+      const grams=Number(match[2]);
+      return Number.isFinite(amount)&&amount>0&&Number.isSafeInteger(grams)&&grams>0
+        ? {amount,grams} : null;
+    };
+    const smallest=buyerPrice(tradeoffNodes.upfront[0]);
+    const cheapestUnit=buyerPrice(tradeoffNodes.unit[0]);
+    const sameWinner=tradeoffNodes.same.length===1;
+    const readable=sameWinner || (!!smallest && !!cheapestUnit);
+    const multiple=readable&&!sameWinner && cheapestUnit.grams>smallest.grams &&
+      cheapestUnit.grams%smallest.grams===0 ?
+      cheapestUnit.grams/smallest.grams : 0;
+    const saving=multiple>=2&&multiple<=5 ?
+      Math.round((smallest.amount*multiple-cheapestUnit.amount)*100)/100 : 0;
+    const shouldExist=multiple>=2&&multiple<=5&&saving>0;
+    const czk=value=>new Intl.NumberFormat("cs-CZ",{
+      minimumFractionDigits:2,maximumFractionDigits:2
+    }).format(value).replace(/\s/g," ")+" Kč";
+    const sameMassText=(sameMassRows[0]?.textContent||"").replace(/\s+/g," ").trim();
+    const sameMassDecision={
+      count:sameMassRows.length,
+      shouldExist,
+      comparableMass:multiple,
+      valid:readable && (shouldExist ?
+        sameMassRows.length===1 &&
+        sameMassText.includes(multiple+" menší balení po "+smallest.grams+" g") &&
+        sameMassText.includes(czk(smallest.amount*multiple)) &&
+        sameMassText.includes(czk(cheapestUnit.amount)) &&
+        sameMassText.includes(czk(saving)) &&
+        sameMassText.includes("neověřuje stejné složení") &&
+        sameMassText.includes("trvanlivost po otevření") &&
+        sameMassText.includes("ani cenu dopravy") &&
+        sameMassRows[0].querySelector("a[href^='http']")===null :
+        sameMassRows.length===0)
+    };
     const modelPortionRows=[
       ...document.querySelectorAll(".xfit-product-card .xfit-model-portion")
     ].map(n=>n.textContent.trim());
@@ -378,7 +425,7 @@ for(const spec of checks){
         merchantLinks:links.length,missingSponsored,imagesMissingAlt:images.length,
         productImages:productImages.length,brokenProductImages:brokenProductImages.length,
         productImageStatus,themeImagesMissingAlt,firstProductLoaded,firstCTASize,
-        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,noPurchase,proteinPackUse,proteinFoodFirst,proteinCheckout,productTitleDisplay,productCardWrap,quickNav,offTopicPlacement,beginnerGoals};
+        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,sameMassDecision,noPurchase,proteinPackUse,proteinFoodFirst,proteinCheckout,productTitleDisplay,productCardWrap,quickNav,offTopicPlacement,beginnerGoals};
   });
   if(!doc.h1.includes(spec.expected))failures.push("h1_missing_expected");
   if(doc.h2<spec.minH2)failures.push("insufficient_h2");
@@ -430,6 +477,8 @@ for(const spec of checks){
   if(spec.commercial && (!doc.tradeoff.heading || !doc.tradeoff.goalsValid ||
        !doc.tradeoff.targetsValid || !doc.tradeoff.noMerchantLinks))
     failures.push("price_tradeoff_missing_or_invalid");
+  if(spec.commercial && !doc.sameMassDecision.valid)
+    failures.push("live_buyer_same_mass_arithmetic_or_disclosure_invalid");
   if(spec.commercial && !doc.budget.heading)failures.push("budget_heading_missing");
   if(spec.commercial && doc.budget.choices!==3)failures.push("budget_choices_not_three");
   if(spec.commercial && !doc.budget.valid)failures.push("budget_choice_link_or_summary_invalid");
