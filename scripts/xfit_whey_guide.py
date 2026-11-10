@@ -41,8 +41,11 @@ def build_document(catalog, base, sample):
     # The 150 best CZK/100g options cannot prove the lowest up-front price.
     # Inspect every source-eligible offer, then filter blends/flavors and rank.
     candidates = select_offers(catalog, "whey", max_price=2000, min_mass_g=500, limit=None)
-    images_by_id = {str(o.get("id")): o.get("image_url")
-                    for o in catalog.get("products", [])}
+    images_by_id = {}
+    for source_item in catalog.get("products", []):
+        # Match the first source row as the former next(...) image lookup did.
+        images_by_id.setdefault(str(source_item.get("id")),
+                                source_item.get("image_url"))
     group={}
     for p in candidates:
         title=p["title"].casefold()
