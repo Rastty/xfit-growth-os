@@ -84,6 +84,28 @@ def price_tradeoff(selected, *, product_kind):
             'Jde o srovnání ceny, nikoli o zaručenou úsporu: '
             'záleží na skutečně spotřebovaném množství.</p>',
         ]
+        # Only compare equal whole-pack quantities. Never extrapolate a
+        # partial pack, imply two formulas have identical ingredients, or
+        # recommend stockpiling for an unverified shelf life.
+        small_g, large_g = p_item["mass_g"], u_item["mass_g"]
+        if large_g > small_g and large_g % small_g == 0:
+            whole_packs = large_g // small_g
+            if 2 <= whole_packs <= 5:
+                smaller_total = p_total * whole_packs
+                saving = smaller_total - u_total
+                if saving > 0:
+                    parts.append(
+                        '<p data-xfit-tradeoff="same-mass"><strong>Model stejné '
+                        'hmotnosti prášku:</strong> ' + str(whole_packs) +
+                        ' menší balení po ' + str(small_g) +
+                        ' g by stála celkem ' + money(smaller_total) +
+                        '; jedno větší balení ' + str(large_g) +
+                        ' g stojí ' + money(u_total) +
+                        '. Rozdíl v ceně balení je ' + money(saving) +
+                        ' ve prospěch většího balení. Tento model neověřuje '
+                        'stejné složení, využití celé zásoby, '
+                        'trvanlivost po otevření ani cenu dopravy.</p>'
+                    )
     caveat = (
         'Nejde o cenu čistých bílkovin: tu zjistíte až z výživové etikety. '
         if product_kind == "whey" else
