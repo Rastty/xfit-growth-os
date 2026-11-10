@@ -44,6 +44,12 @@ class CardWrappingTests(unittest.TestCase):
                     self.assertIn("overflow-wrap:anywhere", style)
                     self.assertNotIn("overflow:hidden", style)
                 self.assertIn(long_name, body)
+                # Wrapping is purely presentational. Keep both feed-backed
+                # cards and sponsored merchant CTAs available to the reader.
+                self.assertEqual(body.count('class="xfit-product-card"'), 2)
+                self.assertIn('id="xfit-offer-1"', body)
+                self.assertIn('id="xfit-offer-2"', body)
+                self.assertEqual(body.count('rel="sponsored nofollow'), 2)
 
 
 if __name__ == "__main__":
