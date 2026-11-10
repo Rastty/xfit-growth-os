@@ -96,8 +96,11 @@ def shortlist(catalog, base, sample, budget=1500):
     # published cards: top 150 on unit price can hide the lowest upfront pack.
     items = select_offers({"products": eligible}, "creatine", max_price=budget,
                           min_mass_g=200, limit=None)
-    images_by_id = {str(o.get("id")): o.get("image_url")
-                    for o in catalog.get("products", [])}
+    images_by_id = {}
+    for source_item in catalog.get("products", []):
+        # Match the first source row as the former next(...) image lookup did.
+        images_by_id.setdefault(str(source_item.get("id")),
+                                source_item.get("image_url"))
     candidates=[]
     for p in items:
         try:
