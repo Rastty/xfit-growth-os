@@ -64,6 +64,15 @@ for(const spec of checks){
       literalMarkupEscaped:!document.querySelector(".xfit-product-card h3 script"),
     };
     const firstCard=document.querySelector(".xfit-product-card");
+    // CSS must actually survive WordPress rendering, not just source tests.
+    // No merchant clicks, product IDs or affiliate URLs enter the report.
+    const cards=[...document.querySelectorAll(".xfit-product-card")];
+    const productCardWrap={
+      count:cards.length,
+      allAllowUnbrokenTitles:cards.length>=2 && cards.every(card=>
+        getComputedStyle(card).overflowWrap==="anywhere" ||
+        getComputedStyle(card).wordBreak==="break-all")
+    };
     const firstCardImage=firstCard?.querySelector("img");
     const firstCardLink=firstCard?.querySelector('a[href*="namaximum.cz"]');
     const firstCTABox=firstCardLink?.getBoundingClientRect();
@@ -294,6 +303,26 @@ for(const spec of checks){
       oldAdviceAbsent:!document.body.textContent.includes(
         "Nakoupit obří balení neznámé příchutě"),
     };
+    // Validate the newly released food-first row as a genuinely first
+    // decision, on the public 375px page rather than the repository fixture.
+    const proteinChoiceTables=[...document.querySelectorAll("table")].filter(t=>
+      (t.textContent||"").includes("Vaše potřeba") &&
+      (t.textContent||"").includes("Co zvážit"));
+    const proteinChoiceRows=proteinChoiceTables[0]?
+      [...proteinChoiceTables[0].querySelectorAll("tbody tr")]:[];
+    const firstProteinChoice=(proteinChoiceRows[0]?
+      [...proteinChoiceRows[0].querySelectorAll("td")]:[])
+      .map(td=>(td.textContent||"").trim());
+    const proteinFoodFirst={
+      tableCount:proteinChoiceTables.length,
+      rowCount:proteinChoiceRows.length,
+      noBuyFirst:firstProteinChoice.length===3 &&
+        firstProteinChoice[0]==="Bílkoviny už pokryjete běžným jídlem" &&
+        firstProteinChoice[1]==="Žádný proteinový doplněk" &&
+        firstProteinChoice[2].includes("Než přejdete ke srovnání cen"),
+      alternativesRemain:proteinChoiceRows.slice(1).some(row=>
+        (row.textContent||"").includes("Syrovátkový koncentrát"))
+    };
     // Live WP must preserve the beginner's actual decision-to-next-step UX,
     // not only the source JSON checked in to the public repository.
     const beginnerHeading=document.querySelector("h2#zacatecnik-rozhodnuti");
@@ -341,7 +370,7 @@ for(const spec of checks){
         merchantLinks:links.length,missingSponsored,imagesMissingAlt:images.length,
         productImages:productImages.length,brokenProductImages:brokenProductImages.length,
         productImageStatus,themeImagesMissingAlt,firstProductLoaded,firstCTASize,
-        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,noPurchase,proteinPackUse,proteinCheckout,productTitleDisplay,quickNav,offTopicPlacement,beginnerGoals};
+        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,noPurchase,proteinPackUse,proteinFoodFirst,proteinCheckout,productTitleDisplay,productCardWrap,quickNav,offTopicPlacement,beginnerGoals};
   });
   if(!doc.h1.includes(spec.expected))failures.push("h1_missing_expected");
   if(doc.h2<spec.minH2)failures.push("insufficient_h2");
@@ -362,6 +391,14 @@ for(const spec of checks){
         failures.push("beginner_goal_not_keyboard_accessible");
     }else failures.push("beginner_goal_not_keyboard_accessible");
   }
+  if(spec.name==="protein-guide" &&
+      (doc.proteinFoodFirst.tableCount!==1 ||
+       doc.proteinFoodFirst.rowCount!==6 ||
+       !doc.proteinFoodFirst.noBuyFirst ||
+       !doc.proteinFoodFirst.alternativesRemain))
+    failures.push("protein_food_first_choice_not_first_or_missing_on_mobile");
+  if(spec.commercial && !doc.productCardWrap.allAllowUnbrokenTitles)
+    failures.push("published_product_card_wrap_missing_on_mobile");
   if(spec.name==="protein-guide" &&
       (doc.proteinPackUse.count!==1 || !doc.proteinPackUse.hasArithmetic ||
        !doc.proteinPackUse.hasRealLimits || !doc.proteinPackUse.oldAdviceAbsent))
