@@ -206,6 +206,12 @@ for(const spec of checks){
         sameMassText.includes(czk(smallest.amount*multiple)) &&
         sameMassText.includes(czk(cheapestUnit.amount)) &&
         sameMassText.includes(czk(saving)) &&
+        sameMassText.includes("Pokud potřebujete jen "+smallest.grams+" g prášku") &&
+        sameMassText.includes("jedno menší balení stojí "+czk(smallest.amount)+
+          " místo "+czk(cheapestUnit.amount)) &&
+        sameMassText.includes("jedné objednávky "+multiple+" menších balení") &&
+        sameMassText.includes("o "+czk(saving)+" vyšší") &&
+        sameMassText.includes("Skutečné poplatky ověřte v obou variantách košíku") &&
         sameMassText.includes("neověřuje stejné složení") &&
         sameMassText.includes("trvanlivost po otevření") &&
         sameMassText.includes("ani cenu dopravy") &&
