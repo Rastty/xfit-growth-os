@@ -40,10 +40,26 @@ jobs:
           node --test tests/test_webtoffee_bridge.cjs tests/test_outbound_analytics.cjs
       - name: Build installable plugin ZIP from reviewed main source
         run: python -m scripts.build_xfit_wp_plugin --output dist/xfit-analytics-0.1.0.zip
-      - name: Preserve exact installable package
+      - name: Produce verifiable install package checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          test -s xfit-analytics-0.1.0.zip
+          sha256sum xfit-analytics-0.1.0.zip > xfit-analytics-0.1.0.zip.sha256
+          sha256sum --check xfit-analytics-0.1.0.zip.sha256
+          {
+            echo "### XFIT WordPress analytics installation package"
+            echo "Installable ZIP and SHA-256 checksum are attached as the workflow artifact."
+            echo "This build does not install or activate a WordPress plugin."
+            echo "No real GA4 click, Affial order or commission is established by packaging."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve exact installable package and checksum
         uses: actions/upload-artifact@v4
         with:
           name: xfit-consent-analytics-wp-plugin-${{ github.run_id }}
-          path: dist/xfit-analytics-0.1.0.zip
+          path: |
+            dist/xfit-analytics-0.1.0.zip
+            dist/xfit-analytics-0.1.0.zip.sha256
           retention-days: 30
           if-no-files-found: error
