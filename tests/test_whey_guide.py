@@ -158,6 +158,25 @@ class WheyTests(unittest.TestCase):
                 deploy(doc)
         writer.assert_not_called()
 
+    def test_full_feed_cheapest_small_whey_pack_survives_unit_top_150(self):
+        products=[]
+        for i in range(150):
+            ident=5000+i
+            one=offer(ident,f"Whey WPC family {i} 2kg",1000)
+            one["source_url"]=f"https://www.namaximum.cz/p/whey-family-{i}?variant={ident}"
+            products.append(one)
+        entry=offer(5999,"Whey WPC starter 500g",300)
+        entry["source_url"]="https://www.namaximum.cz/p/whey-starter?variant=5999"
+        products.append(entry)
+        catalog={"merchant":"namaximum.cz","merchant_match":True,
+                 "products":products}
+        body=build_document(catalog,BASE,SAMPLE)["content"]
+        self.assertIn("Whey WPC starter 500g",body)
+        self.assertIn("300,00 Kč",body)
+        self.assertIn("Nejnižší výdaj při nákupu",body)
+        self.assertEqual(body.count('class="xfit-product-card"'),6)
+        self.assertNotIn("Whey gainer",body)
+
     def test_insufficient_catalog(self):
         with self.assertRaises(PublishError):
             build_document({"merchant":"namaximum.cz","merchant_match":True,"products":[]},BASE,SAMPLE)
