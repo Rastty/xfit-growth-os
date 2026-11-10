@@ -25,26 +25,44 @@ KINDS = {
     "plant_protein": {"title": ("vegansk", "vegan", "rastlinn", "rostlinn", "hrachov", "sojov"), "category": ("protein",)},
 }
 MASS_RE = re.compile(r"(?<![a-z0-9])(\d+(?:[,.]\d+)?)\s*(kg|g)\b", re.I)
+# A multipack's single-unit mass must never masquerade as its TOTAL pack mass.
+# Without a verified structured pack quantity, reject rather than guess.
+MULTIPACK_RE = re.compile(
+    r"(?<![a-z0-9])\d{1,3}\s*(?:x|×|\*)\s*(?:\S+\s+){0,3}\d+(?:[,.]\d+)?\s*(?:kg|g)\b", re.I
+)
 MAX_OPTIONS = 200
 
 def mass_grams(title):
-    """Return plausible package mass; never treat malformed mass as a serving."""
+    """Select only an unambiguous pack mass, never a serving or bundle unit.
+
+    Merchant titles sometimes mention both package weight and a serving size.
+    Picking the last number can distort the price-per-100g rank. If multiple
+    plausible weights disagree, or a multipack quantity is advertised, fail
+    closed until the feed supplies structured pack evidence.
+    """
     if not isinstance(title, str) or len(title) > 5000:
+        return None
+    if MULTIPACK_RE.search(title):
         return None
     matches = MASS_RE.findall(title)
     if not matches:
         return None
-    size, unit = matches[-1]
-    if len(size) > 14:
-        return None
-    try:
-        number = float(size.replace(",", "."))
-    except (ValueError, OverflowError):
-        return None
-    if not math.isfinite(number):
-        return None
-    grams = number * (1000 if unit.lower() == "kg" else 1)
-    return int(round(grams)) if 50 <= grams <= 10000 else None
+    plausible = set()
+    for size, unit in matches:
+        if len(size) > 14:
+            return None
+        try:
+            number = float(size.replace(",", "."))
+        except (ValueError, OverflowError):
+            return None
+        if not math.isfinite(number):
+            return None
+        grams = number * (1000 if unit.lower() == "kg" else 1)
+        # A 5g scoop can appear alongside a 1kg tub, but is not itself
+        # a sellable comparison pack. Never rank 2 plausible pack sizes.
+        if 50 <= grams <= 10000:
+            plausible.add(int(round(grams)))
+    return next(iter(plausible)) if len(plausible) == 1 else None
 
 def safe_merchant(url):
     p = urlsplit(url or "")
