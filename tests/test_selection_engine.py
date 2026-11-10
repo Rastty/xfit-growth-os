@@ -102,6 +102,31 @@ class SelectionTests(unittest.TestCase):
         self.assertIsNone(mass_grams(None))
         self.assertEqual(mass_grams("Whey 1,5 kg"),1500)
 
+    def test_full_scan_retains_true_cheapest_even_after_150_best_unit_prices(self):
+        products=[
+            offer(f"Whey WPC 2kg family {i}", 1000, id=str(i+100),
+                  category="Syrovátkové proteiny")
+            for i in range(150)
+        ]
+        products.append(offer("Whey WPC 500g starter", 300, id="999",
+                              category="Syrovátkové proteiny"))
+        catalog={"products":products}
+        truncated=select_offers(catalog,"whey",max_price=2000,min_mass_g=500,limit=150)
+        self.assertEqual(len(truncated),150)
+        self.assertNotIn("999",{p["id"] for p in truncated})
+        complete=select_offers(catalog,"whey",max_price=2000,min_mass_g=500,limit=None)
+        self.assertEqual(len(complete),151)
+        self.assertEqual(min(complete,key=lambda x:x["price_czk"])["id"],"999")
+        self.assertEqual(complete[0]["price_per_100g_powder_czk"],50)
+
+    def test_full_scan_over_bound_is_rejected_not_silently_truncated(self):
+        from scripts.xfit_select import MAX_FULL_CATALOG_SCAN
+        products=[{"merchant":"NaMaximum.cz"}]*(MAX_FULL_CATALOG_SCAN+1)
+        with self.assertRaisesRegex(ValueError,"too large"):
+            select_offers({"products":products},"whey",limit=None)
+        with self.assertRaisesRegex(ValueError,"too large"):
+            select_offers({"products":tuple(products)},"creatine",limit=None)
+
     def test_invalid_controls(self):
         with self.assertRaises(ValueError):
             select_offers({"products":[]},"unknown")
