@@ -31,6 +31,9 @@ MULTIPACK_RE = re.compile(
     r"(?<![a-z0-9])\d{1,3}\s*(?:x|×|\*)\s*(?:\S+\s+){0,3}\d+(?:[,.]\d+)?\s*(?:kg|g)\b", re.I
 )
 MAX_OPTIONS = 200
+# Native publisher scans the *whole* normalized feed before defining the
+# cheapest eligible pack. Above this bound, refuse a misleading partial claim.
+MAX_FULL_CATALOG_SCAN = 10000
 
 def mass_grams(title):
     """Select only an unambiguous pack mass, never a serving or bundle unit.
@@ -82,9 +85,20 @@ def matches_kind(item, kind):
     return True
 
 def select_offers(catalog, kind, max_price=None, min_mass_g=100, limit=12):
+    """Eligible verified powder offers ordered by unit price.
+
+    Bounded ordinary callers receive at most `limit` items. Site publishers
+    pass limit=None to examine EVERY eligible offer before deduping flavors
+    and choosing both price priorities. Failing on oversized source catalogs
+    avoids implying the cheapest candidate was found in a truncated slice.
+    """
     if kind not in KINDS:
         raise ValueError("Unsupported engine kind")
-    if not 1 <= limit <= MAX_OPTIONS:
+    if limit is None:
+        raw_items = catalog.get("products", [])
+        if not isinstance(raw_items, list) or len(raw_items) > MAX_FULL_CATALOG_SCAN:
+            raise ValueError("Complete source catalog too large for safe comparison")
+    elif type(limit) is not int or not 1 <= limit <= MAX_OPTIONS:
         raise ValueError("limit out of bounds")
     if max_price is not None:
         if isinstance(max_price, bool):
@@ -135,7 +149,7 @@ def select_offers(catalog, kind, max_price=None, min_mass_g=100, limit=12):
             "explanation": "Porovnání ceny za hmotnost prášku, nikoli za množství účinné látky či čistých bílkovin."
         })
     choices.sort(key=lambda x: (x["price_per_100g_powder_czk"], x["price_czk"], x["title"]))
-    return choices[:limit]
+    return choices if limit is None else choices[:limit]
 
 def choose_price_scenarios(offers, limit=6):
     """Preserve both best per-100g price and lowest eligible upfront cost."""
