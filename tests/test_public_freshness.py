@@ -17,7 +17,7 @@ def post(slug, post_id, marker):
         checked = datetime.now(ZoneInfo("Europe/Prague")).date()
         display = f"{checked.day}. {checked.month}. {checked.year}"
         source += (
-            '<h2 id="xfit-price-tradeoff">Dvě cesty k výběru podle ceny</h2>'
+            '<h2 id="xfit-price-tradeoff">Rozpočet a porovnání balení</h2>'
             '<p data-xfit-tradeoff="upfront">Nejnižší výdaj při nákupu: '
             'menší balení vyžaduje méně peněz při prvním nákupu.</p>'
             '<p data-xfit-tradeoff="unit">Nejnižší cena za 100 g prášku: '
