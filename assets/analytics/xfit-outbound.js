@@ -50,6 +50,14 @@
         qs.get("utm_source") !== "pap" ||
         !qs.get("a_aid") || !qs.get("a_bid")) return null;
 
+    // Live read-only affiliate audit verified 6/6 exact catalog/variant
+    // matches in each advisor (run 42865679992). Bind analytics identity
+    // to the *actual* merchant offer, not an independently editable data-
+    // attribute. Missing, duplicate or mismatched variants remain UNKNOWN:
+    // never dispatch an incorrect product-level GA4 event.
+    const variants = qs.getAll("variant");
+    if (variants.length !== 1 || variants[0] !== data.xfitProductId) return null;
+
     return {
       page: location.pathname.slice(1, -1),
       selection_engine: engine,
