@@ -92,16 +92,19 @@ def shortlist(catalog, base, sample, budget=1500):
         if any(t in (o.get("title") or "").casefold() for t in MONOHYDRATE_TERMS)
         and not any(t in (o.get("title") or "").casefold() for t in BLOCK_UNCOMPARABLE)
     ]
+    # Compare the complete bounded eligible feed BEFORE selecting six
+    # published cards: top 150 on unit price can hide the lowest upfront pack.
     items = select_offers({"products": eligible}, "creatine", max_price=budget,
-                          min_mass_g=200, limit=150)
+                          min_mass_g=200, limit=None)
+    images_by_id = {str(o.get("id")): o.get("image_url")
+                    for o in catalog.get("products", [])}
     candidates=[]
     for p in items:
         try:
             url = build_tracked_url(p["source_url"], base, sample)
         except (PublishError, ValueError):
             continue
-        image=safe_image(next((o.get("image_url") for o in catalog["products"]
-                               if str(o.get("id"))==p["id"]), ""))
+        image=safe_image(images_by_id.get(p["id"]) or "")
         candidates.append({**p, "tracked_url":url,"image":image})
     # Group flavors of the SAME powder at the same mass.
     # Without this, the cheapest 6 results were all 1 kg flavor variants.
