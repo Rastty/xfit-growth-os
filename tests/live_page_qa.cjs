@@ -165,6 +165,24 @@ for(const spec of checks){
       ),
       noMerchantLinks:tradeoffLinks.every(a=>a.getAttribute("href")?.startsWith("#"))
     };
+    // Public real-Chromium proof of the *deployed* 2x1kg vs 1x2kg
+    // buyer-cost comparison, not only a fixture in repo tests. Do not visit
+    // merchant links or interpret an estimated price as actual checkout.
+    const sameMassRows=[...document.querySelectorAll(
+      'p[data-xfit-tradeoff="same-mass"]')];
+    const sameMassText=(sameMassRows[0]?.textContent||"").replace(/\s+/g," ").trim();
+    const sameMassDecision={
+      count:sameMassRows.length,
+      correctWheyExample:sameMassRows.length===1 &&
+        sameMassText.includes("2 menší balení po 1000 g") &&
+        sameMassText.includes("1 758,00 Kč") &&
+        sameMassText.includes("1 699,00 Kč") &&
+        sameMassText.includes("59,00 Kč") &&
+        sameMassText.includes("neověřuje stejné složení") &&
+        sameMassText.includes("trvanlivost po otevření") &&
+        sameMassText.includes("ani cenu dopravy") &&
+        sameMassRows[0].querySelector("a[href^='http']")===null
+    };
     const modelPortionRows=[
       ...document.querySelectorAll(".xfit-product-card .xfit-model-portion")
     ].map(n=>n.textContent.trim());
@@ -378,7 +396,7 @@ for(const spec of checks){
         merchantLinks:links.length,missingSponsored,imagesMissingAlt:images.length,
         productImages:productImages.length,brokenProductImages:brokenProductImages.length,
         productImageStatus,themeImagesMissingAlt,firstProductLoaded,firstCTASize,
-        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,noPurchase,proteinPackUse,proteinFoodFirst,proteinCheckout,productTitleDisplay,productCardWrap,quickNav,offTopicPlacement,beginnerGoals};
+        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,sameMassDecision,noPurchase,proteinPackUse,proteinFoodFirst,proteinCheckout,productTitleDisplay,productCardWrap,quickNav,offTopicPlacement,beginnerGoals};
   });
   if(!doc.h1.includes(spec.expected))failures.push("h1_missing_expected");
   if(doc.h2<spec.minH2)failures.push("insufficient_h2");
@@ -430,6 +448,10 @@ for(const spec of checks){
   if(spec.commercial && (!doc.tradeoff.heading || !doc.tradeoff.goalsValid ||
        !doc.tradeoff.targetsValid || !doc.tradeoff.noMerchantLinks))
     failures.push("price_tradeoff_missing_or_invalid");
+  if(spec.name==="whey" && !doc.sameMassDecision.correctWheyExample)
+    failures.push("live_whey_equal_mass_buyer_price_not_verified");
+  if(spec.name==="creatine" && doc.sameMassDecision.count!==0)
+    failures.push("live_creatine_fractional_pack_comparison_not_allowed");
   if(spec.commercial && !doc.budget.heading)failures.push("budget_heading_missing");
   if(spec.commercial && doc.budget.choices!==3)failures.push("budget_choices_not_three");
   if(spec.commercial && !doc.budget.valid)failures.push("budget_choice_link_or_summary_invalid");
