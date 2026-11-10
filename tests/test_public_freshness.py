@@ -131,6 +131,71 @@ class PublicFreshnessTests(unittest.TestCase):
         self.assertEqual(result["price_decision_stage"],
                          "SOURCE_PRICE_DECISION_INCOMPLETE")
 
+    def test_regular_cached_view_can_disagree_with_fresh_no_cache_without_mutation(self):
+        target = TARGETS[3]
+        original = post(*target)
+        latest = original["content"]["raw"]
+        same_mass = (
+            '<p data-xfit-tradeoff="same-mass">Model stejné hmotnosti prášku: '
+            '2 malá balení za 1 758,00 Kč proti jednomu velkému za 1 699,00 Kč; '
+            'cenový rozdíl činí 59,00 Kč a neprokazuje stejné složení výrobků.</p>'
+        )
+        latest = latest.replace('<p class="xfit-feed-retrieval">',
+                                same_mass + '<p class="xfit-feed-retrieval">')
+        original["content"]["raw"] = latest
+        older = latest.replace(same_mass, "")
+        report = probe(
+            target, read_post=lambda _: original,
+            read_public_normal=lambda _: ("<html>" + older + "</html>",
+                                          {"Cache-Control":"max-age=300", "Age":"89"}),
+            read_public=lambda _: ("<html>" + latest + "</html>",
+                                   {"Age":"0"}),
+        )
+        self.assertEqual(report["status"], "PUBLIC_CACHE_VIEW_DIVERGENCE")
+        self.assertEqual(report["price_decision_stage"],
+                         "PUBLIC_PRICE_DECISION_VERIFIED")
+        self.assertTrue(report["product_cards_match"])
+        self.assertEqual(report["ordinary_public_view_state"],
+                         "ORDINARY_PUBLIC_VIEW_STALE_OR_DIFFERENT")
+        self.assertEqual(report["ordinary_cache_headers"]["Age"], "89")
+        self.assertNotIn("1 758", str(report))
+        self.assertNotIn("namaximum.cz", str(report))
+
+    def test_ordinary_view_is_explicitly_unknown_on_transport_failure(self):
+        target = TARGETS[2]
+        original = post(*target)
+        body = original["content"]["raw"]
+        result = probe(
+            target, read_post=lambda _: original,
+            read_public_normal=lambda _: (_ for _ in ()).throw(OSError("secret")),
+            read_public=lambda _: ("<html>" + body + "</html>", {}),
+        )
+        self.assertEqual(result["status"], "PUBLIC_FRESH")
+        self.assertEqual(result["ordinary_public_view_state"],
+                         "ORDINARY_PUBLIC_READ_UNKNOWN")
+        self.assertNotIn("secret", str(result))
+
+    def test_regular_http_read_does_not_silently_request_cache_bypass(self):
+        import io
+        class Response(io.BytesIO):
+            status = 200
+            headers = {"Age":"1","Cache-Control":"max-age=300"}
+            def geturl(self):
+                return "https://xfit.cz/xfit-os-kreatin-poradce/"
+        url = "https://xfit.cz/xfit-os-kreatin-poradce/"
+        sent = []
+        def fake_get(req, **kwargs):
+            sent.append({key.lower(): val for key,val in req.header_items()})
+            return Response(b"<html>test</html>")
+        with patch("scripts.xfit_public_freshness.urllib.request.urlopen",
+                   side_effect=fake_get):
+            public_get(url, bypass_cache=False)
+            public_get(url)
+        self.assertNotIn("cache-control", sent[0])
+        self.assertNotIn("pragma", sent[0])
+        self.assertEqual(sent[1].get("cache-control"), "no-cache")
+        self.assertEqual(sent[1].get("pragma"), "no-cache")
+
     def test_catalog_date_match_and_drift_are_evidence_not_just_price(self):
         target = TARGETS[2]
         original = post(*target)
