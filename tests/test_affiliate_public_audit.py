@@ -48,6 +48,59 @@ class AffiliateParityTests(unittest.TestCase):
         for secret in ("SENSITIVE_AID", "SENSITIVE_BID", "392", "393"):
             self.assertNotIn(secret, str(result))
 
+    def test_catalog_variant_match_is_explicit_evidence_not_revenue(self):
+        result = probe.audit_page(
+            SLUG, BASE, wp_reader=lambda slug: wp(),
+            public_reader=lambda slug: body())
+        self.assertEqual(result["catalog_variant_linkage"], "EXACT_VARIANT_IDS_MATCH")
+        self.assertEqual(result["source_variant_linkage_counts"]["matched"], 2)
+        self.assertEqual(result["public_variant_linkage_counts"]["matched"], 2)
+        self.assertEqual(result["public_variant_linkage_counts"]["mismatched"], 0)
+        self.assertNotIn("SENSITIVE_", str(result))
+        for sensitive_id in ("392", "393"):
+            self.assertNotIn(sensitive_id, str(result))
+
+    def test_same_wrong_variant_in_wp_and_public_does_not_get_false_verification(self):
+        # WP/public URL parity is necessary but insufficient if *both* carry
+        # the same wrong catalog-id-to-merchant-variant mapping.
+        mismatched = body().replace(card("393", "393"), card("393", "392"))
+        result = probe.audit_page(
+            SLUG, BASE, wp_reader=lambda slug: wp(mismatched),
+            public_reader=lambda slug: mismatched)
+        self.assertEqual(result["errors"], [])
+        self.assertTrue(result["offer_destinations_match"])
+        self.assertEqual(result["catalog_variant_linkage"], "MISMATCH_REQUIRES_REVIEW")
+        self.assertEqual(result["public_variant_linkage_counts"]["mismatched"], 1)
+        self.assertNotIn("393", str(result))
+        self.assertNotIn("392", str(result))
+
+    def test_missing_or_ambiguous_variant_keeps_evidence_unknown(self):
+        for altered in (
+            body().replace("?variant=392&", "?", 1),
+            body().replace("?variant=392&", "?variant=392&variant=393&", 1),
+        ):
+            with self.subTest(altered=altered.count("variant=")):
+                result = probe.audit_page(
+                    SLUG, BASE, wp_reader=lambda slug: wp(altered),
+                    public_reader=lambda slug: altered)
+                self.assertEqual(result["errors"], [])
+                self.assertEqual(result["catalog_variant_linkage"],
+                                 "UNPROVEN_VARIANT_LINKAGE")
+                self.assertEqual(result["public_variant_linkage_counts"]["matched"], 1)
+                self.assertEqual(
+                    sum(result["public_variant_linkage_counts"].values()), 2)
+
+    def test_variant_identity_helper_never_trusts_bad_catalog_id(self):
+        url = "https://www.namaximum.cz/p/product?variant=392"
+        self.assertEqual(probe.variant_identity_status(url, "392"), "MATCH")
+        self.assertEqual(probe.variant_identity_status(url, "393"), "MISMATCH")
+        self.assertEqual(probe.variant_identity_status(url, "0392"),
+                         "UNVERIFIABLE_CATALOG_ID")
+        self.assertEqual(probe.variant_identity_status(url, ""),
+                         "UNVERIFIABLE_CATALOG_ID")
+        self.assertEqual(probe.variant_identity_status(
+            "https://www.namaximum.cz/p/product", "392"), "NO_VARIANT")
+
     def test_public_campaign_tampering_not_hidden_by_valid_wp_source(self):
         altered = body().replace("a_bid=SENSITIVE_BID", "a_bid=DIFFERENT", 1)
         result = probe.audit_page(
