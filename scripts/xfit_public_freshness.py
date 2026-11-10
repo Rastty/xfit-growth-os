@@ -84,6 +84,88 @@ def product_card_texts(value):
     return parsed.cards
 
 
+# Keep offer/budget decision copy synchronized across WP source and every
+# public cache: card prices and a stable heading can both match while a newly
+# released, useful buyer-choice paragraph is absent from one stale response.
+PRICE_DECISION_KINDS = frozenset(("upfront", "unit", "same", "difference", "same-mass"))
+
+
+class PriceDecisions(HTMLParser):
+    """Capture ONLY source-owned decision paragraphs, never merchant hrefs."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.active = None
+        self.fragments = []
+        self.records = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag != "p" or self.active is not None:
+            return
+        kind = dict(attrs).get("data-xfit-tradeoff")
+        if kind in PRICE_DECISION_KINDS:
+            self.active = kind
+            self.fragments = []
+
+    def handle_data(self, data):
+        if self.active is not None:
+            self.fragments.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "p" and self.active is not None:
+            self.records.append((self.active, typography_key(
+                " ".join(html.unescape("".join(self.fragments)).casefold().split()))))
+            self.active = None
+            self.fragments = []
+
+
+def price_decision_records(value):
+    reader = PriceDecisions()
+    reader.feed(value)
+    return reader.records
+
+
+def _price_decision_shape(rows):
+    kinds = [kind for kind, value in rows]
+    return (
+        kinds in (
+            ["upfront", "same"],
+            ["upfront", "unit", "difference"],
+            ["upfront", "unit", "difference", "same-mass"],
+        )
+        and all(len(value) >= 30 for _, value in rows)
+    )
+
+
+def price_decision_readiness(source, public):
+    """Fail closed on a missing OR altered reader-choice paragraph.
+
+    This proof covers both product pages including optional same-mass math.
+    It does not validate a purchase, a currency conversion or merchant stock.
+    """
+    expected = price_decision_records(source)
+    observed = price_decision_records(public)
+    source_ok = _price_decision_shape(expected)
+    public_ok = _price_decision_shape(observed)
+    equal = source_ok and public_ok and expected == observed
+    if not source_ok:
+        stage = "SOURCE_PRICE_DECISION_INCOMPLETE"
+    elif equal:
+        stage = "PUBLIC_PRICE_DECISION_VERIFIED"
+    else:
+        stage = "PUBLIC_PRICE_DECISION_MISSING_OR_DIFFERENT"
+    return {
+        "price_decision_stage": stage,
+        "source_decision_kinds": [kind for kind, _ in expected],
+        "public_decision_kinds": [kind for kind, _ in observed],
+        "price_decision_source_public_match": equal,
+        "price_decision_first_difference": next((
+            idx + 1 for idx in range(max(len(expected), len(observed)))
+            if idx >= len(expected) or idx >= len(observed)
+            or expected[idx] != observed[idx]), None),
+    }
+
+
 class ProductCardIdentity(HTMLParser):
     """Extract product title and merchant destination without logging URLs."""
     def __init__(self):
@@ -437,6 +519,8 @@ def probe(target, *, read_post=None, read_public=None):
         if product else {})
     retrieval = (catalog_retrieval_readiness(raw, page) if product else
                  {"catalog_retrieval_stage": "NOT_APPLICABLE"})
+    decision = (price_decision_readiness(raw, page) if product else
+                {"price_decision_stage": "NOT_APPLICABLE"})
     if product:
         engine = "creatine" if slug == "xfit-os-kreatin-poradce" else "whey"
         metadata = metadata_readiness(
@@ -446,12 +530,16 @@ def probe(target, *, read_post=None, read_public=None):
     status = ("SOURCE_NOT_UPDATED" if not source_has
               else "WP_SOURCE_INCOMPLETE" if product and (
                   len(source_cards) < 2 or
+                  decision["price_decision_stage"] ==
+                  "SOURCE_PRICE_DECISION_INCOMPLETE" or
                   retrieval["catalog_retrieval_stage"] in (
                       "SOURCE_DATE_MISSING_OR_INVALID",
                       "SOURCE_DATE_STALE_OR_IN_FUTURE"))
               else "PUBLIC_FRESH" if public_has and cards_match and (
-                  not product or retrieval["catalog_retrieval_stage"] ==
-                  "PUBLIC_DATE_VERIFIED")
+                  not product or (
+                      retrieval["catalog_retrieval_stage"] == "PUBLIC_DATE_VERIFIED"
+                      and decision["price_decision_stage"] ==
+                      "PUBLIC_PRICE_DECISION_VERIFIED"))
               else "PUBLIC_STALE_OR_RENDERED_DIFFERENTLY")
     return {"slug": slug, "post_id": post_id, "status": status,
             "wp_source_has_target": source_has, "public_has_target": public_has,
@@ -462,7 +550,8 @@ def probe(target, *, read_post=None, read_public=None):
             "cache_headers": headers,
             **diagnostics,
             **metadata,
-            **retrieval}
+            **retrieval,
+            **decision}
 
 
 def main():
