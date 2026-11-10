@@ -33,6 +33,12 @@ def price_tradeoff(selected, *, product_kind):
         unit = _price(item.get("price_per_100g_powder_czk"))
         if total > Decimal("1000000") or unit > Decimal("1000000"):
             raise PublishError("Out-of-range trade-off catalog price")
+        # Cross-check the feed-derived metric before a buyer sees it.
+        # select_offers rounds to two decimals; allow at most one cent of
+        # representation difference, not an independently supplied "deal".
+        expected_unit = total * Decimal(100) / Decimal(grams)
+        if abs(expected_unit - unit) > Decimal("0.01"):
+            raise PublishError("Catalog unit price conflicts with pack price and mass")
         values.append((n, item, total, unit))
     # Ties favor the lower alternative price then card order. This exactly
     # matches the two underlying independent selection priorities.
