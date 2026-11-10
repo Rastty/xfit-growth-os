@@ -118,8 +118,16 @@ def shortlist(catalog, base, sample, budget=1500):
                     ("natural","neochucen","bez příchutě","bez prichute","unflavored"))
         if key not in families:
             families[key]=(natural,p)
-        elif natural and not families[key][0]:
-            families[key]=(natural,p)
+        else:
+            prior_natural, prior=families[key]
+            # A more expensive unflavored option must not replace the
+            # actual cheapest eligible flavor within the same source
+            # product family and package mass. Only prefer unflavored on
+            # an exact pack-price tie; never use affiliate commission.
+            if (p["price_czk"] < prior["price_czk"]
+                    or (p["price_czk"] == prior["price_czk"]
+                        and natural and not prior_natural)):
+                families[key]=(natural,p)
     result=[p for _,p in families.values()]
     result.sort(key=lambda p:(p["price_per_100g_powder_czk"],p["price_czk"],p["title"]))
     if len(result) < 2:

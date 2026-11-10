@@ -59,8 +59,17 @@ def build_document(catalog, base, sample):
         key=(urlsplit(p["source_url"]).path.rstrip("/"),p["mass_g"])
         natural=any(w in title for w in ("natural","neochucen","bez příchutě","bez prichute","unflavored"))
         choice={**p,"affiliate_url":deeplink,"image":image}
-        if key not in group or (natural and not group[key][0]):
+        if key not in group:
             group[key]=(natural,choice)
+        else:
+            prior_natural,prior=group[key]
+            # Price-first representation within an already comparable
+            # merchant family/mass. An unflavored pack wins only a price
+            # tie; a pricier flavor must not hide a cheaper one.
+            if (choice["price_czk"] < prior["price_czk"]
+                    or (choice["price_czk"] == prior["price_czk"]
+                        and natural and not prior_natural)):
+                group[key]=(natural,choice)
     chosen=[p for _,p in group.values()]
     chosen.sort(key=lambda p:(p["price_per_100g_powder_czk"],p["price_czk"],p["title"]))
     if len(chosen)<2:

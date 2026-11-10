@@ -159,6 +159,37 @@ class CreatineGuideTests(unittest.TestCase):
         self.assertEqual(body.count('class="xfit-product-card"'),6)
         self.assertNotIn("nejlevnější na celém trhu",body)
 
+    def test_cheaper_flavor_beats_pricier_natural_in_same_pack_family(self):
+        source = [
+            item(751,"Creatine Monohydrate Vanilla 500g",299,500),
+            item(752,"Creatine Monohydrate Natural 500g",359,500),
+            item(753,"Creatine Monohydrate 1kg",529,1000),
+        ]
+        source[2]["source_url"] = (
+            "https://www.namaximum.cz/p/creatine-monohydrate-1kg?variant=753"
+        )
+        catalog={"merchant":"namaximum.cz","merchant_match":True,"products":source}
+        picks=shortlist(catalog,BASE,SAMPLE)
+        self.assertEqual(len(picks),2)
+        self.assertEqual({p["id"] for p in picks},{"751","753"})
+        self.assertEqual(min(picks,key=lambda p:p["price_czk"])["id"],"751")
+        body=build_document(catalog,BASE,SAMPLE)["content"]
+        self.assertIn("Creatine Monohydrate Vanilla 500g",body)
+        self.assertNotIn("Creatine Monohydrate Natural 500g",body)
+        self.assertIn("299,00 Kč",body)
+
+    def test_natural_is_preferred_only_when_pack_prices_are_equal(self):
+        source=[
+            item(761,"Creatine Monohydrate Apple 500g",299,500),
+            item(762,"Creatine Monohydrate Natural 500g",299,500),
+            item(763,"Creatine Monohydrate 1kg",529,1000),
+        ]
+        source[2]["source_url"]=(
+            "https://www.namaximum.cz/p/creatine-monohydrate-1kg?variant=763"
+        )
+        picks=shortlist({"products":source},BASE,SAMPLE)
+        self.assertEqual({p["id"] for p in picks},{"762","763"})
+
     def test_insufficient_offers_stop_release(self):
         data={"merchant":"namaximum.cz","merchant_match":True,
               "products":[self.catalog["products"][0]]}
