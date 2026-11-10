@@ -17,6 +17,13 @@ def post(slug, post_id, marker):
         checked = datetime.now(ZoneInfo("Europe/Prague")).date()
         display = f"{checked.day}. {checked.month}. {checked.year}"
         source += (
+            '<h2 id="xfit-price-tradeoff">Rozpočet a porovnání balení</h2>'
+            '<p data-xfit-tradeoff="upfront">Nejnižší výdaj při nákupu: '
+            'menší balení vyžaduje méně peněz při prvním nákupu.</p>'
+            '<p data-xfit-tradeoff="unit">Nejnižší cena za 100 g prášku: '
+            'větší balení může mít lepší jednotkovou cenu.</p>'
+            '<p data-xfit-tradeoff="difference">Co to znamená pro rozpočet? '
+            'Větší balení může stát dnes více; porovnejte skutečnou spotřebu.</p>'
             '<p class="xfit-feed-retrieval"><small>'
             '<strong>Kdy jsme data nabídky načetli:</strong> ' + display +
             ' (produktový XML katalog NaMaximum.cz). '
@@ -51,6 +58,78 @@ class PublicFreshnessTests(unittest.TestCase):
         self.assertEqual(stale["status"],"PUBLIC_STALE_OR_RENDERED_DIFFERENTLY")
         self.assertTrue(stale["wp_source_has_target"])
         self.assertFalse(stale["public_has_target"])
+
+    def test_new_equal_mass_block_cannot_disappear_behind_old_cache(self):
+        from scripts.xfit_public_freshness import price_decision_readiness
+        target = TARGETS[3]
+        original = post(*target)
+        current = original["content"]["raw"]
+        fresh_extra = (
+            '<p data-xfit-tradeoff="same-mass"><strong>Model stejné '
+            'hmotnosti prášku:</strong> 2 menší balení po 1000 g '
+            'by stála 1 758,00 Kč; jedno větší balení 2000 g stojí '
+            '1 699,00 Kč. Rozdíl je 59,00 Kč. Tento model neověřuje '
+            'stejné složení, trvanlivost po otevření ani cenu dopravy.</p>'
+        )
+        self.assertIn('data-xfit-tradeoff="difference"', current)
+        current = current.replace(
+            '</p><p class="xfit-feed-retrieval">',
+            '</p>' + fresh_extra + '<p class="xfit-feed-retrieval">',
+            1
+        )
+        self.assertIn('data-xfit-tradeoff="same-mass"', current)
+        original["content"]["raw"] = current
+
+        # Old edge/cache is still serving valid affiliate links, cards,
+        # prices, feed date, and heading. Those do NOT prove new buyer copy.
+        old_public = current.replace(fresh_extra, "")
+        stale = probe(target, read_post=lambda _: original,
+                      read_public=lambda _: ("<html>" + old_public + "</html>", {}))
+        self.assertEqual(stale["status"], "PUBLIC_STALE_OR_RENDERED_DIFFERENTLY")
+        self.assertTrue(stale["product_cards_match"])
+        self.assertEqual(stale["catalog_retrieval_stage"], "PUBLIC_DATE_VERIFIED")
+        self.assertEqual(stale["price_decision_stage"],
+                         "PUBLIC_PRICE_DECISION_MISSING_OR_DIFFERENT")
+        self.assertEqual(stale["source_decision_kinds"][-1], "same-mass")
+        self.assertNotIn("same-mass", stale["public_decision_kinds"])
+        self.assertEqual(stale["price_decision_first_difference"], 4)
+        self.assertNotIn("1 758", str(stale))  # no raw price or affiliate leak
+
+        fresh = probe(target, read_post=lambda _: original,
+                      read_public=lambda _: ("<html>" + current + "</html>", {}))
+        self.assertEqual(fresh["status"], "PUBLIC_FRESH")
+        self.assertEqual(fresh["price_decision_stage"],
+                         "PUBLIC_PRICE_DECISION_VERIFIED")
+        self.assertTrue(fresh["price_decision_source_public_match"])
+
+        equivalent = price_decision_readiness(
+            current, current.replace("menší balení", "menší balení"))
+        self.assertTrue(equivalent["price_decision_source_public_match"])
+
+    def test_public_price_decision_drift_detected_without_card_drift(self):
+        target = TARGETS[2]
+        original = post(*target)
+        current = original["content"]["raw"]
+        altered = current.replace(
+            "větší balení může mít lepší jednotkovou cenu",
+            "větší balení je vždy nejlepší pro každého kupujícího")
+        report = probe(target, read_post=lambda _: original,
+                       read_public=lambda _: ("<html>" + altered + "</html>", {}))
+        self.assertEqual(report["status"], "PUBLIC_STALE_OR_RENDERED_DIFFERENTLY")
+        self.assertTrue(report["product_cards_match"])
+        self.assertEqual(report["price_decision_first_difference"], 2)
+
+    def test_missing_source_decision_is_not_a_valid_public_release(self):
+        target = TARGETS[3]
+        original = post(*target)
+        source = original["content"]["raw"].replace(
+            'data-xfit-tradeoff="unit"', 'data-xfit-tradeoff="untrusted"', 1)
+        original["content"]["raw"] = source
+        result = probe(target, read_post=lambda _: original,
+                       read_public=lambda _: ("<html>" + source + "</html>", {}))
+        self.assertEqual(result["status"], "WP_SOURCE_INCOMPLETE")
+        self.assertEqual(result["price_decision_stage"],
+                         "SOURCE_PRICE_DECISION_INCOMPLETE")
 
     def test_catalog_date_match_and_drift_are_evidence_not_just_price(self):
         target = TARGETS[2]
