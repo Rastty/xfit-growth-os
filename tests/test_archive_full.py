@@ -143,6 +143,24 @@ class ArchiveAuditTests(unittest.TestCase):
         row=inventory([p])["flagged_candidates"][0]
         self.assertEqual(row["internal_link_count"],0)
         self.assertEqual(row["external_hosts"],{"example.org":3,"xfit.cz.example.org":1})
+
+    def test_same_article_permalinks_are_not_navigation_to_other_pages(self):
+        links=["https://xfit.cz/protein/", "/protein/#davkovani",
+               "https://WWW.XFIT.CZ/protein/#zdroje", "./#slozeni",
+               "https://xfit.cz/kreatin/#davkovani"]
+        p=post(1,"protein","Protein", "".join(
+            '<a href="'+href+'">Rada</a>' for href in links))
+        row=inventory([p])["flagged_candidates"][0]
+        self.assertEqual(row["internal_link_count"],1)
+        self.assertEqual(row["external_hosts"],{})
+
+    def test_query_relative_links_preserve_the_article_path(self):
+        p=post(1,"protein","Protein",
+               '<a href="?page=2">Další část</a>'
+               '<a href="?page=1#zdroje">Zdroje na této stránce</a>')
+        p["link"]+="?page=1"
+        row=inventory([p])["flagged_candidates"][0]
+        self.assertEqual(row["internal_link_count"],1)
     def test_malformed_links_do_not_abort_inventory(self):
         links=["https://[broken/", "https://example.org／other/",
                "/kreatin/", "https://example.org/protein/"]

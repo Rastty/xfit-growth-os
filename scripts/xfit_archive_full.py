@@ -76,6 +76,14 @@ def classify(post):
     invalid_link_count=0
     anchors=AnchorLinks()
     anchors.feed(body_html)
+    # Resolve path/query-relative links against the article, not the homepage.
+    page_url=post.get("link") or "https://xfit.cz/"
+    try:
+        page=urlsplit(page_url)
+        page_path_query=(page.path,page.query)
+    except ValueError:
+        page_url="https://xfit.cz/"
+        page_path_query=None
     for link in anchors.links:
         # HTMLParser already decodes character references in attribute values.
         href=link.strip()
@@ -84,7 +92,7 @@ def classify(post):
         if not href or href.startswith("#"):
             continue
         try:
-            p=urlsplit(urljoin("https://xfit.cz/",href))
+            p=urlsplit(urljoin(page_url,href))
             host=p.hostname
         except ValueError:
             # Legacy HTML may contain malformed IPv6 or Unicode netlocs.
@@ -93,7 +101,10 @@ def classify(post):
             continue
         if p.scheme in ("http","https") and host:
             if host.lower() in ("xfit.cz","www.xfit.cz"):
-                internal_link_count+=1
+                # A permalink or fragment pointing back to this article is
+                # not evidence of a route to another useful archive page.
+                if (p.path,p.query)!=page_path_query:
+                    internal_link_count+=1
             else:
                 external[host.lower()]+=1
     return {
