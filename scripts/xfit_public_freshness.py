@@ -378,12 +378,13 @@ def card_drift_diagnostics(source_cards, public_cards, source_identities=None, p
     }
 
 
-def public_get(url):
-    req = urllib.request.Request(url, headers={
-        "User-Agent": "XfitPublicFreshnessMonitor/1.0",
-        "Cache-Control": "no-cache",
-        "Pragma": "no-cache",
-    })
+def public_get(url, *, bypass_cache=True):
+    # Ordinary visitors don't send no-cache headers. Compare BOTH views
+    # before treating a bypassed origin response as what readers actually see.
+    headers = {"User-Agent": "XfitPublicFreshnessMonitor/1.0"}
+    if bypass_cache:
+        headers.update({"Cache-Control": "no-cache", "Pragma": "no-cache"})
+    req = urllib.request.Request(url, headers=headers)
     # Public reads are safe to retry; POSTs are never retried here.
     # Intermittent WEDOS TLS/HTTP issues must not be confused with stale prices.
     for attempt in range(3):
@@ -475,7 +476,8 @@ def catalog_retrieval_readiness(source, public, *, today=None):
     }
 
 
-def probe(target, *, read_post=None, read_public=None):
+def probe(target, *, read_post=None, read_public=None,
+          read_public_normal=None):
     slug, post_id, marker = target
     read_post = read_post or (lambda ident: wp_request(
         normalized_base(), "posts/" + str(ident) +
@@ -490,13 +492,25 @@ def probe(target, *, read_post=None, read_public=None):
     if not isinstance(raw, str) or "<!-- xfit-growth-os:v1 -->" not in raw:
         raise PublishError("Missing controlled WordPress source for " + slug)
     source_has = marker.casefold() in html.unescape(raw).casefold()
+    product = slug in {
+        "xfit-os-kreatin-poradce", "xfit-os-syrovatkovy-protein-porovnani"
+    }
+    # Fetch the ordinary (potentially cached) public page FIRST. A later
+    # no-cache verification must not hide a stale version customers may see.
+    normal_page = None
+    normal_headers = {}
+    normal_error = False
+    if product and read_public_normal is not None:
+        try:
+            normal_page, normal_headers = read_public_normal(post["link"])
+        except (OSError, ValueError, PublishError):
+            normal_error = True
     try:
         page, headers = read_public(post["link"])
     except (OSError, ValueError, PublishError) as exc:
         return {"slug": slug, "post_id": post_id, "status": "PUBLIC_READ_ERROR",
                 "wp_source_has_target": source_has, "reason": type(exc).__name__}
     public_has = visible_has(page, marker)
-    product = slug in {"xfit-os-kreatin-poradce", "xfit-os-syrovatkovy-protein-porovnani"}
     source_cards = product_card_texts(raw) if product else []
     public_cards = product_card_texts(page) if product else []
     source_identities = product_card_identities(raw) if product else []
@@ -521,6 +535,26 @@ def probe(target, *, read_post=None, read_public=None):
                  {"catalog_retrieval_stage": "NOT_APPLICABLE"})
     decision = (price_decision_readiness(raw, page) if product else
                 {"price_decision_stage": "NOT_APPLICABLE"})
+    normal_state = "NOT_CHECKED"
+    if normal_error:
+        normal_state = "ORDINARY_PUBLIC_READ_UNKNOWN"
+    elif normal_page is not None:
+        normal_cards = product_card_texts(normal_page)
+        normal_identities = product_card_identities(normal_page)
+        ordinary_facts_match = (
+            len(source_cards) >= 2
+            and source_cards == normal_cards
+            and len(source_identities) == len(normal_identities)
+            and all(typography_key(x[0]) == typography_key(y[0])
+                    and x[1] == y[1] and safe_affiliate_card(y)
+                    for x, y in zip(source_identities, normal_identities))
+            and price_decision_readiness(raw, normal_page)[
+                "price_decision_stage"] == "PUBLIC_PRICE_DECISION_VERIFIED"
+            and catalog_retrieval_readiness(raw, normal_page)[
+                "catalog_retrieval_stage"] == "PUBLIC_DATE_VERIFIED"
+        )
+        normal_state = ("ORDINARY_PUBLIC_VIEW_MATCHES_SOURCE" if ordinary_facts_match
+                        else "ORDINARY_PUBLIC_VIEW_STALE_OR_DIFFERENT")
     if product:
         engine = "creatine" if slug == "xfit-os-kreatin-poradce" else "whey"
         metadata = metadata_readiness(
@@ -541,7 +575,14 @@ def probe(target, *, read_post=None, read_public=None):
                       and decision["price_decision_stage"] ==
                       "PUBLIC_PRICE_DECISION_VERIFIED"))
               else "PUBLIC_STALE_OR_RENDERED_DIFFERENTLY")
+    # A no-cache response can be fresh while an ordinary reader's cache
+    # still shows an earlier approved body. Neither result alone proves all
+    # geographies are fresh; fail the measured inconsistency, not the WP post.
+    if status == "PUBLIC_FRESH" and normal_state == "ORDINARY_PUBLIC_VIEW_STALE_OR_DIFFERENT":
+        status = "PUBLIC_CACHE_VIEW_DIVERGENCE"
     return {"slug": slug, "post_id": post_id, "status": status,
+            "ordinary_public_view_state": normal_state,
+            "ordinary_cache_headers": normal_headers,
             "wp_source_has_target": source_has, "public_has_target": public_has,
             "wp_product_cards": len(source_cards), "public_product_cards": len(public_cards),
             "product_cards_match": cards_match,
@@ -558,7 +599,17 @@ def main():
     rows = []
     for target in TARGETS:
         try:
-            rows.append(probe(target))
+            product = target[0] in (
+                "xfit-os-kreatin-poradce",
+                "xfit-os-syrovatkovy-protein-porovnani",
+            )
+            rows.append(probe(
+                target,
+                read_public_normal=(
+                    (lambda url: public_get(url, bypass_cache=False))
+                    if product else None
+                )
+            ))
         except (PublishError, OSError, ValueError) as exc:
             rows.append({"slug": target[0], "post_id": target[1],
                          "status": "BLOCKED_MANUAL_REVIEW", "reason": type(exc).__name__})
