@@ -1,0 +1,13 @@
+{
+  "status": "editorial_proposal_not_deployed",
+  "issue": 4,
+  "wp_post_id": 25451,
+  "slug": "xfit-os-protein-guide",
+  "source_file": "content/ready/xfit-os-protein-guide.json",
+  "source_file_sha256": "bef752e44534dd3cffef24f8f703a213d9f9024d1ed3a229afe5bab6a0402f58",
+  "source_content_sha256": "46810fac0512352ab26814978c7a4213038417c5c9465f7a614f7aec7deff0d3",
+  "operation": "replace_exact_once",
+  "original": "<tr><td>Univerzální protein za rozumnou cenu</td>",
+  "replacement": "<tr><td>Bílkoviny už pokryjete běžným jídlem</td><td>Žádný proteinový doplněk</td><td>Než přejdete ke srovnání cen, ověřte, zda vám vůbec bílkoviny chybí; postup najdete v části 1 níže.</td></tr>\n<tr><td>Univerzální protein za rozumnou cenu</td>",
+  "evidence": "Makes the existing food-first, no-supplement pathway visible in the quick decision table. No new clinical claim, product offer, price or affiliate link."
+}

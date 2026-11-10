@@ -1,0 +1,47 @@
+name: XFIT Protein Table Opt-out One-post Live Release
+on:
+  # Single automatic release when this reviewed workflow is introduced.
+  # Future code or editorial changes do not silently republish this post.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-protein-table-optout-live.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  publish-one-approved-edit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify full code and narrowed editorial rollback tests
+        run: |
+          python -m unittest discover -s tests -v
+          python -m unittest tests.test_editor_protein_table_opt_out tests.test_protein_table_optout_release -v
+      - name: Capture current owned WordPress article before any write
+        run: python -m scripts.xfit_protein_table_optout_release snapshot
+      - name: Upload mandatory immutable prewrite rollback artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-protein-table-optout-25451-rollback-${{ github.run_id }}
+          path: reports/backups/xfit-protein-table-optout-25451.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: One source-bound article update and independent public readback
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_protein_table_optout_release apply | tee -a "$GITHUB_STEP_SUMMARY"
