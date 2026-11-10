@@ -38,7 +38,14 @@ def build_document(catalog, base, sample):
         raise PublishError("Wrong merchant feed")
     # Use entire eligible catalog, then group flavor variants by product family
     # and gram weight to offer actual decisions rather than six labels of one SKU.
-    candidates = select_offers(catalog, "whey", max_price=2000, min_mass_g=500, limit=150)
+    # The 150 best CZK/100g options cannot prove the lowest up-front price.
+    # Inspect every source-eligible offer, then filter blends/flavors and rank.
+    candidates = select_offers(catalog, "whey", max_price=2000, min_mass_g=500, limit=None)
+    images_by_id = {}
+    for source_item in catalog.get("products", []):
+        # Match the first source row as the former next(...) image lookup did.
+        images_by_id.setdefault(str(source_item.get("id")),
+                                source_item.get("image_url"))
     group={}
     for p in candidates:
         title=p["title"].casefold()
@@ -48,8 +55,7 @@ def build_document(catalog, base, sample):
             deeplink=build_tracked_url(p["source_url"],base,sample)
         except (PublishError,ValueError):
             continue
-        image=safe_image(next((o.get("image_url") for o in catalog["products"]
-            if str(o.get("id"))==p["id"]), ""))
+        image=safe_image(images_by_id.get(p["id"]) or "")
         key=(urlsplit(p["source_url"]).path.rstrip("/"),p["mass_g"])
         natural=any(w in title for w in ("natural","neochucen","bez příchutě","bez prichute","unflavored"))
         choice={**p,"affiliate_url":deeplink,"image":image}
