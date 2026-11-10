@@ -92,6 +92,43 @@ test("only trusted active links from controlled card and page are counted", () =
   assert.equal(wrongPage.calls.length, 0);
 });
 
+test("per-product events require one exact merchant variant matching catalog metadata", () => {
+  const badUrls = [
+    URL_OK.replace("variant=392", "variant=393"),
+    URL_OK.replace("variant=392&", ""),
+    URL_OK.replace("variant=392", "variant=0392"),
+    URL_OK.replace("variant=392", "variant=392&variant=392"),
+    URL_OK.replace("variant=392", "variant=392&variant=393"),
+    URL_OK.replace("variant=392", "variant=392%2C393"),
+    URL_OK.replace("variant=392", "variant=392abc"),
+    URL_OK.replace("variant=392", "variant="),
+  ];
+  for (const href of badUrls) {
+    const h = harness();
+    h.click({href});
+    assert.equal(h.calls.length, 0, "bad merchant product mapping must remain unmeasured");
+  }
+  // Tampering with *only* an HTML data attribute must not misattribute a
+  // legitimate offer to a different catalog product.
+  const h = harness();
+  h.click({id:"393"});
+  assert.equal(h.calls.length, 0);
+});
+
+test("consented variant-bound whey click uses only approved IDs and fields", () => {
+  const h = harness({page:"/xfit-os-syrovatkovy-protein-porovnani/"});
+  h.click({engine:"whey", id:"483", href:URL_OK.replace("variant=392", "variant=483")});
+  assert.equal(h.calls.length, 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.calls[0][2])), {
+    page:"xfit-os-syrovatkovy-protein-porovnani",
+    selection_engine:"whey",
+    partner:"namaximum",
+    product_id:483
+  });
+  h.click({engine:"whey", id:"483", href:URL_OK});
+  assert.equal(h.calls.length, 1);
+});
+
 test("landing-page query and anchor are not sent with click event", () => {
   const h = harness();
   h.root.location.search = "?utm_source=organic&utm_campaign=PRIVATE";
@@ -113,7 +150,7 @@ test("broken gtag transport cannot cancel a product click", () => {
 
 test("whey events are attributed to the correct advisor, not a purchase", () => {
   const h = harness({page:"/xfit-os-syrovatkovy-protein-porovnani/"});
-  h.click({engine:"whey", id:"483"});
+  h.click({engine:"whey", id:"483", href:URL_OK.replace("variant=392", "variant=483")});
   assert.equal(h.calls.length, 1);
   assert.equal(h.calls[0][1], "affiliate_outbound_click");
   assert.equal(h.calls[0][2].product_id, 483);

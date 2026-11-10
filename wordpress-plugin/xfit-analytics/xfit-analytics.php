@@ -2,7 +2,7 @@
 /**
  * Plugin Name: XFIT Verified Affiliate Click Analytics
  * Description: Consent-gated first-party product CTA event instrumentation for two XFIT advisors.
- * Version: 0.1.0
+ * Version: 0.1.1
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Author: XFIT.cz
@@ -35,7 +35,7 @@ function xfit_enqueue_verified_affiliate_analytics() {
         return;
     }
 
-    $version = '0.1.0';
+    $version = '0.1.1';
     wp_enqueue_script(
         'xfit-webtoffee-analytics-consent',
         plugins_url( 'assets/xfit-webtoffee-bridge.js', __FILE__ ),
