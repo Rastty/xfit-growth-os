@@ -120,6 +120,24 @@ def comparable_href(value):
             tuple(sorted(parse_qsl(p.query, keep_blank_values=True))))
 
 
+def variant_identity_status(url, numeric_id):
+    """Observe whether a merchant variant parameter binds to the CTA ID.
+
+    The affiliate link is never followed. A missing variant is UNKNOWN, not
+    necessarily a broken merchant URL: some canonical routes omit variants.
+    """
+    if not isinstance(numeric_id, str) or not re.fullmatch(r"[1-9][0-9]{0,9}", numeric_id):
+        return "UNVERIFIABLE_CATALOG_ID"
+    query = parse_qs(urlsplit(url).query, keep_blank_values=True)
+    variants = query.get("variant")
+    if variants is None:
+        return "NO_VARIANT"
+    if (len(variants) != 1
+            or not re.fullmatch(r"[1-9][0-9]{0,9}", variants[0])):
+        return "AMBIGUOUS_VARIANT"
+    return "MATCH" if variants[0] == numeric_id else "MISMATCH"
+
+
 def card_evidence(body, slug, affiliate_base):
     """Keep sensitive URLs and IDs in memory; expose only safe summary."""
     if not isinstance(body, str) or not 1 <= len(body.encode("utf-8")) <= MAX_PUBLIC_BYTES:
@@ -132,6 +150,11 @@ def card_evidence(body, slug, affiliate_base):
     if not 2 <= len(parser.cards) <= MAX_CARDS:
         errors.add("unexpected_card_count")
     observed_ids = set()
+    variant_counts = {
+        "MATCH": 0, "MISMATCH": 0,
+        "NO_VARIANT": 0, "AMBIGUOUS_VARIANT": 0,
+        "UNVERIFIABLE_CATALOG_ID": 0,
+    }
     signature = []
     for card in parser.cards:
         if len(card["anchors"]) != 1:
@@ -152,6 +175,10 @@ def card_evidence(body, slug, affiliate_base):
             errors.add("missing_sponsored_rel")
         if not safe_affiliate_url(item["href"], aid, bid):
             errors.add("invalid_merchant_campaign_destination")
+        # A valid campaign link does not prove that the *catalog ID* we would
+        # put into GA4 belongs to its actual merchant product variant.
+        # Observe the match without blocking a known working merchant link.
+        variant_counts[variant_identity_status(item["href"], numeric)] += 1
         signature.append((numeric, item["engine"], item["partner"],
                           comparable_href(item["href"])))
     if not has_visible_disclosure(body):
@@ -159,6 +186,13 @@ def card_evidence(body, slug, affiliate_base):
     return {
         "count": len(parser.cards),
         "metadata_count": len(observed_ids),
+        "variant_linkage_counts": {
+            "matched": variant_counts["MATCH"],
+            "mismatched": variant_counts["MISMATCH"],
+            "missing_variant": variant_counts["NO_VARIANT"],
+            "ambiguous_variant": variant_counts["AMBIGUOUS_VARIANT"],
+            "invalid_catalog_id": variant_counts["UNVERIFIABLE_CATALOG_ID"],
+        },
         "errors": sorted(errors),
         # Internal only: MUST NOT copy to any printable report.
         "_private_card_signature": signature,
@@ -223,6 +257,20 @@ def audit_page(slug, base, *, wp_reader=read_wp_post, public_reader=read_public_
         "source_cta_metadata_count": a["metadata_count"],
         "public_cta_metadata_count": b["metadata_count"],
         "offer_destinations_match": source_sig == public_sig,
+        # This is limited URL-to-catalog identity evidence, NOT proof that
+        # Affial/GA4 credited a click or that the product remains in stock.
+        "catalog_variant_linkage": (
+            "EXACT_VARIANT_IDS_MATCH"
+            if (a["variant_linkage_counts"]["matched"] == a["count"]
+                and b["variant_linkage_counts"]["matched"] == b["count"]
+                and not errors)
+            else "MISMATCH_REQUIRES_REVIEW"
+            if (a["variant_linkage_counts"]["mismatched"]
+                or b["variant_linkage_counts"]["mismatched"])
+            else "UNPROVEN_VARIANT_LINKAGE"
+        ),
+        "source_variant_linkage_counts": a["variant_linkage_counts"],
+        "public_variant_linkage_counts": b["variant_linkage_counts"],
         "errors": sorted(errors),
     }
 
