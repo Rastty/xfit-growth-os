@@ -7,7 +7,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.1.1"
+VERSION = "0.1.2"
 MANIFEST = (
     ("wordpress-plugin/xfit-analytics/xfit-analytics.php",
      "xfit-analytics/xfit-analytics.php"),
@@ -52,7 +52,7 @@ def build(output):
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("--output", default="dist/xfit-analytics-0.1.1.zip")
+    ap.add_argument("--output", default="dist/xfit-analytics-0.1.2.zip")
     args = ap.parse_args(argv)
     try:
         receipt = build(args.output)
