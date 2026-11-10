@@ -134,6 +134,31 @@ class CreatineGuideTests(unittest.TestCase):
                 publish_if_changed(doc)
         writer.assert_not_called()
 
+    def test_full_feed_cheapest_small_creatine_pack_survives_unit_top_150(self):
+        # The 150 cheapest per-100g options (all 1kg) must not suppress the
+        # genuine lowest upfront 200g source offer before editorial grouping.
+        products=[]
+        for i in range(150):
+            ident=2000+i
+            offer=item(ident,f"Creatine Monohydrate family {i} 1kg",700,1000)
+            offer["source_url"]=f"https://www.namaximum.cz/p/creatine-family-{i}?variant={ident}"
+            products.append(offer)
+        starter=item(3999,"Creatine Monohydrate starter 200g",180,200)
+        starter["source_url"]="https://www.namaximum.cz/p/creatine-starter?variant=3999"
+        products.append(starter)
+        catalog={"merchant":"namaximum.cz","merchant_match":True,
+                 "products":products}
+        chosen=shortlist(catalog,BASE,SAMPLE)
+        self.assertEqual(len(chosen),6)
+        self.assertEqual(min(chosen,key=lambda x:x["price_czk"])["id"],"3999")
+        self.assertEqual(chosen[0]["price_per_100g_powder_czk"],70)
+        body=build_document(catalog,BASE,SAMPLE)["content"]
+        self.assertIn("Creatine Monohydrate starter 200g",body)
+        self.assertIn("Nejnižší výdaj při nákupu",body)
+        self.assertIn("180,00 Kč",body)
+        self.assertEqual(body.count('class="xfit-product-card"'),6)
+        self.assertNotIn("nejlevnější na celém trhu",body)
+
     def test_insufficient_offers_stop_release(self):
         data={"merchant":"namaximum.cz","merchant_match":True,
               "products":[self.catalog["products"][0]]}
