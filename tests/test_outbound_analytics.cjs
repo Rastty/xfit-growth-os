@@ -25,6 +25,7 @@ function harness({consent = true, bridge = true, page = "/xfit-os-kreatin-poradc
     gtag: (...args) => calls.push(args),
   };
   if (bridge) root.xfitGetAnalyticsConsent = () => consent;
+  root.getWccConsent = () => ({categories:{analytics:consent}});
   vm.runInNewContext(SCRIPT, { window: root, URL });
   return {
     calls, root,
@@ -73,6 +74,34 @@ test("no CMP bridge, denied consent, missing gtag => no event", () => {
   h.root.gtag = undefined;
   h.click();
   assert.equal(h.calls.length, 0);
+});
+
+test("preexisting permissive bridge cannot bypass denied or missing WebToffee consent", () => {
+  const h = harness();
+  h.root.xfitGetAnalyticsConsent = () => true;
+  h.root.getWccConsent = () => ({categories:{analytics:false}});
+  h.click();
+  assert.equal(h.calls.length, 0);
+
+  h.root.getWccConsent = undefined;
+  h.click();
+  assert.equal(h.calls.length, 0);
+
+  h.root.getWccConsent = () => ({categories:{analytics:"true"}});
+  h.click();
+  assert.equal(h.calls.length, 0);
+
+  h.root.getWccConsent = () => {throw new Error("Consent provider unavailable");};
+  h.click();
+  assert.equal(h.calls.length, 0);
+
+  // Explicit true must be checked anew for each subsequent click.
+  h.root.getWccConsent = () => ({categories:{analytics:true}});
+  h.click();
+  assert.equal(h.calls.length, 1);
+  h.root.getWccConsent = () => ({categories:{analytics:false}});
+  h.click();
+  assert.equal(h.calls.length, 1);
 });
 
 test("only trusted active links from controlled card and page are counted", () => {

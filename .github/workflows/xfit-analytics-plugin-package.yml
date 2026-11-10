@@ -13,6 +13,7 @@ on:
       - 'tests/test_wp_analytics_plugin.py'
       - 'tests/test_webtoffee_bridge.cjs'
       - 'tests/test_outbound_analytics.cjs'
+      - 'tests/test_analytics_bridge_integration.cjs'
 
 permissions:
   contents: read
@@ -37,17 +38,17 @@ jobs:
         run: |
           node --check assets/analytics/xfit-outbound.js
           node --check assets/analytics/xfit-webtoffee-bridge.js
-          node --test tests/test_webtoffee_bridge.cjs tests/test_outbound_analytics.cjs
+          node --test tests/test_webtoffee_bridge.cjs tests/test_outbound_analytics.cjs tests/test_analytics_bridge_integration.cjs
       - name: Build installable plugin ZIP from reviewed main source
-        run: python -m scripts.build_xfit_wp_plugin --output dist/xfit-analytics-0.1.1.zip
+        run: python -m scripts.build_xfit_wp_plugin --output dist/xfit-analytics-0.1.2.zip
       - name: Produce verifiable install package checksum
         shell: bash
         run: |
           set -euo pipefail
           cd dist
-          test -s xfit-analytics-0.1.1.zip
-          sha256sum xfit-analytics-0.1.1.zip > xfit-analytics-0.1.1.zip.sha256
-          sha256sum --check xfit-analytics-0.1.1.zip.sha256
+          test -s xfit-analytics-0.1.2.zip
+          sha256sum xfit-analytics-0.1.2.zip > xfit-analytics-0.1.2.zip.sha256
+          sha256sum --check xfit-analytics-0.1.2.zip.sha256
           {
             echo "### XFIT WordPress analytics installation package"
             echo "Installable ZIP and SHA-256 checksum are attached as the workflow artifact."
@@ -59,7 +60,7 @@ jobs:
         with:
           name: xfit-consent-analytics-wp-plugin-${{ github.run_id }}
           path: |
-            dist/xfit-analytics-0.1.1.zip
-            dist/xfit-analytics-0.1.1.zip.sha256
+            dist/xfit-analytics-0.1.2.zip
+            dist/xfit-analytics-0.1.2.zip.sha256
           retention-days: 30
           if-no-files-found: error

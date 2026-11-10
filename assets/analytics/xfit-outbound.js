@@ -70,10 +70,19 @@
     // Must be supplied by a verified CMP integration. Missing/unknown consent
     // is denial; never infer consent from a cookie, button or banner.
     if (typeof root.xfitGetAnalyticsConsent !== "function" ||
+        typeof root.getWccConsent !== "function" ||
         typeof root.gtag !== "function") return;
     let granted = false;
-    try { granted = root.xfitGetAnalyticsConsent() === true; }
-    catch (_error) { return; }
+    try {
+      // The public bridge symbol can already exist on the site. It is not
+      // sufficient by itself: verify the documented WebToffee 3.x stored
+      // analytics category directly at click time, including after revoke.
+      const state = root.getWccConsent();
+      granted = root.xfitGetAnalyticsConsent() === true &&
+        state && typeof state === "object" &&
+        state.categories && typeof state.categories === "object" &&
+        state.categories.analytics === true;
+    } catch (_error) { return; }
     if (!granted) return;
     const data = readApprovedClick(event);
     if (!data) return;
