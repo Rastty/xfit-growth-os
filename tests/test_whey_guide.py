@@ -177,6 +177,30 @@ class WheyTests(unittest.TestCase):
         self.assertEqual(body.count('class="xfit-product-card"'),6)
         self.assertNotIn("Whey gainer",body)
 
+    def test_cheaper_flavor_beats_pricier_natural_whey_variant(self):
+        first=offer(821,"Whey WPC Apple 1kg",699)
+        natural=offer(822,"Whey WPC Natural 1kg",799)
+        distinct=offer(823,"Whey Isolate 750g",1099)
+        distinct["source_url"]="https://www.namaximum.cz/p/isolate?variant=823"
+        catalog={"merchant":"namaximum.cz","merchant_match":True,
+                 "products":[first,natural,distinct]}
+        body=build_document(catalog,BASE,SAMPLE)["content"]
+        self.assertIn("Whey WPC Apple 1kg",body)
+        self.assertNotIn("Whey WPC Natural 1kg",body)
+        self.assertIn("699,00 Kč",body)
+        self.assertEqual(body.count('class="xfit-product-card"'),2)
+
+    def test_same_price_natural_whey_is_preferred_over_earlier_flavor(self):
+        first=offer(831,"Whey WPC Apple 1kg",699)
+        natural=offer(832,"Whey WPC Natural 1kg",699)
+        distinct=offer(833,"Whey Isolate 750g",1099)
+        distinct["source_url"]="https://www.namaximum.cz/p/isolate?variant=833"
+        catalog={"merchant":"namaximum.cz","merchant_match":True,
+                 "products":[first,natural,distinct]}
+        body=build_document(catalog,BASE,SAMPLE)["content"]
+        self.assertIn("Whey WPC Natural 1kg",body)
+        self.assertNotIn("Whey WPC Apple 1kg",body)
+
     def test_insufficient_catalog(self):
         with self.assertRaises(PublishError):
             build_document({"merchant":"namaximum.cz","merchant_match":True,"products":[]},BASE,SAMPLE)
