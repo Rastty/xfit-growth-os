@@ -145,7 +145,7 @@ class ArchiveAuditTests(unittest.TestCase):
         self.assertEqual(row["external_hosts"],{"example.org":3,"xfit.cz.example.org":1})
 
     def test_same_article_permalinks_are_not_navigation_to_other_pages(self):
-        links=["https://xfit.cz/protein/", "/protein/#davkovani",
+        links=["https://xfit.cz/protein", "https://xfit.cz/protein/", "/protein/#davkovani",
                "https://WWW.XFIT.CZ/protein/#zdroje", "./#slozeni",
                "https://xfit.cz/kreatin/#davkovani"]
         p=post(1,"protein","Protein", "".join(
