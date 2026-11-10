@@ -84,7 +84,10 @@ def inspect(p, rev):
             or len(raw.encode("utf-8")) > MAX_BODY_BYTES or MARKER not in raw):
         raise PublishError("Not an owned, safe WordPress source body")
     old, new = rev["original"], rev["replacement"]
-    if raw.count(old) == 0 and raw.count(new) == 1:
+    # The replacement deliberately preserves the original row prefix.
+    # Thus an already-applied document contains BOTH the new full fragment
+    # and the old prefix once; reject any duplicate instead of reapplying.
+    if raw.count(new) == 1 and raw.count(old) == 1:
         return {"status": "already_applied", "before": raw, "after": raw,
                 "hash": digest(raw), "modified": p.get("modified_gmt")}
     if raw.count(old) != 1 or raw.count(new) != 0:
