@@ -71,6 +71,7 @@ def summarize_funnel(events, *, analytics_consent=False,
     if not analytics_consent:
         return None
     counts = {page: {name: 0 for name in sorted(EVENTS)} for page in PAGES}
+    product_clicks = {page: {} for page in PAGES}
     for event in events:
         if not isinstance(event, dict) or set(event) != {"name", "params"}:
             raise ValueError("unsupported event record")
@@ -78,9 +79,21 @@ def summarize_funnel(events, *, analytics_consent=False,
             event["name"], event["params"], analytics_consent=True,
             verified_product_ids_by_page=verified_product_ids_by_page,
         )
-        counts[validated["params"]["page"]][validated["name"]] += 1
+        page = validated["params"]["page"]
+        counts[page][validated["name"]] += 1
+        if validated["name"] == "affiliate_outbound_click":
+            product_id = validated["params"]["product_id"]
+            product_clicks[page][product_id] = (
+                product_clicks[page].get(product_id, 0) + 1
+            )
     return {
         "action_counts": counts,
+        # Only observed, revalidated catalog IDs; absent products are unknown,
+        # not zero-interest offers. Repeated clicks remain separate actions.
+        "product_click_counts": {
+            page: dict(sorted(clicks.items()))
+            for page, clicks in product_clicks.items()
+        },
         # No records for an advisor do not establish working instrumentation
         # or zero reader interest. Observed actions do not prove completeness.
         "action_data_status": {

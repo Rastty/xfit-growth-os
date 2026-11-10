@@ -49,7 +49,7 @@ počtů. Dokončení bez nákupu má stejnou váhu jako jiné dokončení. Opako
 prokliky se počítají jednotlivě: nejde o unikátní lidi, spárované návštěvy ani
 konverzní poměr. Nula znamená pouze žádnou takovou akci v dodaných záznamech;
 nepotvrzuje funkční měření. `unique_visitors`, `orders` a `commission` vždy
-vracejí `UNKNOWN`. Souhrn neobsahuje produktová ID a nic neodesílá ani neukládá.
+vracejí `UNKNOWN`. Souhrn nic neodesílá ani neukládá.
 Před použitím pro rozhodování je nutné ověřit úplnost a období vstupu i
 skutečnou integraci; tento nástroj je sám nedokládá.
 
@@ -67,6 +67,18 @@ nejsou záznamy. Chybějící dokončení nelze vydávat za odchod čtenáře an
 neúspěch cesty „nic nekoupit“. Před změnou doporučení nebo nákupních tlačítek
 je potřeba ověřit měření chybějícího kroku. Ani kladný počet nedokládá úplnost
 měření; nové stavy nepřidávají identifikátory ani výsledek volby.
+
+`product_click_counts` obsahuje pro každého poradce počty prokliků podle
+ověřených katalogových ID, například `{392: 1, 393: 2}` (ilustrační data,
+nikoli naměřené výsledky). Každý proklik znovu prochází kontrolou katalogu
+daného poradce. Počty dovolují při budoucím ověřeném měření rozlišit zájem
+o jednotlivé nabídky bez spojování akcí s konkrétním člověkem nebo odpověďmi.
+Uvádějí pouze pozorovaná ID; prázdný slovník ani chybějící produkt neznamenají
+nulový zájem. Opakované kliky se počítají jednotlivě. Bez počtu zobrazení,
+ověření úplnosti měření a kontextu umístění tlačítek nelze porovnávat úspěšnost
+nabídek. Počty nejsou důkazem kvality produktu, objednávek či provizí a nesmějí
+určovat odborné pořadí doporučení. Dokončení cestou „nic nekoupit“ nevytváří
+žádný produktový záznam.
 
 Ověření: `python -m unittest tests.test_revenue_events tests.test_agent_scope`.
 Stav: připraveno lokálně; CI, nasazení, veřejná stránka a měření neověřeny.
