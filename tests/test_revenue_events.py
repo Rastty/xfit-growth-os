@@ -106,6 +106,40 @@ class RevenueEventTests(unittest.TestCase):
 
 
 class RevenueFunnelTests(unittest.TestCase):
+    def test_product_counts_are_verified_actions_separated_by_advisor(self):
+        pages = {"xfit-os-kreatin-poradce": "creatine",
+                 "xfit-os-syrovatkovy-protein-porovnani": "whey"}
+        events = []
+        for page, engine in pages.items():
+            for product_id in (393, 392, 393):
+                events.append({
+                    "name": "affiliate_outbound_click",
+                    "params": dict(page=page, selection_engine=engine,
+                                   partner="namaximum", product_id=product_id),
+                })
+        result = summarize_funnel(
+            events, analytics_consent=True,
+            verified_product_ids_by_page={page: {392, 393, 394} for page in pages})
+        self.assertEqual(result["product_click_counts"], {
+            page: {392: 1, 393: 2} for page in pages})
+        for page in pages:
+            self.assertEqual(list(result["product_click_counts"][page]), [392, 393])
+            self.assertEqual(sum(result["product_click_counts"][page].values()),
+                             result["action_counts"][page]["affiliate_outbound_click"])
+        self.assertEqual(result["orders"], "UNKNOWN")
+        self.assertEqual(result["commission"], "UNKNOWN")
+
+    def test_non_click_actions_do_not_invent_product_interest(self):
+        page = "xfit-os-kreatin-poradce"
+        for events in ([], [{"name": "advisor_complete", "params": {
+                "page": page, "selection_engine": "creatine"}}]):
+            with self.subTest(events=events):
+                result = summarize_funnel(events, analytics_consent=True)
+                self.assertEqual(result["product_click_counts"], {
+                    "xfit-os-kreatin-poradce": {},
+                    "xfit-os-syrovatkovy-protein-porovnani": {},
+                })
+
     def test_counts_actions_separately_without_inventing_conversions(self):
         creatine = {"page": "xfit-os-kreatin-poradce",
                     "selection_engine": "creatine"}
