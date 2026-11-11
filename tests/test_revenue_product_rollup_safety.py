@@ -24,6 +24,45 @@ class ProductRollupSafetyTests(unittest.TestCase):
                              analytics_consent=True,
                              verified_product_ids_by_page={PAGE: {392}})
 
+    def test_catalog_refresh_cannot_admit_unverified_click_mid_report(self):
+        for replace_page in (False, True):
+            with self.subTest(replace_page=replace_page):
+                catalogs = {PAGE: {392}}
+
+                def events():
+                    yield click(392)
+                    if replace_page:
+                        catalogs[PAGE] = {999}
+                    else:
+                        catalogs[PAGE].add(999)
+                    yield click(999)
+
+                with self.assertRaises(ValueError):
+                    summarize_funnel(events(), analytics_consent=True,
+                                     verified_product_ids_by_page=catalogs)
+
+    def test_catalog_refresh_cannot_remove_initially_verified_product(self):
+        catalogs = {PAGE: {392}}
+
+        def events():
+            catalogs.clear()
+            yield click(392)
+            yield click(392)
+
+        result = summarize_funnel(events(), analytics_consent=True,
+                                  verified_product_ids_by_page=catalogs)
+        self.assertEqual(result["product_click_counts"][PAGE], {392: 2})
+        self.assertEqual(result["commission"], "UNKNOWN")
+
+    def test_invalid_catalog_fails_before_event_stream_is_read(self):
+        def unreadable():
+            raise AssertionError("events consumed before catalog validation")
+            yield
+
+        with self.assertRaises(ValueError):
+            summarize_funnel(unreadable(), analytics_consent=True,
+                             verified_product_ids_by_page={PAGE: {True}})
+
     def test_rollup_is_aggregate_only_and_not_evidence_of_sales(self):
         events = [click(392), click(392),
                   {"name": "advisor_complete", "params": {
