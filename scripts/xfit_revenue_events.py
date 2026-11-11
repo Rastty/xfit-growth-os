@@ -8,6 +8,21 @@ EVENTS = {"advisor_start", "advisor_complete", "affiliate_outbound_click"}
 PARTNERS = {"namaximum"}
 
 
+
+def _snapshot_catalogs(catalogs):
+    """Validate and freeze caller-owned catalog data before reading events."""
+    if (type(catalogs) is not dict
+            or any(type(key) is not str or key not in PAGES for key in catalogs)):
+        raise ValueError("verified catalogs must be keyed by advisor page")
+    snapshot = {}
+    for page, catalog in catalogs.items():
+        if (type(catalog) not in (set, frozenset)
+                or any(type(item) is not int or not 1 <= item <= 2**31 - 1
+                       for item in catalog)):
+            raise ValueError("verified catalog IDs must be an integer set")
+        snapshot[page] = frozenset(catalog)
+    return snapshot
+
 def build_event(event_name, fields, *, analytics_consent=False,
                 verified_product_ids_by_page=None):
     """Return minimal validated parameters, or None without explicit consent.
@@ -44,15 +59,8 @@ def build_event(event_name, fields, *, analytics_consent=False,
         # Only catalog item numbers, never free text or tracking URLs.
         if type(product_id) is not int or not 1 <= product_id <= 2**31 - 1:
             raise ValueError("product_id must be a positive catalog integer")
-        if (type(verified_product_ids_by_page) is not dict
-                or any(type(key) is not str or key not in PAGES
-                       for key in verified_product_ids_by_page)):
-            raise ValueError("verified catalogs must be keyed by advisor page")
-        for catalog in verified_product_ids_by_page.values():
-            if (type(catalog) not in (set, frozenset)
-                    or any(type(item) is not int or not 1 <= item <= 2**31 - 1
-                           for item in catalog)):
-                raise ValueError("verified catalog IDs must be an integer set")
+        verified_product_ids_by_page = _snapshot_catalogs(
+            verified_product_ids_by_page)
         if product_id not in verified_product_ids_by_page.get(page, set()):
             raise ValueError("product is not in the verified advisor catalog")
         params.update(partner=partner, product_id=product_id)
@@ -70,6 +78,11 @@ def summarize_funnel(events, *, analytics_consent=False,
         raise ValueError("consent must be boolean")
     if not analytics_consent:
         return None
+    # A lazy event source may refresh or mutate caller-owned catalogs. All
+    # clicks in one report must use the same independently supplied allowlist.
+    if verified_product_ids_by_page is not None:
+        verified_product_ids_by_page = _snapshot_catalogs(
+            verified_product_ids_by_page)
     counts = {page: {name: 0 for name in sorted(EVENTS)} for page in PAGES}
     product_clicks = {page: {} for page in PAGES}
     for event in events:
