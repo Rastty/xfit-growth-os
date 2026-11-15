@@ -1,0 +1,47 @@
+name: XFIT Creatine 11945 Exact Title Correction
+# One guarded WordPress title-only edit. Never re-run after an uncertain POST.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-creatine-11945-title-release.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  title-only-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run all content and release contract tests
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -v
+      - name: Save exact original title and immutable article hashes
+        run: python -m scripts.xfit_creatine_title_release_11945 snapshot
+      - name: Upload mandatory rollback manifest before WordPress POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-creatine-11945-title-before-${{ github.run_id }}
+          path: reports/backups/xfit-creatine-title-11945.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Change only the title then confirm authenticated and public H1
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_creatine_title_release_11945 apply | tee -a "$GITHUB_STEP_SUMMARY"
