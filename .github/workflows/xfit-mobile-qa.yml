@@ -8,10 +8,40 @@ on:
       - 'tests/live_page_qa.cjs'
       - 'scripts/xfit_mobile_navigation.cjs'
       - 'tests/test_mobile_navigation.cjs'
+      # Recheck public pages after every change that can refresh either adviser.
+      - '.github/workflows/xfit-creatine-live.yml'
+      - '.github/workflows/xfit-whey-live.yml'
+      - 'scripts/xfit_creatine_guide.py'
+      - 'scripts/xfit_whey_guide.py'
+      - 'scripts/xfit_quick_pick.py'
+      - 'tests/test_quick_pick.py'
+      - 'scripts/wp_publish.py'
+      - 'tests/test_publisher.py'
+      - 'scripts/xfit_affil_deeplink.py'
+      - 'scripts/xfit_click_metadata.py'
+      - 'scripts/xfit_budget_choices.py'
+      - 'scripts/xfit_price_tradeoff.py'
+      - 'scripts/xfit_feed_ingest.py'
+      - 'scripts/xfit_select.py'
+      - 'scripts/xfit_availability.py'
+      - 'scripts/xfit_adviser_backup.py'
+      - 'tests/test_feed_ingest.py'
+      - 'tests/test_selection_engine.py'
+      - 'tests/test_availability.py'
+      - 'tests/test_adviser_backup.py'
+      - 'tests/test_price_tradeoff.py'
+      - 'scripts/xfit_model_portions.py'
+      - 'scripts/xfit_catalog_retrieval.py'
+      - 'tests/test_catalog_retrieval.py'
+      - 'tests/test_model_portions.py'
+      - 'tests/test_budget_choices.py'
+      - 'tests/test_creatine_guide.py'
+      - 'tests/test_whey_guide.py'
   schedule:
     - cron: '11 8 * * 2,5'
 permissions:
   contents: read
+  actions: read
 jobs:
   mobile-qa:
     runs-on: ubuntu-24.04
@@ -21,6 +51,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Wait for same-commit WordPress adviser releases
+        if: github.event_name == 'push'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+        run: python -m scripts.xfit_release_gate
       - name: Set up Chromium for real mobile rendering
         run: |
           npm install --no-save playwright@1.56.1
