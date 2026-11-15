@@ -309,6 +309,8 @@ for(const spec of checks){
     const productTargets=new Set([...document.querySelectorAll('.xfit-product-card[id]')]
       .map(card=>'#'+card.id));
     const heroLinks=hero ? [...hero.querySelectorAll('a')] : [];
+    const quickOfferBlocks=heroChoices.filter(row=>
+      row.getAttribute('data-xfit-quick-pick')!=='no-buy');
     const heroQuickPick={
       count:heroSections.length,
       beforeQuestions:!!hero && !!document.querySelector('#xfit-need') &&
@@ -320,14 +322,32 @@ for(const spec of checks){
         (heroChoices.some(row=>row.getAttribute('data-xfit-quick-pick')==='both') ||
           ['upfront','unit'].every(kind=>heroChoices.some(row=>
             row.getAttribute('data-xfit-quick-pick')===kind))),
-      linksValid:heroLinks.length>=2 && heroLinks.length<=3 &&
-        heroLinks.every(a=>{const href=a.getAttribute('href')||'';
-          return (href==='#xfit-need' || productTargets.has(href)) &&
-            !a.hasAttribute('target') && !a.hasAttribute('onclick');}) &&
-        heroLinks.filter(a=>(a.getAttribute('href')||'').startsWith('#xfit-offer-'))
-          .every(a=>a.getBoundingClientRect().height>=44),
+      linksValid:quickOfferBlocks.length>=1 && quickOfferBlocks.length<=2 &&
+        heroLinks.length===quickOfferBlocks.length*2+1 &&
+        quickOfferBlocks.every(row=>{
+          const merchant=row.querySelector('a[data-xfit-cta="quick-pick"]');
+          const detail=row.querySelector('a[href^="#xfit-offer-"]');
+          const target=detail && document.querySelector(detail.getAttribute('href'));
+          const card=target?.matches('article.xfit-product-card') ? target : null;
+          const original=card?.querySelector('a[data-xfit-product-id]');
+          return merchant && original && productTargets.has(detail.getAttribute('href')) &&
+            merchant.getAttribute('href')===original.getAttribute('href') &&
+            merchant.dataset.xfitProductId===original.dataset.xfitProductId &&
+            merchant.dataset.xfitEngine===original.dataset.xfitEngine &&
+            merchant.dataset.xfitPartner===original.dataset.xfitPartner &&
+            merchant.relList.contains('sponsored') &&
+            merchant.relList.contains('nofollow') &&
+            merchant.getAttribute('target')==='_blank' &&
+            merchant.textContent.trim()==='Ověřit cenu a dostupnost' &&
+            !merchant.hasAttribute('onclick') &&
+            merchant.getBoundingClientRect().height>=44 &&
+            !detail.hasAttribute('target') && !detail.hasAttribute('onclick') &&
+            detail.getBoundingClientRect().height>=44;
+        }) &&
+        heroLinks.filter(a=>a.getAttribute('href')==='#xfit-need').length===1,
       caveats:!!hero && hero.textContent.includes('nikoli celý trh') &&
-        hero.textContent.includes('ověřte před nákupem'),
+        hero.textContent.includes('ověřte před nákupem') &&
+        hero.textContent.includes('může získat provizi'),
     };
     const checkoutParagraphs=[...document.querySelectorAll("p")].filter(p=>
       p.textContent.includes("Když objednáváte jen jedno balení"));
@@ -656,7 +676,7 @@ for(const spec of checks){
       stage="document_checks";
     }else failures.push("budget_first_choice_not_keyboard_accessible");
   }
-  if(spec.commercial && doc.modelPortions.count!==doc.merchantLinks)
+  if(spec.commercial && doc.modelPortions.count!==doc.productCTA.count)
     failures.push("model_portion_rows_not_matching_product_ctas");
   if(spec.commercial && (!doc.modelPortions.valid || !doc.modelPortions.intro))
     failures.push("model_portion_math_or_disclaimer_missing");

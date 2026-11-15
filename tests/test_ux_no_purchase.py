@@ -20,6 +20,8 @@ class DecisionParser(HTMLParser):
             self.questions.append(self.active)
         if tag == "a" and "sponsored" in attrs.get("rel", "").split():
             self.events.append("purchase")
+        if attrs.get("data-xfit-quick-pick") == "no-buy":
+            self.events.append("no_buy")
 
     def handle_data(self, data):
         if self.active is not None:
@@ -56,5 +58,5 @@ class NoPurchaseTests(unittest.TestCase):
                 self.assertIn(answer, parser.questions[0]["text"])
                 self.assertTrue(all(not q["open"] for q in parser.questions[1:3]))
                 self.assertIn("purchase", parser.events)
-                self.assertLess(parser.events.index("decision"),
+                self.assertLess(parser.events.index("no_buy"),
                                 parser.events.index("purchase"))

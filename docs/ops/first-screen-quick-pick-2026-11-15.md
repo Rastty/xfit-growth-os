@@ -16,9 +16,12 @@ the choice; on creatine, the choice follows the feed-date notice:
 - One winning option if both criteria point to the exact same product.
 - Accessible first-screen link to the existing nonpurchase explanation.
 
-Each action navigates to an on-page `#xfit-offer-N` card. No new merchant link,
-JavaScript, plugin, cookie, personalized data or analytics claim is introduced.
-The original affiliate links and their exact campaign IDs are untouched.
+The first rollout used `#xfit-offer-N` anchors. The follow-up adds a visible
+**one-click "Ověřit cenu a dostupnost" merchant CTA** and keeps a secondary
+`#xfit-offer-N` detail link. The primary CTA reuses the exact tracked URL from
+its corresponding lower product card, rather than constructing another offer.
+The first-screen affiliate disclosure and no-purchase route appear before any
+merchant CTA. No new plugin, cookie, personal data or conversion claim is added.
 
 ## Evidence controls
 
@@ -28,18 +31,27 @@ The original affiliate links and their exact campaign IDs are untouched.
 - Whey still uses powder mass, not unverified grams of pure protein.
 - Availability, labels, delivery charges and final price still require merchant
   confirmation; the quick decision does not claim live stock or conversion.
-- A matching 44 px on-page anchor and overflow-safe card layout is checked by
-  production mobile QA at a 375 px viewport.
+- The exact first-screen tracked URL, product ID, engine and partner must match
+  the existing card; malformed URLs, other domains, mismatched variants,
+  missing/duplicate campaign parameters or unverified products block release.
+- Both the 44 px direct merchant CTA and 44 px on-page detail anchor are checked
+  by production mobile QA at 375 px without triggering an actual merchant click.
+- The opt-in analytics adapter recognizes the added CTA context but emits no
+  events without *current* verified WebToffee analytics consent and GA4; it
+  transmits no affiliate credentials, page query parameters or visitor details.
 
 ## Hypothesis and measurement
 
-Visitors with a clear price priority should reach a relevant product card with
-less scrolling. This is a user-experience hypothesis, **not** a measured CTR or
-commission increase. The existing consent-aware analytics adapter is not
-verified as publicly active, so there is no attributable uplift claim. After
-consent-based analytics are confirmed live, evaluate outbound click-through to
-verified affiliate campaign conversions without inferring paid commissions
-from pageviews.
+Visitors with a clear price priority should be able to open a source-verified
+offer in one click instead of scrolling and clicking twice. This is a
+conversion hypothesis, **not** a measured CTR or commission increase.
+On 2026-11-15, the attached Windsor.ai GA4 connector exposed a property for
+SpecialMagicKitchen only, **not XFIT**; XFIT GA4 funnel values remain
+`UNKNOWN`. The consent-aware analytics adapter is also not verified as publicly
+active. Do not label these UX changes as recorded click or commission growth.
+Once actual consented XFIT tracking is connected and verified, compare
+page-level outgoing click actions with separately reconciled Affial approved
+and *paid* commissions; pageviews or clicks are not sales.
 
 ## Release procedure
 

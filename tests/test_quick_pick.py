@@ -1,4 +1,4 @@
-"""The first screen links to real, source-bound offers without a new merchant CTA."""
+"""The first screen reaches exactly the source-bound merchant cards in one click."""
 import unittest
 from html.parser import HTMLParser
 
@@ -12,7 +12,9 @@ from scripts.xfit_whey_guide import build_document as whey
 def offer(ident, title, total, grams, per100):
     return dict(id=str(ident), title=title, price_czk=total,
                 mass_g=grams, price_per_100g_powder_czk=per100,
-                tracked_url="https://www.namaximum.cz/product")
+                tracked_url=("https://www.namaximum.cz/product?variant=" + str(ident) +
+                             "&utm_medium=affiliate&utm_campaign=affial.com"
+                             "&utm_source=pap&a_aid=EXAMPLEID&a_bid=EXAMPLEBID"))
 
 
 class Anchors(HTMLParser):
@@ -45,11 +47,15 @@ class QuickPickTests(unittest.TestCase):
         self.assertIn('href="#xfit-offer-2"', body)
         self.assertIn('href="#xfit-offer-1"', body)
         self.assertIn('href="#xfit-need"', body)
+        self.assertEqual(body.count('data-xfit-cta="quick-pick"'), 2)
+        self.assertEqual(body.count('rel="sponsored nofollow noopener noreferrer"'), 2)
+        self.assertEqual(body.count('target="_blank"'), 2)
+        self.assertIn("může získat provizi", body)
         self.assertIn("450,00 Kč", body)
         self.assertIn("70,00 Kč", body)
         self.assertIn("ne čistých bílkovin", body)
         self.assertIn("min-height:44px", body)
-        self.assertNotIn('href="https://', body)
+        self.assertIn('href="https://www.namaximum.cz/product?variant=2', body)
         self.assertNotIn("<script", body)
         self.assertNotIn("onclick", body)
 
@@ -61,6 +67,7 @@ class QuickPickTests(unittest.TestCase):
         self.assertNotIn('data-xfit-quick-pick="upfront"', body)
         self.assertNotIn('data-xfit-quick-pick="unit"', body)
         self.assertEqual(body.count('href="#xfit-offer-'), 1)
+        self.assertEqual(body.count('data-xfit-cta="quick-pick"'), 1)
         self.assertIn("ne laboratorně potvrzenou", body)
 
     def test_tainted_name_escaped_and_bad_prices_fail(self):
@@ -78,6 +85,25 @@ class QuickPickTests(unittest.TestCase):
                     quick_pick(copied, product_kind="whey")
         with self.assertRaises(PublishError):
             quick_pick([self.items[0], dict(self.items[0])], product_kind="whey")
+
+    def test_quick_pick_rejects_untracked_or_cross_product_merchant_destinations(self):
+        base = self.items[0]["tracked_url"]
+        for bad in (
+            base.replace("www.namaximum.cz", "namaximum.cz.evil.example"),
+            base.replace("variant=1", "variant=2"),
+            base.replace("a_aid=EXAMPLEID", "a_aid="),
+            base.replace("utm_medium=affiliate", "utm_medium=cpc"),
+            base.replace("&a_bid=EXAMPLEBID", ""),
+            base + "&variant=1",
+            base.replace("https://", "http://"),
+            base.replace("/product?", "/?"),
+            base + "&redirect=https://evil.example",
+        ):
+            with self.subTest(bad=bad):
+                copied = [dict(row) for row in self.items]
+                copied[0]["tracked_url"] = bad
+                with self.assertRaises(PublishError):
+                    quick_pick(copied, product_kind="creatine")
 
     def test_both_documents_link_only_to_their_rendered_product_cards(self):
         for builder, category, titles in [
@@ -100,12 +126,15 @@ class QuickPickTests(unittest.TestCase):
                 fragment = document.split('<section id="xfit-rychly-vyber"', 1)[1].split('</section>', 1)[0]
                 links = Anchors()
                 links.feed(fragment)
-                self.assertEqual(len(links.hrefs), 3)
-                self.assertTrue(all(href.startswith("#") for href in links.hrefs))
+                self.assertEqual(len(links.hrefs), 5)
+                internal = [href for href in links.hrefs if href.startswith("#")]
+                external = [href for href in links.hrefs if href.startswith("https://")]
+                self.assertEqual(len(internal), 3)
+                self.assertEqual(len(external), 2)
                 all_nodes = Anchors()
                 all_nodes.feed(document)
-                self.assertTrue(all(href.removeprefix("#") in all_nodes.ids for href in links.hrefs))
-                self.assertEqual(document.count('rel="sponsored nofollow'), 3)
+                self.assertTrue(all(href.removeprefix("#") in all_nodes.ids for href in internal))
+                self.assertEqual(document.count('rel="sponsored nofollow'), 5)
 
 
 if __name__ == "__main__":

@@ -23,8 +23,15 @@
     if (!engine) return null;
 
     const link = event.target.closest("a[data-xfit-product-id]");
-    if (!link || typeof link.closest !== "function" ||
-        !link.closest("article.xfit-product-card")) return null;
+    if (!link || typeof link.closest !== "function") return null;
+    // A first-screen purchase CTA must be the same independently verified
+    // offer as its lower product card; both live inside controlled contexts.
+    const onCard = !!link.closest("article.xfit-product-card");
+    const onQuickPick = link.dataset &&
+      link.dataset.xfitCta === "quick-pick" &&
+      !!link.closest("[data-xfit-quick-pick]") &&
+      !!link.closest("section#xfit-rychly-vyber");
+    if (!onCard && !onQuickPick) return null;
     const data = link.dataset || {};
     if (data.xfitEngine !== engine || data.xfitPartner !== "namaximum" ||
         typeof data.xfitProductId !== "string" ||
