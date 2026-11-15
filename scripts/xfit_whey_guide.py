@@ -161,10 +161,11 @@ def build_document(catalog, base, sample):
             delivery_note(item)+'</p>'
             +model_portion_line(item, "whey")+
             '<p><a'+card_click_attributes(item["id"], "whey")+' href="'+link+'" rel="sponsored nofollow noopener noreferrer" '
-            'aria-label="Zobrazit konkrétní balení na NaMaximum.cz: '+html.escape(item["title"],quote=True)+' (nová karta)" '
+            'aria-label="Ověřit cenu a dostupnost produktu '+html.escape(item["title"],quote=True)+' na NaMaximum.cz (nová karta)" '
             'target="_blank" style="display:inline-block;padding:12px 16px;min-height:44px;box-sizing:border-box;'
             'background-color:#116a70;color:#ffffff;text-decoration:none;font-weight:700;'
-            'border-radius:8px;">Zobrazit konkrétní balení na NaMaximum.cz (nová karta)</a></p></article>')
+            'border-radius:8px;">Ověřit cenu a dostupnost</a> '
+            '<small>NaMaximum.cz · nová karta</small></p></article>')
     parts += [
       '</div>',
       '<h2>Koncentrát, izolát nebo něco jiného?</h2>',
