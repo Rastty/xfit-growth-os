@@ -98,6 +98,16 @@ for(const spec of checks){
           p.textContent?.includes("předobjednávky") &&
           p.textContent?.includes("expedicí delší než 7 dní")),
     };
+    const productCTA={
+      count:cards.length,
+      allClear:cards.length>=2 && cards.every(card=>{
+        const link=card.querySelector('a[data-xfit-product-id]');
+        return link?.textContent?.trim()==="Ověřit cenu a dostupnost" &&
+          link.getAttribute("aria-label")?.startsWith("Ověřit cenu a dostupnost produktu ") &&
+          link.getAttribute("target")==="_blank" &&
+          card.textContent?.includes("NaMaximum.cz · nová karta");
+      }),
+    };
     const firstCardImage=firstCard?.querySelector("img");
     const firstCardLink=firstCard?.querySelector('a[href*="namaximum.cz"]');
     const firstCTABox=firstCardLink?.getBoundingClientRect();
@@ -519,7 +529,7 @@ for(const spec of checks){
         emptyFeaturedAlt,featuredImageCount:featuredImages.length,
         productImages:productImages.length,brokenProductImages:brokenProductImages.length,
         productImageStatus,themeImagesMissingAlt,firstProductLoaded,firstCTASize,
-        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,sameMassDecision,noPurchase,proteinPackUse,proteinFoodFirst,proteinCheckout,productTitleDisplay,productCardWrap,productAvailability,quickNav,offTopicPlacement,beginnerGoals,beginnerProteinCost,creatineMuscle};
+        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,sameMassDecision,noPurchase,proteinPackUse,proteinFoodFirst,proteinCheckout,productTitleDisplay,productCardWrap,productAvailability,productCTA,quickNav,offTopicPlacement,beginnerGoals,beginnerProteinCost,creatineMuscle};
   });
   if(!doc.h1.includes(spec.expected))failures.push("h1_missing_expected");
   if(doc.h2<spec.minH2)failures.push("insufficient_h2");
@@ -563,6 +573,8 @@ for(const spec of checks){
   if(spec.commercial && (!doc.productAvailability.everyCardExplains ||
       !doc.productAvailability.hasExclusionMethod))
     failures.push("public_product_dispatch_evidence_missing_or_unqualified");
+  if(spec.commercial && !doc.productCTA.allClear)
+    failures.push("buyer_facing_cta_copy_or_merchant_context_missing");
   if(spec.name==="protein-guide" &&
       (doc.proteinPackUse.count!==1 || !doc.proteinPackUse.hasArithmetic ||
        !doc.proteinPackUse.hasRealLimits || !doc.proteinPackUse.oldAdviceAbsent))

@@ -78,12 +78,13 @@ class WheyTests(unittest.TestCase):
         for link in links:
             variant = parse_qs(urlsplit(link["href"]).query)["variant"][0]
             self.assertEqual(link["aria-label"],
-                "Zobrazit konkrétní balení na NaMaximum.cz: "
-                + by_variant[variant]["title"] + " (nová karta)")
+                "Ověřit cenu a dostupnost produktu "
+                + by_variant[variant]["title"] + " na NaMaximum.cz (nová karta)")
             self.assertEqual(link["target"], "_blank")
             self.assertIn("noopener", link["rel"].split())
         self.assertEqual(body.count(
-            '>Zobrazit konkrétní balení na NaMaximum.cz (nová karta)</a>'), len(products))
+            '>Ověřit cenu a dostupnost</a>'), len(products))
+        self.assertEqual(body.count('NaMaximum.cz · nová karta</small>'), len(products))
     def test_prices_preserve_cents_and_explain_rank(self):
         # Synthetic prices: both unit prices previously displayed as 70 Kč.
         self.catalog["products"] = [
