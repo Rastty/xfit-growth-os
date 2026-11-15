@@ -38,7 +38,7 @@ class WheyTests(unittest.TestCase):
         self.assertIn("Bez ověřeného údaje o bílkovinách", body)
         self.assertIn("nemusíte kupovat nic", body)
         # The new link is in-domain education, never a sponsored redirect.
-        self.assertEqual(body.count('rel="sponsored nofollow'), 3)
+        self.assertEqual(body.count('rel="sponsored nofollow'), 5)
 
     def test_collagen_creatine_and_electrolyte_whey_blends_are_not_ranked_as_plain_whey(self):
         # These are synthetically cheap examples, so a unit-price-only
@@ -72,7 +72,12 @@ class WheyTests(unittest.TestCase):
         body = build_document(self.catalog, BASE, SAMPLE)["content"]
         Links().feed(body)
         products = self.catalog["products"][:3]
-        self.assertEqual(len(links), len(products))
+        hero = [link for link in links if link.get("data-xfit-cta") == "quick-pick"]
+        cards = [link for link in links if link.get("data-xfit-cta") != "quick-pick"]
+        self.assertEqual(len(cards), len(products))
+        self.assertIn(len(hero), (1, 2))
+        self.assertTrue(all(link["href"] in {card["href"] for card in cards}
+                            for link in hero))
         self.assertEqual(len({link["aria-label"] for link in links}), len(products))
         by_variant = {product["id"]: product for product in products}
         for link in links:
@@ -83,7 +88,7 @@ class WheyTests(unittest.TestCase):
             self.assertEqual(link["target"], "_blank")
             self.assertIn("noopener", link["rel"].split())
         self.assertEqual(body.count(
-            '>Ověřit cenu a dostupnost</a>'), len(products))
+            '>Ověřit cenu a dostupnost</a>'), len(links))
         self.assertEqual(body.count('NaMaximum.cz · nová karta</small>'), len(products))
     def test_prices_preserve_cents_and_explain_rank(self):
         # Synthetic prices: both unit prices previously displayed as 70 Kč.
