@@ -172,11 +172,22 @@ def deploy():
                       "deletes": 0, "redirects": 0, "plugins": 0}))
 
 
+def verify_only():
+    """Reconcile a previously attempted release without another POST."""
+    current = pinned(get_post(POST_ID))
+    if not clean_revision(current):
+        raise PublishError("Authenticated WordPress body is not the revision")
+    public_verified()
+    print(json.dumps({"state": "ALREADY_LIVE_VERIFIED",
+                      "post_id": POST_ID, "url": URL, "remote_writes": 0,
+                      "original_workflow": 43695394920}))
+
+
 if __name__ == "__main__":
     try:
-        if len(sys.argv) != 2 or sys.argv[1] not in ("snapshot", "deploy"):
-            raise PublishError("Usage: snapshot|deploy")
-        (snapshot if sys.argv[1] == "snapshot" else deploy)()
+        if len(sys.argv) != 2 or sys.argv[1] not in ("snapshot", "deploy", "verify"):
+            raise PublishError("Usage: snapshot|deploy|verify")
+        {"snapshot": snapshot, "deploy": deploy, "verify": verify_only}[sys.argv[1]]()
     except (PublishError, OSError, ValueError, TypeError, KeyError) as exc:
         print("XFIT_11945_REVISION_ERROR: " + type(exc).__name__, file=sys.stderr)
         sys.exit(2)

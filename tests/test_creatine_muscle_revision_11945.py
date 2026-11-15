@@ -95,6 +95,23 @@ class Creatine11945RevisionTests(unittest.TestCase):
                     revision.deploy()
                 self.assertEqual(writer.call_count, 1)
 
+    def test_readonly_reconciliation_never_writes_or_needs_backup(self):
+        body = revision.new_body()
+        with patch.object(revision, "get_post", return_value=post(body)), \
+             patch.object(revision, "wp_request") as writer, \
+             patch.object(revision, "public_verified", return_value=True) as public:
+            with contextlib.redirect_stdout(io.StringIO()) as output:
+                revision.verify_only()
+            self.assertIn("ALREADY_LIVE_VERIFIED", output.getvalue())
+            self.assertIn('"remote_writes": 0', output.getvalue())
+            writer.assert_not_called()
+            public.assert_called_once()
+        with patch.object(revision, "get_post", return_value=post()), \
+             patch.object(revision, "wp_request") as writer:
+            with self.assertRaises(PublishError):
+                revision.verify_only()
+            writer.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

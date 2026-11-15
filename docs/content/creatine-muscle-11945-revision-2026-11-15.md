@@ -50,3 +50,16 @@ No new posts, redirects, unpublishing, affiliate ID changes or plugins.
 On failed/uncertain state, stop and investigate; do not retry or overwrite
 subsequent legitimate editor changes. A rollback must compare the stored
 original against the then-current production document before restoration.
+
+## Real deployment reconciliation
+
+The original live workflow [43695394920](https://github.com/Rastty/xfit-growth-os/actions/runs/43695394920)
+uploaded the original rollback artifact and attempted the exact one-post
+revision, then failed its immediate final verification. Subsequent independent
+public REST readback showed the new introduction, sources and all six sections,
+with zero legacy nested `DOCTYPE` fragments and zero coupon code. The public
+permalink also displayed the new text. A standalone read-only verifier now
+checks both authenticated raw and public HTML/REST, without a new POST.
+
+Follow-up workflow: `.github/workflows/xfit-creatine-11945-readonly-confirm.yml`.
+Its success is the post-deploy confirmation, not a second deployment.

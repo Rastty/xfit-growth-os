@@ -1,0 +1,35 @@
+name: XFIT Creatine 11945 Read-only Postdeploy Confirmation
+# Reconcile public state only; no WordPress POST, even if original job failed.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-creatine-11945-readonly-confirm.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  verify-no-write:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate read-only invariant and editorial code
+        run: python -m unittest discover -s tests -v
+      - name: Confirm current authenticated raw and independently public content
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_creatine_muscle_revision_11945 verify | tee -a "$GITHUB_STEP_SUMMARY"
