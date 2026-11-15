@@ -1,0 +1,53 @@
+name: XFIT Three High Intent Editorial Handoffs
+# Three individually pinned legacy posts, no bulk mutations.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-buyer-intent-handoffs-live.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-high-intent-handoffs-20261115
+  cancel-in-progress: false
+jobs:
+  publish-reviewed-handoffs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: All source, editorial, rollback and publish tests
+        run: python -m unittest discover -s tests -q
+      - name: Read and strictly preflight all three original WP sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m scripts.xfit_verified_inlink_release creatine_buyer_10854 snapshot
+          python -m scripts.xfit_verified_inlink_release creatine_buyer_10738 snapshot
+          python -m scripts.xfit_verified_inlink_release whey_training_7363 snapshot
+      - name: Preserve all prewrite content for recoverable rollback
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-three-intent-article-originals-${{ github.run_id }}
+          path: |
+            reports/backups/xfit-reviewed-inlink-creatine_buyer_10854.json
+            reports/backups/xfit-reviewed-inlink-creatine_buyer_10738.json
+            reports/backups/xfit-reviewed-inlink-whey_training_7363.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Verify and update only original creatine buyer article 10854
+        run: python -m scripts.xfit_verified_inlink_release creatine_buyer_10854 apply
+      - name: Verify and update only original creatine buyer article 10738
+        run: python -m scripts.xfit_verified_inlink_release creatine_buyer_10738 apply
+      - name: Verify and update only original whey training article 7363
+        run: python -m scripts.xfit_verified_inlink_release whey_training_7363 apply
