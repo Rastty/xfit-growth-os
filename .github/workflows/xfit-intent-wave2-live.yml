@@ -1,0 +1,48 @@
+name: XFIT Second High Intent Inlink Wave
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-intent-wave2-live.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-intent-wave2-20261115
+  cancel-in-progress: false
+jobs:
+  publish-two-reviewed-inlinks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run editorial and publisher regression suite
+        run: python -m unittest discover -s tests -q
+      - name: Snapshot both pinned source articles before any remote write
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m scripts.xfit_verified_inlink_release creatine_selection_9772 snapshot
+          python -m scripts.xfit_verified_inlink_release whey_snacks_7195 snapshot
+      - name: Keep 90-day exact-source rollback artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-intent-wave2-originals-${{ github.run_id }}
+          path: |
+            reports/backups/xfit-reviewed-inlink-creatine_selection_9772.json
+            reports/backups/xfit-reviewed-inlink-whey_snacks_7195.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Publish a single reviewed creatine selection link
+        run: python -m scripts.xfit_verified_inlink_release creatine_selection_9772 apply
+      - name: Publish a single reviewed whey selection link
+        run: python -m scripts.xfit_verified_inlink_release whey_snacks_7195 apply

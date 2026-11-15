@@ -145,6 +145,49 @@ _WHEY_TRAINING_7363 = Handoff(
         'a v obchodě. Ani tento odkaz není doporučení doplněk koupit.</p>'
     ),
 )
+_CREATINE_SELECTION_9772 = Handoff(
+    key="creatine_selection_9772",
+    post_id=9772,
+    slug="nejlepsi-kreatin-monohydrat-jak-vybrat-a-efektivne-vyuzit-pro-posileni-svalu-fitness-tajemstvi",
+    title_term="kreatin",
+    target=_PRICE_URL,
+    marker="xfit-creatine-selection-9772-20261115",
+    sentence="Jak srovnat konkrétní balení kreatinu monohydrátu",
+    paragraph=(
+        '<p data-xfit-handoff="xfit-creatine-selection-9772-20261115">'
+        '<strong>Jak srovnat konkrétní balení kreatinu monohydrátu?</strong> '
+        'Při výběru čtěte složení na etiketě a porovnávejte cenu '
+        'za 100 g prášku, velikost balení i dopravu. '
+        '<a href="' + _PRICE_URL + '">Praktický poradce pro porovnání kreatinu</a> '
+        'pracuje s vybranými katalogovými nabídkami a rozlišuje cenu '
+        'balení od ceny za gramáž. Nepokrývá celý trh a nezaručuje '
+        'účinek ani nejnižší cenu. Dostupnost a údaje o výrobku '
+        'vždy ověřte přímo u prodejce; tento odkaz není doporučení '
+        'doplněk koupit.</p>'
+    ),
+)
+_WHEY_SNACKS_7195 = Handoff(
+    key="whey_snacks_7195",
+    post_id=7195,
+    slug="jaky-typ-proteinu-si-vybrat-pro-pripravu-proteinovych-snacku-a-napoju",
+    title_term="protein",
+    target="https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/",
+    marker="xfit-whey-snacks-7195-20261115",
+    sentence="Co sledovat při výběru syrovátkového proteinu do nápojů",
+    paragraph=(
+        '<p data-xfit-handoff="xfit-whey-snacks-7195-20261115">'
+        '<strong>Co sledovat při výběru syrovátkového proteinu do nápojů?</strong> '
+        'Před rozhodnutím zkontrolujte na etiketě obsah bílkovin '
+        'na 100 g, alergeny, složení a doporučení výrobce k použití. '
+        '<a href="https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/">'
+        'Srovnání konkrétních syrovátkových proteinů</a> ukazuje '
+        'hmotnost balení a katalogové ceny; nejde o test chuti, '
+        'rozpustnosti ani vhodnosti do každého receptu. '
+        'Cenu a dostupnost si ověřte v obchodě. '
+        'Bílkoviny lze získat i běžnou stravou; '
+        'tento odkaz není doporučení doplněk koupit.</p>'
+    ),
+)
 ALLOWLIST = {
     "creatine_price_10835": Handoff(
         key="creatine_price_10835",
@@ -169,6 +212,8 @@ ALLOWLIST = {
     _PRICE_BUYER_10854.key: _PRICE_BUYER_10854,
     _PRICE_BUYER_10738.key: _PRICE_BUYER_10738,
     _WHEY_TRAINING_7363.key: _WHEY_TRAINING_7363,
+    _CREATINE_SELECTION_9772.key: _CREATINE_SELECTION_9772,
+    _WHEY_SNACKS_7195.key: _WHEY_SNACKS_7195,
 }
 MAX_BYTES = 400_000
 

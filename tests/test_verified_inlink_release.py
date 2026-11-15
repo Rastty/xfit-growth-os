@@ -29,7 +29,8 @@ class VerifiedInlinkTests(unittest.TestCase):
         self.assertEqual(set(release.ALLOWLIST),{
             "creatine_safety_2139", "creatine_price_10835",
             "creatine_buyer_10854", "creatine_buyer_10738",
-            "whey_training_7363",
+            "whey_training_7363", "creatine_selection_9772",
+            "whey_snacks_7195",
         })
         self.assertEqual(CFG.post_id,2139)
         self.assertEqual(CFG.target,
@@ -212,6 +213,8 @@ class BuyerIntentHandoffTests(unittest.TestCase):
         ("creatine_buyer_10854", 10854, "Návod jak vybrat nejlevnější kreatin"),
         ("creatine_buyer_10738", 10738, "Jak nakoupit nejlevnější kreatin"),
         ("whey_training_7363", 7363, "Proteiny na svaly a jejich účinnost"),
+        ("creatine_selection_9772", 9772, "Nejlepší kreatin monohydrát"),
+        ("whey_snacks_7195", 7195, "Jaký typ proteinu si vybrat do nápojů"),
     )
 
     def _post(self, cfg, title):
@@ -223,7 +226,7 @@ class BuyerIntentHandoffTests(unittest.TestCase):
             "modified_gmt":"2026-11-15T11:00:00",
         }
 
-    def test_three_separate_source_bound_routes(self):
+    def test_five_separate_source_bound_routes(self):
         for key, post_id, title in self.INTENT:
             with self.subTest(key=key):
                 cfg=release.ALLOWLIST[key]
