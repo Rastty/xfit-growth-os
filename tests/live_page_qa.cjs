@@ -9,6 +9,7 @@ const checks = [
   {name:"pilates-cardio",url:"https://xfit.cz/pilates-vs-kardio-co-je-lepsi-pro-hubnuti/",expected:"Pilates vs. kardio",minH2:6,commercial:false},
   {name:"creatine-kidney",url:"https://xfit.cz/kreatin-a-jeho-vliv-na-ledviny-a-jatra/",expected:"Kreatin, ledviny a játra",minH2:6,commercial:false},
   {name:"creatine-vs-protein",url:"https://xfit.cz/xfit-os-kreatin-nebo-protein/",expected:"Kreatin, nebo protein?",minH2:6,commercial:false},
+  {name:"creatine-muscle",url:"https://xfit.cz/jak-kreatin-muze-pomoci-ziskat-svalovy-objem-v-fitness/",expected:"Jak kreatin může pomoci získat svalový objem",minH2:6,commercial:false},
   {name:"protein-intake",url:"https://xfit.cz/kolik-bilkovin-potrebujete-pro-budovani-svalu-pruvodce-spravnym-stravovanim/",expected:"Kolik bílkovin denně",minH2:8,commercial:false},
   {name:"protein-meaning",url:"https://xfit.cz/jaky-je-vyznam-proteinu-pri-nabirani-svalove-hmoty/",expected:"Proč bílkoviny pomáhají růstu svalů?",minH2:8,commercial:false}
 ];
@@ -438,15 +439,60 @@ for(const spec of checks){
       placeholderLinksObserved:placeholderLinks,
       allNativeSummaries:beginnerDetails.every(d=>!!d.querySelector("summary")),
     };
+    // The 11945 rewrite replaced four complete nested HTML documents with a
+    // readable, source-bound article. Verify the public mobile render too;
+    // a green WordPress REST write by itself does not establish visitor UX.
+    const creatineMuscleHeading=document.querySelector("h2#co-kreatin-dela");
+    const creatineMuscleArticle=creatineMuscleHeading?.closest("article")||null;
+    const creatineMuscleHeadings=[...(creatineMuscleArticle?.querySelectorAll("h2[id]")||[])]
+      .map(h=>h.id);
+    const creatineMuscleFAQ=creatineMuscleArticle?.querySelector("h2#faq");
+    const creatineMuscleQuestions=[];
+    if(creatineMuscleFAQ){
+      for(let node=creatineMuscleFAQ.nextElementSibling;
+          node && node.tagName.toLowerCase()!=="h2";
+          node=node.nextElementSibling){
+        if(node.tagName.toLowerCase()==="details")creatineMuscleQuestions.push(node);
+      }
+    }
+    const creatineMuscleLinks=[...(creatineMuscleArticle?.querySelectorAll("a[href]")||[])];
+    const creatineMuscleText=creatineMuscleArticle?.textContent||"";
+    const creatineMuscle={
+      found:!!creatineMuscleArticle,
+      correctSections:["co-kreatin-dela","rozhodnuti","davkovani","cena","faq","zdroje"]
+        .every(id=>creatineMuscleHeadings.filter(x=>x===id).length===1),
+      noNestedDocuments:!!creatineMuscleArticle &&
+        !/(?:<!doctype\s+html|<html\b|<head\b|<body\b)/i.test(creatineMuscleArticle.innerHTML),
+      noBuyOption:creatineMuscleText.includes("Klidně dnes nic nekupujte") &&
+        creatineMuscleText.includes("nekupujte nic"),
+      noExpiredPromos:!creatineMuscleText.includes("SLEVA10") &&
+        !creatineMuscleText.includes("slevový kód"),
+      advisorLink:creatineMuscleLinks.some(a=>
+        a.getAttribute("href")==="https://xfit.cz/xfit-os-kreatin-poradce/"),
+      primarySources:["https://ods.od.nih.gov/factsheets/ExerciseAndAthleticPerformance-HealthProfessional/",
+        "https://pubmed.ncbi.nlm.nih.gov/39074168/"].every(url=>
+        creatineMuscleLinks.some(a=>a.getAttribute("href")===url)),
+      faqCount:creatineMuscleQuestions.length,
+      faqFirstOpen:!!creatineMuscleQuestions[0]?.open,
+      faqOtherClosed:creatineMuscleQuestions.slice(1).every(d=>!d.open),
+      faqSummaries:creatineMuscleQuestions.every(d=>!!d.querySelector("summary")),
+    };
     return {h1,h2,titles,viewport:inner,documentWidth:full,details,summaries,
         merchantLinks:links.length,missingSponsored,imagesMissingAlt:images.length,
         productImages:productImages.length,brokenProductImages:brokenProductImages.length,
         productImageStatus,themeImagesMissingAlt,firstProductLoaded,firstCTASize,
-        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,sameMassDecision,noPurchase,proteinPackUse,proteinFoodFirst,proteinCheckout,productTitleDisplay,productCardWrap,quickNav,offTopicPlacement,beginnerGoals};
+        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,sameMassDecision,noPurchase,proteinPackUse,proteinFoodFirst,proteinCheckout,productTitleDisplay,productCardWrap,quickNav,offTopicPlacement,beginnerGoals,creatineMuscle};
   });
   if(!doc.h1.includes(spec.expected))failures.push("h1_missing_expected");
   if(doc.h2<spec.minH2)failures.push("insufficient_h2");
   if(!doc.hasViewportMeta)failures.push("mobile_viewport_missing");
+  if(spec.name==="creatine-muscle" && (!doc.creatineMuscle.found ||
+      !doc.creatineMuscle.correctSections || !doc.creatineMuscle.noNestedDocuments ||
+      !doc.creatineMuscle.noBuyOption || !doc.creatineMuscle.noExpiredPromos ||
+      !doc.creatineMuscle.advisorLink || !doc.creatineMuscle.primarySources ||
+      doc.creatineMuscle.faqCount!==4 || !doc.creatineMuscle.faqFirstOpen ||
+      !doc.creatineMuscle.faqOtherClosed || !doc.creatineMuscle.faqSummaries))
+    failures.push("creatine_muscle_public_editorial_or_faq_regression");
   if(spec.name==="beginner" && (!doc.beginnerGoals.heading ||
       doc.beginnerGoals.count!==4 || !doc.beginnerGoals.firstOpen ||
       !doc.beginnerGoals.othersClosed || !doc.beginnerGoals.firstAnswersNoBuy ||
@@ -540,7 +586,7 @@ for(const spec of checks){
   if(spec.commercial && doc.brokenProductImages)failures.push("broken_product_images_"+doc.brokenProductImages);
   if(spec.commercial && !doc.firstProductLoaded)failures.push("first_product_photo_not_loaded_after_scroll");
   if(spec.commercial && (!doc.firstCTASize || doc.firstCTASize.height<44))failures.push("merchant_cta_tap_target_under_44px");
-  if(["beginner","pilates-cardio","creatine-kidney","creatine-vs-protein","protein-intake","protein-meaning"].includes(spec.name) && doc.details<3)failures.push("interactive_details_missing");
+  if(["beginner","pilates-cardio","creatine-kidney","creatine-vs-protein","creatine-muscle","protein-intake","protein-meaning"].includes(spec.name) && doc.details<3)failures.push("interactive_details_missing");
   if(doc.documentWidth>doc.viewport+12)failures.push("horizontal_overflow_"+(doc.documentWidth-doc.viewport));
   // A dynamic ad-heavy legacy theme can hang full-page screenshots even when
   // the page is readable. Capture the actual 375px viewport instead. The DOM
