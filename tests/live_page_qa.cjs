@@ -47,7 +47,13 @@ for(const spec of checks){
     const summaries=document.querySelectorAll("summary").length;
     const links=[...document.querySelectorAll('a[href*="namaximum.cz"]')];
     const missingSponsored=links.filter(n=>!n.relList.contains("sponsored")).length;
-    const images=[...document.querySelectorAll("img")].filter(n=>n.getBoundingClientRect().width>30 && !n.alt);
+    // Empty alt="" can be correct for decorative logos/placeholders. Report
+    // genuinely absent attributes separately from editorial featured imagery.
+    const images=[...document.querySelectorAll("img")]
+      .filter(n=>n.getBoundingClientRect().width>30 && !n.hasAttribute("alt"));
+    const featuredImages=[...document.querySelectorAll(".td-post-featured-image img")];
+    const emptyFeaturedAlt=featuredImages
+      .filter(n=>!n.getAttribute("alt")?.trim()).length;
     const productImages=[...document.querySelectorAll(".xfit-product-card img")];
     const brokenProductImages=productImages.filter(n=>n.complete && n.naturalWidth===0);
     const productImageStatus=productImages.slice(0,6).map(n=>({
@@ -479,6 +485,7 @@ for(const spec of checks){
     };
     return {h1,h2,titles,viewport:inner,documentWidth:full,details,summaries,
         merchantLinks:links.length,missingSponsored,imagesMissingAlt:images.length,
+        emptyFeaturedAlt,featuredImageCount:featuredImages.length,
         productImages:productImages.length,brokenProductImages:brokenProductImages.length,
         productImageStatus,themeImagesMissingAlt,firstProductLoaded,firstCTASize,
         hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,sameMassDecision,noPurchase,proteinPackUse,proteinFoodFirst,proteinCheckout,productTitleDisplay,productCardWrap,quickNav,offTopicPlacement,beginnerGoals,creatineMuscle};
@@ -586,6 +593,9 @@ for(const spec of checks){
   if(spec.commercial && doc.brokenProductImages)failures.push("broken_product_images_"+doc.brokenProductImages);
   if(spec.commercial && !doc.firstProductLoaded)failures.push("first_product_photo_not_loaded_after_scroll");
   if(spec.commercial && (!doc.firstCTASize || doc.firstCTASize.height<44))failures.push("merchant_cta_tap_target_under_44px");
+  if(["pilates-cardio","creatine-kidney","creatine-muscle","protein-intake","protein-meaning"].includes(spec.name)
+      && (doc.featuredImageCount!==1 || doc.emptyFeaturedAlt!==0))
+    failures.push("featured_editorial_image_has_no_accessible_description");
   if(["beginner","pilates-cardio","creatine-kidney","creatine-vs-protein","creatine-muscle","protein-intake","protein-meaning"].includes(spec.name) && doc.details<3)failures.push("interactive_details_missing");
   if(doc.documentWidth>doc.viewport+12)failures.push("horizontal_overflow_"+(doc.documentWidth-doc.viewport));
   // A dynamic ad-heavy legacy theme can hang full-page screenshots even when
