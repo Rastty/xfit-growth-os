@@ -12,6 +12,8 @@ import json
 import os
 import re
 import sys
+import time
+from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, parse_qsl, urlencode, urlsplit
 from urllib.request import Request, urlopen
 
@@ -25,6 +27,8 @@ HOSTS = frozenset(("xfit.cz", "www.xfit.cz"))
 MERCHANTS = frozenset(("namaximum.cz", "www.namaximum.cz"))
 MAX_PUBLIC_BYTES = 2_000_000
 MAX_CARDS = 12
+READ_ATTEMPTS = 3
+RETRIABLE_HTTP = frozenset((429, 500, 502, 503, 504))
 
 
 class Cards(HTMLParser):
@@ -304,13 +308,34 @@ def quick_pick_evidence(body, slug, affiliate_base, card_signature):
             "errors": sorted(errors), "_private_quick_signature": signature}
 
 
+def fetch_bytes_with_retry(request, max_bytes):
+    """Retry bounded, side-effect-free reads on transient network errors only.
+
+    Preserve real 403/404 and malformed public responses as hard failures.
+    Exception messages may include affiliate data; the CLI only emits types.
+    """
+    for attempt in range(READ_ATTEMPTS):
+        try:
+            with urlopen(request, timeout=25) as response:
+                return response.status, response.geturl(), response.read(max_bytes + 1)
+        except HTTPError as exc:
+            if exc.code not in RETRIABLE_HTTP or attempt == READ_ATTEMPTS - 1:
+                raise
+        except (URLError, TimeoutError, ConnectionResetError):
+            if attempt == READ_ATTEMPTS - 1:
+                raise
+        time.sleep(2**attempt)
+    raise ValueError("unexpected_retry_exhaustion")
+
+
 def read_wp_post(slug):
     url = "https://xfit.cz/wp-json/wp/v2/posts?" + urlencode({
         "slug": slug, "per_page": 2, "_fields": "id,slug,status,link,content",
     })
     req = Request(url, headers={"User-Agent": "XFITPublicAffiliateAudit/1.0"})
-    with urlopen(req, timeout=25) as response:
-        data = response.read(MAX_PUBLIC_BYTES + 1)
+    status, _, data = fetch_bytes_with_retry(req, MAX_PUBLIC_BYTES)
+    if status != 200:
+        raise ValueError("unexpected_wp_response_status")
     if len(data) > MAX_PUBLIC_BYTES:
         raise ValueError("oversized_wp_response")
     posts = json.loads(data)
@@ -325,10 +350,9 @@ def read_public_page(slug):
         "User-Agent": "XFITPublicAffiliateAudit/1.0",
         "Cache-Control": "no-cache", "Pragma": "no-cache",
     })
-    with urlopen(req, timeout=25) as response:
-        if response.status != 200 or not canonical_article(response.geturl(), slug):
-            raise ValueError("wrong_public_page_or_redirect")
-        content = response.read(MAX_PUBLIC_BYTES + 1)
+    status, final_url, content = fetch_bytes_with_retry(req, MAX_PUBLIC_BYTES)
+    if status != 200 or not canonical_article(final_url, slug):
+        raise ValueError("wrong_public_page_or_redirect")
     if len(content) > MAX_PUBLIC_BYTES:
         raise ValueError("oversized_public_response")
     return content.decode("utf-8", errors="replace")
