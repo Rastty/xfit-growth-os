@@ -213,7 +213,7 @@ class TradeoffTests(unittest.TestCase):
                 parsed.feed(body)
                 self.assertEqual(len(parsed.ids),3)
                 self.assertTrue(all(a in parsed.ids for a in parsed.anchors))
-                self.assertEqual(body.count('rel="sponsored nofollow'),3)
+                self.assertEqual(body.count('rel="sponsored nofollow'),5)
                 self.assertIn('id="xfit-vyber-podle-rozpoctu"',body)
 
 
