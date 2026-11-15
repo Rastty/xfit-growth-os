@@ -206,6 +206,10 @@ def main():
     for page in range(1,args.pages+1):
         try:
             batch,count=fetch(page,args.size)
+            # A JSON error object (including {}) is not an empty post list.
+            # Reject the whole page before extending the partial inventory.
+            if not isinstance(batch,list) or any(not isinstance(post,dict) for post in batch):
+                raise ValueError("WP archive page must be a list of post objects")
         except (HTTPError,URLError,TimeoutError,ValueError) as exc:
             failed={"page":page,"error_type":type(exc).__name__}
             break
