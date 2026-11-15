@@ -1,0 +1,47 @@
+name: XFIT Three Featured Image Alt Fixes
+# Single bounded release; never rerun a failed/uncertain POST without a read-only audit.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-featured-image-alt-release.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  featured-image-alt-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check media contract and project unit tests
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -v
+      - name: Read and back up original three attachment records and five article assignments
+        run: python -m scripts.xfit_featured_image_alt_release snapshot
+      - name: Preserve mandatory rollback proof before first remote POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-featured-image-alt-before-${{ github.run_id }}
+          path: reports/backups/xfit-three-featured-image-alts.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Update only missing alt text, read back WP and verify five public pages
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_featured_image_alt_release apply | tee -a "$GITHUB_STEP_SUMMARY"
