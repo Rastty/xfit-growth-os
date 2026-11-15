@@ -94,3 +94,17 @@ tří souborů; žádná existující integrace se na ně zatím neodkazuje.
 **Nasazení adaptéru dosud nepotvrzeno.** Potřebujeme ověřenou cestu nahrání externího JS přes hosting / WP theme enqueue a skutečné napojení CMP + GA4. Nevkládat JavaScript do editoru jako `<script>` ani `onclick`; to obchází publikovací standardy a může být odstraněno WordPressem. Bez ověřené integrace nenazývat `affiliate_outbound_click` měřeným. Před ostrým nasazením prověřit při zamítnutém i uděleném consentu, zda událost skutečně odchází, zda nemá URL/tajné hodnoty a zda je vidět v GA4 DebugView. Testovací kliky nejsou provize.
 
 Testy: `python -m unittest discover -s tests -v` a `node --test tests/test_outbound_analytics.cjs`. V budoucím analytickém statusu vždy odlišovat `instrumentation_code_ready`, `html_metadata_public_verified`, `consent_bridge_verified`, `ga4_event_observed`, `affial_order_or_commission_observed`. První úspěšný CI test prokazuje pouze první položku.
+
+## Stabilní katalog v jednom souhrnu
+
+Souhrn po ověření souhlasu a před čtením událostí ověří dodaný katalog
+a vytvoří jeho neměnnou kopii. Změna původního slovníku nebo setu během
+čtení událostí tak nemůže dodatečně schválit jiné produktové ID ani odebrat
+původně ověřené ID. Neplatný dodaný katalog odmítne i při prázdném vstupu;
+bez souhlasu katalog ani události nečte. Chybějící katalog zůstává přípustný
+pro starty a dokončení, nikoli pro prokliky. Kopie nedokládá aktuálnost
+ani původ katalogu; to musí nadále ověřit volající.
+
+Ověření této úpravy: `python -m unittest tests.test_revenue_events tests.test_revenue_product_rollup_safety tests.test_agent_scope`.
+Stav: připraveno lokálně, bez nasazení a bez měření dopadu (UNKNOWN).
+Rollback: vrátit diff této úpravy ve třech souborech.
