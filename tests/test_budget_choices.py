@@ -22,7 +22,9 @@ class BudgetChoicesTests(unittest.TestCase):
     def test_budget_ceiling_recommends_actual_matching_card_anchor(self):
         result = budget_choices(self.cards, (500, 1000, 1500),
                                 product_kind="creatine")
-        self.assertEqual(result.count("<details>"), 3)
+        self.assertEqual(result.count("<details"), 3)
+        self.assertEqual(result.count("<details open>"), 1)
+        self.assertIn('<details open><summary><strong>Do 500 Kč', result)
         self.assertEqual(result.count("</details>"), 3)
         self.assertIn("Do 500 Kč — 1 nabídka", result)
         self.assertIn("Do 1000 Kč — 2 nabídky", result)
@@ -75,7 +77,8 @@ class BudgetChoicesTests(unittest.TestCase):
         self.assertIn("nejnižší cena celého balení", output)
         self.assertIn("nejnižší cena za 100 g prášku", output)
         self.assertIn("Úspornější jednotková cena", output)
-        self.assertEqual(output.count("<details>"), 2)
+        self.assertEqual(output.count("<details"), 2)
+        self.assertEqual(output.count("<details open>"), 1)
         self.assertEqual(output.count('data-xfit-budget-choice="upfront"'), 2)
         self.assertEqual(output.count('data-xfit-budget-choice="unit"'), 2)
         self.assertEqual(output.count('href="#xfit-offer-'), 4)
@@ -122,6 +125,8 @@ class BudgetChoicesTests(unittest.TestCase):
         self.assertIn("žádná nabídka do 300 Kč není", result)
         self.assertIn("To neznamená, že na trhu žádná neexistuje", result)
         self.assertEqual(result.count('href="#xfit-offer-'), 1)
+        self.assertIn('<details><summary><strong>Do 300 Kč', result)
+        self.assertIn('<details open><summary><strong>Do 500 Kč', result)
 
     def test_whey_explains_powder_is_not_protein_and_no_nutrient_claim(self):
         selected = [
