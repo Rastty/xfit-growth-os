@@ -59,6 +59,13 @@ WordPress REST's rendered content and the independent public page. Per adviser:
 This is an early warning for purchase-path breakage, **not** evidence of
 actual clicks, valid orders or paid commission. No merchant URLs are visited.
 
+The first extended production audit hit a transient `URLError`; an unchanged
+re-run passed for both advisers (6 card CTAs and 2 hero CTAs each, zero
+tracking mismatch). To reduce network-only false alarms, the read-only public
+and WordPress GETs now retry up to three times for transient connection errors,
+HTTP 429 and server 5xx, with bounded backoff. Permanent 403/404, wrong
+permalink, invalid HTML and mismatched affiliate data still fail immediately.
+
 ## Hypothesis and measurement
 
 Visitors with a clear price priority should be able to open a source-verified
