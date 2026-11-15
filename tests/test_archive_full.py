@@ -71,6 +71,45 @@ class ArchiveAuditTests(unittest.TestCase):
         self.assertEqual(a["repeated_pagination_post_count"],1)
         self.assertEqual(a["duplicate_title_groups"],0)
         self.assertEqual(a["exact_body_duplicate_groups"],0)
+        self.assertEqual(a["conflicting_pagination_post_count"],0)
+
+    def test_conflicting_repeated_post_makes_audit_incomplete(self):
+        first=post(1,"protein","Protein",'<a href="/kreatin/">Rada</a>')
+        variants=[
+            post(1,"protein","Protein",'<a href="/vyziva/">Rada</a>'),
+            dict(first,link="https://example.invalid/protein/"),
+            dict(first,modified="2026-11-10T00:00:00"),
+            dict(first),  # An unchanged repeated record remains supported.
+        ]
+        for repeated in variants:
+            conflict=repeated!=first
+            with self.subTest(repeated=repeated), tempfile.TemporaryDirectory() as directory:
+                output=Path(directory)/"audit.json"
+                with patch("sys.argv",["audit","--pages","2","--size","1",
+                                       "--output",str(output)]), \
+                     patch("scripts.xfit_archive_full.fetch",
+                           side_effect=[([first],2),([repeated],2)]), \
+                     patch("builtins.print") as printed:
+                    self.assertEqual(main(),2 if conflict else 0)
+                report=json.loads(output.read_text(encoding="utf-8"))
+                self.assertEqual(report["complete"],not conflict)
+                self.assertEqual(report["scanned"],1)
+                self.assertEqual(report["repeated_pagination_post_count"],1)
+                self.assertEqual(report["conflicting_pagination_post_count"],int(conflict))
+                self.assertEqual(report["conflicting_pagination_post_ids_sample"],
+                                 [1] if conflict else [])
+                self.assertEqual(report["exact_body_duplicate_groups"],0)
+                self.assertFalse(report["mutated_wordpress"])
+                self.assertEqual(json.loads(printed.call_args.args[0])[
+                    "conflicting_pagination_post_count"],int(conflict))
+
+    def test_conflicting_ids_count_posts_not_repeated_versions(self):
+        first=post(1,"protein","Protein","Původní text")
+        changed=post(1,"protein","Protein","Upravený text")
+        report=inventory([first,changed,changed])
+        self.assertEqual(report["repeated_pagination_post_count"],2)
+        self.assertEqual(report["conflicting_pagination_post_count"],1)
+        self.assertEqual(report["conflicting_pagination_post_ids_sample"],[1])
     def test_two_distinct_posts_with_same_body_are_real_duplicates(self):
         a=inventory([
             post(1,"post-jedna","Svalové cviky","Stejný obsah těla"),
