@@ -11,6 +11,41 @@ def post(i,slug,title,body):
        "modified":"2026-01-01T00:00:00","title":{"rendered":title},
        "content":{"rendered":"<p>"+body+"</p>"}}
 class ArchiveAuditTests(unittest.TestCase):
+    def test_malformed_page_preserves_partial_report_as_incomplete(self):
+        first=post(1,"kreatin","Kreatin","Praktické informace.")
+        for batch in ({}, {"code":"rest_error"}, None, "", [first,None], [True]):
+            with self.subTest(batch=batch), tempfile.TemporaryDirectory() as directory:
+                output=Path(directory)/"audit.json"
+                with patch("sys.argv",["audit","--pages","2","--size","1",
+                                       "--output",str(output)]), \
+                     patch("scripts.xfit_archive_full.fetch",
+                           side_effect=[([first],2),(batch,2)]), \
+                     patch("builtins.print"):
+                    self.assertEqual(main(),2)
+                report=json.loads(output.read_text(encoding="utf-8"))
+                self.assertFalse(report["complete"])
+                self.assertEqual(report["scanned"],1)
+                self.assertEqual(report["raw_page_records"],1)
+                self.assertEqual(report["pages_fetched"],1)
+                self.assertEqual(report["interrupted_at"],
+                                 {"page":2,"error_type":"ValueError"})
+                self.assertFalse(report["mutated_wordpress"])
+
+    def test_empty_post_list_remains_a_valid_end_of_archive(self):
+        first=post(1,"protein","Protein","Praktické informace.")
+        with tempfile.TemporaryDirectory() as directory:
+            output=Path(directory)/"audit.json"
+            with patch("sys.argv",["audit","--pages","2","--size","1",
+                                   "--output",str(output)]), \
+                 patch("scripts.xfit_archive_full.fetch",
+                       side_effect=[([first],0),([],0)]), \
+                 patch("builtins.print"):
+                self.assertEqual(main(),0)
+            report=json.loads(output.read_text(encoding="utf-8"))
+            self.assertTrue(report["complete"])
+            self.assertEqual(report["pages_fetched"],2)
+            self.assertIsNone(report["interrupted_at"])
+
     def test_completeness_and_exit_status_agree(self):
         first=post(1,"kreatin","Kreatin","Praktické informace.")
         cases=[
