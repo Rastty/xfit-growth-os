@@ -58,6 +58,37 @@ class WheyTests(unittest.TestCase):
     def test_type_labels(self):
         self.assertIn("izolát",kind_label("Whey WPI").lower())
         self.assertIn("koncentrát",kind_label("Whey WPC").lower())
+    def test_milk_allergy_warning_is_visible_before_any_purchase_link(self):
+        class WarningParser(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.details_depth = 0
+                self.purchase_seen = False
+                self.warnings = []
+
+            def handle_starttag(self, tag, attrs):
+                attrs = dict(attrs)
+                if tag == "details":
+                    self.details_depth += 1
+                if tag == "a" and "sponsored" in attrs.get("rel", "").split():
+                    self.purchase_seen = True
+                if attrs.get("id") == "xfit-milk-allergy":
+                    self.warnings.append((tag, self.details_depth, self.purchase_seen))
+
+            def handle_endtag(self, tag):
+                if tag == "details":
+                    self.details_depth -= 1
+
+        body = build_document(self.catalog, BASE, SAMPLE)["content"]
+        parser = WarningParser()
+        parser.feed(body)
+        self.assertEqual(parser.warnings, [("p", 0, False)])
+        self.assertTrue(parser.purchase_seen)
+        warning = body.split('id="xfit-milk-allergy">', 1)[1].split('</p>', 1)[0]
+        self.assertIn("Při alergii na mléčnou bílkovinu", warning)
+        self.assertIn("izolát není zárukou absence mléčných alergenů", warning)
+        self.assertEqual(body.count("Syrovátka pochází z mléka."), 1)
+
     def test_purchase_links_identify_product_and_new_tab(self):
         # Synthetic title checks attribute escaping as well as link context.
         self.catalog["products"][0]["title"] = 'Whey WPC "Natural" & kakao 1kg'
