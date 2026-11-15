@@ -113,6 +113,8 @@ for(const spec of checks){
         );
         budgetDetails.push({
           hasSummary:!!(summary&&summary.textContent.trim().startsWith("Do ")),
+          defaultOpen:node.open,
+          hasOffers:!noOffers,
           badTarget:anchors.some(link=>{
             const id=(link.getAttribute("href")||"").slice(1);
             return !/^xfit-offer-[1-9][0-9]*$/.test(id) ||
@@ -127,6 +129,12 @@ for(const spec of checks){
       heading:!!budgetHeading,
       choices:budgetDetails.length,
       valid:budgetDetails.every(d=>d.hasSummary&&!d.badTarget&&d.goalsValid&&!d.unexpectedOutbound),
+      defaultOpenCorrect:(()=>{
+        const firstAvailable=budgetDetails.findIndex(d=>d.hasOffers);
+        const openIndexes=budgetDetails.flatMap((d,i)=>d.defaultOpen?[i]:[]);
+        return firstAvailable===-1 ? openIndexes.length===0 :
+          openIndexes.length===1 && openIndexes[0]===firstAvailable;
+      })(),
     };
     // Verify two useful buyer goals (or an explicitly shared winner) against
     // the *existing* source-verified product cards. No merchant click is made.
@@ -488,14 +496,19 @@ for(const spec of checks){
   if(spec.commercial && !doc.budget.heading)failures.push("budget_heading_missing");
   if(spec.commercial && doc.budget.choices!==3)failures.push("budget_choices_not_three");
   if(spec.commercial && !doc.budget.valid)failures.push("budget_choice_link_or_summary_invalid");
+  if(spec.commercial && !doc.budget.defaultOpenCorrect)
+    failures.push("budget_first_affordable_choice_not_expanded");
   if(spec.commercial && doc.budget.choices===3){
-    const firstSummary=page.locator('h2#xfit-vyber-podle-rozpoctu ~ details summary').first();
-    if(await firstSummary.count()){
-      await firstSummary.focus();
+    const expandedSummary=page.locator('h2#xfit-vyber-podle-rozpoctu ~ details[open] > summary').first();
+    if(await expandedSummary.count()){
+      await expandedSummary.focus();
       await page.keyboard.press("Enter");
-      if(!await firstSummary.evaluate(el=>!!el.parentElement?.open)){
+      if(await expandedSummary.evaluate(el=>!!el.parentElement?.open)){
         failures.push("budget_first_choice_not_keyboard_accessible");
       }
+      await page.keyboard.press("Enter");
+      if(!await expandedSummary.evaluate(el=>!!el.parentElement?.open))
+        failures.push("budget_first_choice_not_keyboard_restored");
     }else failures.push("budget_first_choice_not_keyboard_accessible");
   }
   if(spec.commercial && doc.modelPortions.count!==doc.merchantLinks)
