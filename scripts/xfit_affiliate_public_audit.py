@@ -169,6 +169,19 @@ def safe_affiliate_url(value, aid, bid):
     ))
 
 
+def origin_tag_matches(value, slug):
+    """Exact, nonpersonal source tag, never a claim of network credit.
+
+    Creatine is the only approved experiment. The whey control must remain
+    untagged; duplicate/partial values are never accepted as valid proof.
+    """
+    query = parse_qs(urlsplit(value).query, keep_blank_values=True)
+    if slug == "xfit-os-kreatin-poradce":
+        return (query.get("data1") == ["xfit"]
+                and query.get("data2") == ["creatine"])
+    return "data1" not in query and "data2" not in query
+
+
 def comparable_href(value):
     """Ignore only harmless URL encoding/query order, not product/campaign."""
     p = urlsplit(value)
@@ -212,6 +225,7 @@ def card_evidence(body, slug, affiliate_base):
         "UNVERIFIABLE_CATALOG_ID": 0,
     }
     signature = []
+    origin_tagged = 0
     for card in parser.cards:
         if len(card["anchors"]) != 1:
             errors.add("card_needs_exactly_one_link")
@@ -231,6 +245,10 @@ def card_evidence(body, slug, affiliate_base):
             errors.add("missing_sponsored_rel")
         if not safe_affiliate_url(item["href"], aid, bid):
             errors.add("invalid_merchant_campaign_destination")
+        if origin_tag_matches(item["href"], slug):
+            origin_tagged += 1
+        else:
+            errors.add("incorrect_affiliate_origin_tag")
         # A valid campaign link does not prove that the *catalog ID* we would
         # put into GA4 belongs to its actual merchant product variant.
         # Observe the match without blocking a known working merchant link.
@@ -242,6 +260,7 @@ def card_evidence(body, slug, affiliate_base):
     return {
         "count": len(parser.cards),
         "metadata_count": len(observed_ids),
+        "origin_tag_verified_count": origin_tagged,
         "variant_linkage_counts": {
             "matched": variant_counts["MATCH"],
             "mismatched": variant_counts["MISMATCH"],
@@ -281,6 +300,7 @@ def quick_pick_evidence(body, slug, affiliate_base, card_signature):
         errors.add("missing_quick_pick_disclosure")
     seen = set()
     signature = []
+    origin_tagged = 0
     for link in hero.links:
         numeric = link["product_id"]
         if not link["inside"]:
@@ -298,6 +318,10 @@ def quick_pick_evidence(body, slug, affiliate_base, card_signature):
             errors.add("missing_quick_pick_sponsored_rel")
         if not safe_affiliate_url(link["href"], aid, bid):
             errors.add("invalid_quick_pick_merchant_campaign")
+        if origin_tag_matches(link["href"], slug):
+            origin_tagged += 1
+        else:
+            errors.add("incorrect_quick_pick_origin_tag")
         card = card_by_id.get(numeric)
         if (card is None or card != (link["engine"], link["partner"],
                                      comparable_href(link["href"]))):
@@ -305,6 +329,7 @@ def quick_pick_evidence(body, slug, affiliate_base, card_signature):
         signature.append((numeric, link["engine"], link["partner"],
                           comparable_href(link["href"])))
     return {"count": len(hero.links), "metadata_count": len(seen),
+            "origin_tag_verified_count": origin_tagged,
             "errors": sorted(errors), "_private_quick_signature": signature}
 
 
@@ -393,11 +418,15 @@ def audit_page(slug, base, *, wp_reader=read_wp_post, public_reader=read_public_
         "public_card_count": b["count"],
         "source_cta_metadata_count": a["metadata_count"],
         "public_cta_metadata_count": b["metadata_count"],
+        "source_origin_verified_cards": a["origin_tag_verified_count"],
+        "public_origin_verified_cards": b["origin_tag_verified_count"],
         "offer_destinations_match": source_sig == public_sig,
         "source_quick_pick_count": q_source["count"],
         "public_quick_pick_count": q_public["count"],
         "source_quick_pick_metadata_count": q_source["metadata_count"],
         "public_quick_pick_metadata_count": q_public["metadata_count"],
+        "source_origin_verified_quick_picks": q_source["origin_tag_verified_count"],
+        "public_origin_verified_quick_picks": q_public["origin_tag_verified_count"],
         "quick_pick_destinations_match": source_quick_sig == public_quick_sig,
         # This is limited URL-to-catalog identity evidence, NOT proof that
         # Affial/GA4 credited a click or that the product remains in stock.
