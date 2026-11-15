@@ -85,7 +85,7 @@ class ModelPortionTests(unittest.TestCase):
                 count = html.count('<article class="xfit-product-card"')
                 self.assertGreaterEqual(count, 2)
                 self.assertEqual(html.count('class="xfit-model-portion"'), count)
-                self.assertEqual(html.count("Zobrazit konkrétní balení na NaMaximum.cz (nová karta)</a>"), count)
+                self.assertEqual(html.count("Ověřit cenu a dostupnost</a>"), count)
                 self.assertIn("nejde o doporučen", html.casefold())
                 self.assertNotIn("počtu gramů skutečných bílkovin", html)
 
