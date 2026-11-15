@@ -303,6 +303,32 @@ for(const spec of checks){
       noMerchantLinks:quickLinks.every(a=>
         (a.getAttribute("href")||"").startsWith("#")),
     };
+    const heroSections=[...document.querySelectorAll('section#xfit-rychly-vyber')];
+    const hero=heroSections[0];
+    const heroChoices=hero ? [...hero.querySelectorAll('[data-xfit-quick-pick]')] : [];
+    const productTargets=new Set([...document.querySelectorAll('.xfit-product-card[id]')]
+      .map(card=>'#'+card.id));
+    const heroLinks=hero ? [...hero.querySelectorAll('a')] : [];
+    const heroQuickPick={
+      count:heroSections.length,
+      beforeQuestions:!!hero && !!document.querySelector('#xfit-need') &&
+        !!(hero.compareDocumentPosition(document.querySelector('#xfit-need')) & Node.DOCUMENT_POSITION_FOLLOWING),
+      beforeOffers:!!hero && !!document.querySelector('#xfit-offers') &&
+        !!(hero.compareDocumentPosition(document.querySelector('#xfit-offers')) & Node.DOCUMENT_POSITION_FOLLOWING),
+      choicesValid:heroChoices.length>=2 && heroChoices.length<=3 &&
+        heroChoices.some(row=>row.getAttribute('data-xfit-quick-pick')==='no-buy') &&
+        (heroChoices.some(row=>row.getAttribute('data-xfit-quick-pick')==='both') ||
+          ['upfront','unit'].every(kind=>heroChoices.some(row=>
+            row.getAttribute('data-xfit-quick-pick')===kind))),
+      linksValid:heroLinks.length>=2 && heroLinks.length<=3 &&
+        heroLinks.every(a=>{const href=a.getAttribute('href')||'';
+          return (href==='#xfit-need' || productTargets.has(href)) &&
+            !a.hasAttribute('target') && !a.hasAttribute('onclick');}) &&
+        heroLinks.filter(a=>(a.getAttribute('href')||'').startsWith('#xfit-offer-'))
+          .every(a=>a.getBoundingClientRect().height>=44),
+      caveats:!!hero && hero.textContent.includes('nikoli celý trh') &&
+        hero.textContent.includes('ověřte před nákupem'),
+    };
     const checkoutParagraphs=[...document.querySelectorAll("p")].filter(p=>
       p.textContent.includes("Když objednáváte jen jedno balení"));
     const proteinCheckout={
@@ -529,7 +555,7 @@ for(const spec of checks){
         emptyFeaturedAlt,featuredImageCount:featuredImages.length,
         productImages:productImages.length,brokenProductImages:brokenProductImages.length,
         productImageStatus,themeImagesMissingAlt,firstProductLoaded,firstCTASize,
-        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,sameMassDecision,noPurchase,proteinPackUse,proteinFoodFirst,proteinCheckout,productTitleDisplay,productCardWrap,productAvailability,productCTA,quickNav,offTopicPlacement,beginnerGoals,beginnerProteinCost,creatineMuscle};
+        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,sameMassDecision,noPurchase,proteinPackUse,proteinFoodFirst,proteinCheckout,productTitleDisplay,productCardWrap,productAvailability,productCTA,quickNav,heroQuickPick,offTopicPlacement,beginnerGoals,beginnerProteinCost,creatineMuscle};
   });
   if(!doc.h1.includes(spec.expected))failures.push("h1_missing_expected");
   if(doc.h2<spec.minH2)failures.push("insufficient_h2");
@@ -587,6 +613,11 @@ for(const spec of checks){
       !doc.quickNav.noBuyOpen || !doc.quickNav.offerHeadingExists ||
       !doc.quickNav.resolvedOnce || !doc.quickNav.noMerchantLinks))
     failures.push("live_mobile_adviser_shortcuts_missing_or_invalid");
+  if(spec.commercial && (doc.heroQuickPick.count!==1 ||
+      !doc.heroQuickPick.beforeQuestions || !doc.heroQuickPick.beforeOffers ||
+      !doc.heroQuickPick.choicesValid || !doc.heroQuickPick.linksValid ||
+      !doc.heroQuickPick.caveats))
+    failures.push("live_mobile_first_screen_source_bound_quick_pick_missing_or_invalid");
   if(spec.commercial && (!doc.noPurchase.heading ||
       doc.noPurchase.questions!==3 || !doc.noPurchase.firstOpen ||
       !doc.noPurchase.firstSummary || !doc.noPurchase.remainingClosed ||
