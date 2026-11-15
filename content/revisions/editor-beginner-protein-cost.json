@@ -1,0 +1,13 @@
+{
+  "status": "editorial_proposal_not_deployed",
+  "issue": 4,
+  "wp_post_id": 25458,
+  "slug": "xfit-os-doplnky-pro-zacatecniky",
+  "source_file": "content/ready/xfit-os-doplnky-pro-zacatecniky.json",
+  "source_file_sha256": "90a85338870c5c01028900f3e0946f7fad5db001b76932541fda770cc77e28e5",
+  "source_content_sha256": "e87b9193f174368adf1bacdd8c99ed61fbffb935586f38cb318ab4e48a98a294",
+  "operation": "replace_exact_once",
+  "original": "<details><summary><strong>Ukázkový výpočet ceny proteinu (modelová čísla, žádná nabídka)</strong></summary>\n<p>Pokud by hypotetické balení o hmotnosti 900 g obsahovalo 75 % bílkovin a stálo 900 Kč, bylo by v něm 675 g bílkovin. Cena za 100 g skutečných bílkovin by byla přibližně 133 Kč. Výpočet je jen názorný a nesrovnává konkrétní výrobky z trhu.</p></details>",
+  "replacement": "<details><summary><strong>Jak porovnat cenu proteinu podle skutečné etikety</strong></summary>\n<p>Nejdřív zvažte, zda bílkoviny nepokryjete běžným jídlem; pak protein nemusíte kupovat. Pokud ho potřebujete, u každé nabídky ověřte hmotnost balení a bílkoviny na 100 g samotného prášku pro konkrétní příchuť, nikoli hodnoty nápoje s mlékem.</p>\n<p><strong>Bílkoviny v celém balení v g = hmotnost prášku v g × bílkoviny na 100 g ÷ 100.</strong> Čistě početní příklad: 900 g prášku se 75 g bílkovin na 100 g obsahuje 675 g bílkovin. Nejde o ověřený výrobek ani nabídku.</p>\n<p><strong>Cena za 100 g bílkovin = cena balení × 100 ÷ bílkoviny v celém balení v g.</strong> Dosaďte skutečnou cenu konkrétní varianty. Při porovnání samostatných objednávek jednoho balení použijte celkovou částku z každého košíku po slevách včetně dopravy a povinných poplatků. Pokud chybí etiketa nebo hmotnost, výsledek neodhadujte; vyžádejte si údaje od prodejce. Výpočet nehodnotí alergeny, chuť ani vhodnost výrobku a neurčuje dávkování.</p></details>",
+  "evidence": "Arithmetic and existing local label-comparison guidance only. WP ID 25458 from docs/AUTONOMOUS_OPERATIONS.md; ready source has no wp_post_id. No new clinical or product claims."
+}
