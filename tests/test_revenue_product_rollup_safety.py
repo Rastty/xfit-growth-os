@@ -1,6 +1,9 @@
 """Regression checks for aggregate XFIT affiliate interest, not attribution."""
 import json
 import unittest
+from unittest.mock import patch
+
+from scripts import xfit_revenue_events
 
 from scripts.xfit_revenue_events import summarize_funnel
 
@@ -16,6 +19,22 @@ def click(product_id):
 
 
 class ProductRollupSafetyTests(unittest.TestCase):
+    def test_catalog_is_validated_once_for_multiple_clicks_and_advisors(self):
+        whey = "xfit-os-syrovatkovy-protein-porovnani"
+        whey_click = {"name": "affiliate_outbound_click", "params": {
+            "page": whey, "selection_engine": "whey",
+            "partner": "namaximum", "product_id": 393}}
+        with patch.object(xfit_revenue_events, "_snapshot_catalogs",
+                          wraps=xfit_revenue_events._snapshot_catalogs) as snapshot:
+            result = summarize_funnel(
+                iter([click(392), whey_click, click(392)]),
+                analytics_consent=True,
+                verified_product_ids_by_page={PAGE: {392}, whey: {393}})
+        self.assertEqual(snapshot.call_count, 1)
+        self.assertEqual(result["product_click_counts"], {
+            PAGE: {392: 2}, whey: {393: 1}})
+        self.assertEqual(result["commission"], "UNKNOWN")
+
     def test_invalid_later_click_aborts_entire_aggregate(self):
         # A valid first row must not justify reporting a partly processed
         # dataset after the second row fails the catalog membership check.
