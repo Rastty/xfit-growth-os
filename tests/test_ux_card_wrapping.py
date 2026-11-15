@@ -49,7 +49,7 @@ class CardWrappingTests(unittest.TestCase):
                 self.assertEqual(body.count('class="xfit-product-card"'), 2)
                 self.assertIn('id="xfit-offer-1"', body)
                 self.assertIn('id="xfit-offer-2"', body)
-                self.assertEqual(body.count('rel="sponsored nofollow'), 2)
+                self.assertEqual(body.count('rel="sponsored nofollow'), 4)
 
 
 if __name__ == "__main__":
