@@ -14,8 +14,12 @@ on:
       - 'scripts/xfit_price_tradeoff.py'
       - 'scripts/xfit_feed_ingest.py'
       - 'scripts/xfit_select.py'
+      - 'scripts/xfit_availability.py'
+      - 'scripts/xfit_adviser_backup.py'
       - 'tests/test_feed_ingest.py'
       - 'tests/test_selection_engine.py'
+      - 'tests/test_availability.py'
+      - 'tests/test_adviser_backup.py'
       - 'tests/test_price_tradeoff.py'
       - 'scripts/xfit_model_portions.py'
       - 'scripts/xfit_catalog_retrieval.py'
@@ -63,5 +67,14 @@ jobs:
         run: python scripts/xfit_affil_deeplink.py
       - name: Build guide and check completeness without remote writes
         run: python -m scripts.xfit_creatine_guide
+      - name: Save existing WordPress source before any write
+        run: python -m scripts.xfit_adviser_backup creatine
+      - name: Preserve rollback source for this execution
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-creatine-original-before-refresh
+          path: reports/backups/xfit-creatine-before-refresh.json
+          if-no-files-found: error
+          retention-days: 7
       - name: Idempotently publish or update canonical creatine guide, verify live
         run: python -m scripts.xfit_creatine_guide --deploy
