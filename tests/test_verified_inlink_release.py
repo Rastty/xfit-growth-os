@@ -25,8 +25,12 @@ def post(*, body=None, post_id=CFG.post_id, slug=CFG.slug,
 
 
 class VerifiedInlinkTests(unittest.TestCase):
-    def test_allowlist_contains_only_exact_safety_post(self):
-        self.assertEqual(set(release.ALLOWLIST),{"creatine_safety_2139","creatine_price_10835"})
+    def test_allowlist_contains_only_pinned_reviewed_handoffs(self):
+        self.assertEqual(set(release.ALLOWLIST),{
+            "creatine_safety_2139", "creatine_price_10835",
+            "creatine_buyer_10854", "creatine_buyer_10738",
+            "whey_training_7363",
+        })
         self.assertEqual(CFG.post_id,2139)
         self.assertEqual(CFG.target,
                          "https://xfit.cz/kreatin-a-jeho-vliv-na-ledviny-a-jatra/")
@@ -199,6 +203,59 @@ class PriceHandoffTests(unittest.TestCase):
             writer.assert_called_once()
             self.assertEqual(writer.call_args.kwargs["payload"],{"content":updated})
             public.assert_called_once_with(PRICE)
+
+
+class BuyerIntentHandoffTests(unittest.TestCase):
+    """Exact IDs/titles from the last completed read-only intent inventory."""
+
+    INTENT = (
+        ("creatine_buyer_10854", 10854, "Návod jak vybrat nejlevnější kreatin"),
+        ("creatine_buyer_10738", 10738, "Jak nakoupit nejlevnější kreatin"),
+        ("whey_training_7363", 7363, "Proteiny na svaly a jejich účinnost"),
+    )
+
+    def _post(self, cfg, title):
+        return {
+            "id":cfg.post_id,"slug":cfg.slug,"status":"publish",
+            "link":cfg.url,"title":{"raw":title},
+            "content":{"raw":"<h2>Výběr doplňků</h2>" +
+                       "<p>Původní text článku musí zůstat nezměněn.</p>" * 60},
+            "modified_gmt":"2026-11-15T11:00:00",
+        }
+
+    def test_three_separate_source_bound_routes(self):
+        for key, post_id, title in self.INTENT:
+            with self.subTest(key=key):
+                cfg=release.ALLOWLIST[key]
+                self.assertEqual(cfg.post_id,post_id)
+                self.assertEqual(cfg.paragraph.count(cfg.target),1)
+                self.assertEqual(cfg.paragraph.count(cfg.marker),1)
+                self.assertNotIn("namaximum",cfg.paragraph.casefold())
+                self.assertNotIn("a_aid",cfg.paragraph)
+                self.assertTrue(release.public_verified(cfg,reader=lambda _:cfg.paragraph))
+                old=self._post(cfg,title)
+                state=release.prepare(cfg,old)
+                self.assertEqual(state["mode"],"update")
+                self.assertEqual(state["after"],state["before"]+"\n"+cfg.paragraph)
+                self.assertEqual(release.real_links(state["after"]),{cfg.target})
+                self.assertEqual(release.prepare(cfg,{
+                    **old,"content":{"raw":state["after"]}})["mode"],"already_linked")
+                wrong={**old,"id":post_id+1}
+                with self.assertRaises(PublishError):
+                    release.prepare(cfg,wrong)
+                wrong={**old,"title":{"raw":"Unrelated article"}}
+                with self.assertRaises(PublishError):
+                    release.prepare(cfg,wrong)
+
+    def test_creatine_and_whey_destinations_never_mix(self):
+        for key,_,_ in self.INTENT:
+            cfg=release.ALLOWLIST[key]
+            if key.startswith("creatine"):
+                self.assertEqual(cfg.target,
+                                 "https://xfit.cz/xfit-os-kreatin-poradce/")
+            else:
+                self.assertEqual(cfg.target,
+                                 "https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/")
 
 
 if __name__=="__main__":

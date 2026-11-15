@@ -80,6 +80,71 @@ _PRICE_PARAGRAPH = (
     'tento odkaz není doporučení k nákupu ani příslib '
     'nejnižší ceny na celém trhu.</p>'
 )
+
+_PRICE_BUYER_10854 = Handoff(
+    key="creatine_buyer_10854",
+    post_id=10854,
+    slug="navod-jak-vybrat-nejlevnejsi-a-zaroven-ucinny-kreatin-pro-fitness",
+    title_term="kreatin",
+    target=_PRICE_URL,
+    marker="xfit-creatine-buyer-10854-20261115",
+    sentence="Co porovnat před nákupem kreatinu",
+    paragraph=(
+        '<p data-xfit-handoff="xfit-creatine-buyer-10854-20261115">'
+        '<strong>Co porovnat před nákupem kreatinu?</strong> '
+        'Vedle marketingových slibů je užitečné ověřit složení na etiketě, '
+        'velikost balení, cenu za 100 g prášku a částku včetně dopravy. '
+        '<a href="' + _PRICE_URL + '">Poradce pro výběr kreatinu monohydrátu</a> '
+        'porovnává konkrétní katalogové nabídky podle ceny a gramáže. '
+        'Nejde o srovnání všech obchodů ani o záruku účinku výrobku; '
+        'ceny a dostupnost ověřte u prodejce. Pokud doplněk nepotřebujete, '
+        'není důvod ho kupovat – tento odkaz není doporučení k nákupu.</p>'
+    ),
+)
+
+_PRICE_BUYER_10738 = Handoff(
+    key="creatine_buyer_10738",
+    post_id=10738,
+    slug="4-jak-nakoupit-nejlevnejsi-kreatin-pro-optimalni-vykon-ve-fitness",
+    title_term="kreatin",
+    target=_PRICE_URL,
+    marker="xfit-creatine-buyer-10738-20261115",
+    sentence="Nejlevnější balení nemusí být nejvýhodnější na gramáž",
+    paragraph=(
+        '<p data-xfit-handoff="xfit-creatine-buyer-10738-20261115">'
+        '<strong>Nejlevnější balení nemusí být nejvýhodnější na gramáž.</strong> '
+        'Malé balení může znamenat nižší útratu dnes, ale vyšší cenu '
+        'za 100 g prášku. V '
+        '<a href="' + _PRICE_URL + '">srovnání cen kreatinu</a> '
+        'proto najdete obě možnosti vedle sebe na konkrétních nabídkách '
+        'kreatinu monohydrátu. Připočítejte dopravu a před nákupem '
+        'si zkontrolujte složení i dostupnost přímo v obchodě. '
+        'Výběr není zárukou nejnižší ceny na trhu a '
+        'tento odkaz není doporučení doplněk koupit.</p>'
+    ),
+)
+
+_WHEY_TRAINING_7363 = Handoff(
+    key="whey_training_7363",
+    post_id=7363,
+    slug="proteiny-na-svaly-a-jejich-ucinnost-pri-cviceni",
+    title_term="proteiny",
+    target="https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/",
+    marker="xfit-whey-training-7363-20261115",
+    sentence="Když chcete vybrat syrovátkový protein podle etikety",
+    paragraph=(
+        '<p data-xfit-handoff="xfit-whey-training-7363-20261115">'
+        '<strong>Když chcete vybrat syrovátkový protein podle etikety:</strong> '
+        'nejprve zvažte, kolik bílkovin získáte běžnou stravou. '
+        'Pokud se rozhodnete pro doplněk, sledujte obsah bílkovin na 100 g, '
+        'hmotnost balení, cenu za 100 g prášku a celkovou útratu. '
+        '<a href="https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/">'
+        'Praktické srovnání syrovátkových proteinů</a> ukazuje '
+        'konkrétní katalogové nabídky; gramáž prášku nezaměňuje '
+        'za gramáž čistých bílkovin. Cenu a složení ověřte na etiketě '
+        'a v obchodě. Ani tento odkaz není doporučení doplněk koupit.</p>'
+    ),
+)
 ALLOWLIST = {
     "creatine_price_10835": Handoff(
         key="creatine_price_10835",
@@ -100,7 +165,10 @@ ALLOWLIST = {
         marker=_SAFETY_MARKER,
         sentence=_SAFETY_SENTENCE,
         paragraph=_SAFETY_PARAGRAPH,
-    )
+    ),
+    _PRICE_BUYER_10854.key: _PRICE_BUYER_10854,
+    _PRICE_BUYER_10738.key: _PRICE_BUYER_10738,
+    _WHEY_TRAINING_7363.key: _WHEY_TRAINING_7363,
 }
 MAX_BYTES = 400_000
 
