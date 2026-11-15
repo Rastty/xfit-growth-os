@@ -22,10 +22,27 @@ def card(item_id, variant):
     )
 
 
+def quick_pick():
+    return (
+        '<section id="xfit-rychly-vyber">'
+        '<p>Odkazy jsou affiliate: XFIT může získat provizi.</p>'
+        '<p data-xfit-quick-pick="no-buy">Nepotřebujete nic? '
+        '<a href="#xfit-need">Nekoupit nic</a></p>'
+        '<div data-xfit-quick-pick="upfront">'
+        '<a data-xfit-cta="quick-pick" data-xfit-engine="creatine"'
+        ' data-xfit-partner="namaximum" data-xfit-product-id="392"'
+        ' rel="sponsored nofollow"'
+        ' href="https://www.namaximum.cz/kreatin/produkt' + GOOD_QUERY + '">'
+        'Ověřit cenu a dostupnost</a>'
+        '<a href="#xfit-offer-1">Detail balení</a>'
+        '</div></section>'
+    )
+
+
 def body():
     return (
         '<html><h1>Výběr kreatinu</h1><p>Affiliate: Xfit může dostat provizi.</p>'
-        + card("392", "392") + card("393", "393") + '</html>'
+        + quick_pick() + card("392", "392") + card("393", "393") + '</html>'
     )
 
 
@@ -45,6 +62,9 @@ class AffiliateParityTests(unittest.TestCase):
         self.assertEqual(result["errors"], [])
         self.assertEqual(result["source_card_count"], 2)
         self.assertTrue(result["offer_destinations_match"])
+        self.assertEqual(result["source_quick_pick_count"], 1)
+        self.assertEqual(result["public_quick_pick_count"], 1)
+        self.assertTrue(result["quick_pick_destinations_match"])
         for secret in ("SENSITIVE_AID", "SENSITIVE_BID", "392", "393"):
             self.assertNotIn(secret, str(result))
 
@@ -76,8 +96,8 @@ class AffiliateParityTests(unittest.TestCase):
 
     def test_missing_or_ambiguous_variant_keeps_evidence_unknown(self):
         for altered in (
-            body().replace("?variant=392&", "?", 1),
-            body().replace("?variant=392&", "?variant=392&variant=393&", 1),
+            body().replace("?variant=392&", "?"),
+            body().replace("?variant=392&", "?variant=392&variant=393&"),
         ):
             with self.subTest(altered=altered.count("variant=")):
                 result = probe.audit_page(
@@ -106,9 +126,80 @@ class AffiliateParityTests(unittest.TestCase):
         result = probe.audit_page(
             SLUG, BASE, wp_reader=lambda slug: wp(),
             public_reader=lambda slug: altered)
-        self.assertIn("wp_public_offer_or_tracking_mismatch", result["errors"])
-        self.assertIn("public_invalid_merchant_campaign_destination", result["errors"])
-        self.assertFalse(result["offer_destinations_match"])
+        self.assertIn("wp_public_quick_pick_or_tracking_mismatch", result["errors"])
+        self.assertIn("public_invalid_quick_pick_merchant_campaign", result["errors"])
+        self.assertFalse(result["quick_pick_destinations_match"])
+        self.assertTrue(result["offer_destinations_match"])
+
+    def test_bad_hero_is_not_hidden_by_good_lower_product_cards(self):
+        cases = {
+            "missing_hero": (body().replace(quick_pick(), ""),
+                             "public_missing_or_repeated_quick_pick_section"),
+            "no_buy_removed": (body().replace(
+                '<a href="#xfit-need">Nekoupit nic</a>', ""),
+                "public_missing_quick_pick_no_buy_path"),
+            "affiliate_removed": (body().replace(
+                'Odkazy jsou affiliate: XFIT může získat provizi.', "Odkazy jsou výhodné."),
+                "public_missing_quick_pick_disclosure"),
+            "sponsored_removed": (body().replace(
+                'rel="sponsored nofollow"', 'rel="nofollow"', 1),
+                "public_missing_quick_pick_sponsored_rel"),
+            "hero_wrong_product": (body().replace(
+                'data-xfit-cta="quick-pick" data-xfit-engine="creatine"',
+                'data-xfit-cta="quick-pick" data-xfit-engine="whey"'),
+                "public_invalid_quick_pick_metadata"),
+            "hero_wrong_variant": (body().replace(
+                GOOD_QUERY, GOOD_QUERY.replace("392", "393"), 1),
+                "public_quick_pick_not_exact_card_offer"),
+            "hero_outside_section": (body().replace(
+                '</div></section>', '</div></section><a data-xfit-cta="quick-pick">Druhý</a>', 1),
+                "public_quick_pick_cta_outside_hero"),
+            "hero_missing_cta": (body().replace('data-xfit-cta="quick-pick"',
+                                               'data-xfit-cta="missing"', 1),
+                "public_unexpected_quick_pick_cta_count"),
+        }
+        for case, (altered, expected) in cases.items():
+            with self.subTest(case=case):
+                result = probe.audit_page(
+                    SLUG, BASE, wp_reader=lambda slug: wp(),
+                    public_reader=lambda slug: altered)
+                self.assertIn(expected, result["errors"])
+                self.assertEqual(result["source_card_count"], 2)
+                self.assertEqual(result["public_card_count"], 2)
+                self.assertNotIn("SENSITIVE_", str(result))
+
+    def test_source_and_public_equal_but_broken_hero_still_fail(self):
+        bad = body().replace(GOOD_QUERY, GOOD_QUERY.replace("392", "393"), 1)
+        result = probe.audit_page(
+            SLUG, BASE, wp_reader=lambda slug: wp(bad),
+            public_reader=lambda slug: bad)
+        self.assertTrue(result["quick_pick_destinations_match"])
+        self.assertIn("wp_quick_pick_not_exact_card_offer", result["errors"])
+        self.assertIn("public_quick_pick_not_exact_card_offer", result["errors"])
+
+    def test_two_distinct_source_bound_hero_choices(self):
+        second = (
+            '<div data-xfit-quick-pick="unit">'
+            '<a data-xfit-cta="quick-pick" data-xfit-engine="creatine"'
+            ' data-xfit-partner="namaximum" data-xfit-product-id="393"'
+            ' rel="sponsored nofollow"'
+            ' href="https://www.namaximum.cz/kreatin/produkt'
+            + GOOD_QUERY.replace("392", "393") + '">Ověřit cenu</a>'
+            '<a href="#xfit-offer-2">Detail balení</a></div>'
+        )
+        both = body().replace('</div></section>', '</div>' + second + '</section>', 1)
+        result = probe.audit_page(
+            SLUG, BASE, wp_reader=lambda slug: wp(both),
+            public_reader=lambda slug: both)
+        self.assertEqual(result["errors"], [])
+        self.assertEqual(result["public_quick_pick_count"], 2)
+        duplicate = both.replace('data-xfit-product-id="393"',
+                                 'data-xfit-product-id="392"', 1)
+        # This first duplicate would be in the hero because it precedes cards.
+        self.assertIn("duplicate_quick_pick_product", probe.quick_pick_evidence(
+            duplicate, SLUG, BASE,
+            probe.card_evidence(duplicate, SLUG, BASE)["_private_card_signature"]
+        )["errors"])
 
     def test_missing_card_and_missing_metadata_detected(self):
         result = probe.audit_page(
@@ -123,8 +214,10 @@ class AffiliateParityTests(unittest.TestCase):
                                    'data-xfit-product-id="392"')
         result = probe.card_evidence(duplicate, SLUG, BASE)
         self.assertIn("duplicate_catalog_cta", result["errors"])
-        wrong = body().replace('data-xfit-engine="creatine"',
-                               'data-xfit-engine="whey"', 1)
+        wrong = body().replace(
+            card("392", "392"),
+            card("392", "392").replace('data-xfit-engine="creatine"',
+                                       'data-xfit-engine="whey"'))
         self.assertIn("invalid_catalog_cta_metadata",
                       probe.card_evidence(wrong, SLUG, BASE)["errors"])
 
@@ -169,7 +262,8 @@ class AffiliateParityTests(unittest.TestCase):
 
     def test_disclosure_and_empty_cards_fail_closed(self):
         no_disclosure = body().replace(
-            "Affiliate: Xfit může dostat provizi.", "Nezávislý výběr.")
+            "Affiliate: Xfit může dostat provizi.", "Nezávislý výběr.").replace(
+            "Odkazy jsou affiliate: XFIT může získat provizi.", "Výběr podle ceny.")
         result = probe.card_evidence(no_disclosure, SLUG, BASE)
         self.assertIn("missing_affiliate_disclosure", result["errors"])
         empty = '<html><h1>Prázdné</h1><p>affiliate</p></html>'
