@@ -102,6 +102,10 @@ def build_document(catalog, base, sample):
         'nelze pořadí níže považovat za žebříček nejlevnějších '
         'skutečných bílkovin. Když produkt nepotřebujete, '
         'nemusíte kupovat nic.</p>',
+        '<p id="xfit-milk-allergy"><strong>Mléčná alergie: pozor i na izolát.</strong> '
+        'Syrovátka pochází z mléka. Při alergii na mléčnou bílkovinu ji '
+        'nepovažujte za bezpečnou volbu; izolát není zárukou absence mléčných '
+        'alergenů.</p>',
         quick_pick(chosen, product_kind="whey"),
         '<h2>Než koupíte protein: krátký rozhodovací rozcestník</h2>',
         '<details id="xfit-need" open><summary><strong>Musím protein kupovat, abych nabral svaly?</strong></summary>'
@@ -115,10 +119,8 @@ def build_document(catalog, base, sample):
         'a vyšší podíl bílkovin na 100 g prášku, ale přesná čísla závisejí na '
         'konkrétním výrobku. Dražší izolát není automaticky lepší volba. '
         'Vždy zkontrolujte etiketu a alergeny.</p></details>',
-        '<details><summary><strong>Nesnáším mléko nebo držím veganskou stravu</strong></summary>'
-        '<p>Syrovátka pochází z mléka. Při alergii na mléčnou bílkovinu ji '
-        'nepovažujte za bezpečnou volbu; izolát není zárukou absence mléčných '
-        'alergenů. Pro veganské stravování zvažte vhodné rostlinné zdroje. '
+        '<details><summary><strong>Držím veganskou stravu nebo mám zdravotní omezení</strong></summary>'
+        '<p>Pro veganské stravování zvažte vhodné rostlinné zdroje. '
         'Při zdravotním omezení výběr řešte s kvalifikovaným odborníkem.</p></details>',
         '<p><strong>Rozpočet a doprava:</strong> Uvedené ceny a rozpočtové limity '
         'zahrnují pouze cenu balení, bez dopravy a případných poplatků za platbu. '
