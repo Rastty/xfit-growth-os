@@ -216,13 +216,14 @@ class CreatineGuideTests(unittest.TestCase):
         for link in links:
             variant = parse_qs(urlsplit(link["href"]).query)["variant"][0]
             self.assertEqual(link["aria-label"],
-                "Zobrazit konkrétní balení na NaMaximum.cz: "
-                + by_variant[variant]["title"] + " (nová karta)")
+                "Ověřit cenu a dostupnost produktu "
+                + by_variant[variant]["title"] + " na NaMaximum.cz (nová karta)")
             self.assertEqual(link["target"], "_blank")
             self.assertIn("noopener", link["rel"].split())
             self.assertIn("nofollow", link["rel"].split())
         self.assertEqual(body.count(
-            '>Zobrazit konkrétní balení na NaMaximum.cz (nová karta)</a>'), len(chosen))
+            '>Ověřit cenu a dostupnost</a>'), len(chosen))
+        self.assertEqual(body.count('NaMaximum.cz · nová karta</small>'), len(chosen))
 
     def test_prices_preserve_cents_and_explain_rank(self):
         # Synthetic fixtures: both unit prices used to display as 86 Kč.
