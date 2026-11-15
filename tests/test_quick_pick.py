@@ -105,6 +105,27 @@ class QuickPickTests(unittest.TestCase):
                 with self.assertRaises(PublishError):
                     quick_pick(copied, product_kind="creatine")
 
+    def test_creatine_origin_pilot_requires_exact_pair_and_never_leaks_to_whey(self):
+        valid = [dict(item) for item in self.items]
+        valid[0]["tracked_url"] += "&data1=xfit&data2=creatine"
+        valid[1]["tracked_url"] += "&data1=xfit&data2=creatine"
+        valid[2]["tracked_url"] += "&data1=xfit&data2=creatine"
+        self.assertEqual(quick_pick(valid, product_kind="creatine").count(
+            'data-xfit-cta="quick-pick"'), 2)
+        for kind, url in (
+            ("creatine", self.items[0]["tracked_url"] + "&data1=xfit"),
+            ("creatine", self.items[0]["tracked_url"] + "&data2=creatine"),
+            ("creatine", self.items[0]["tracked_url"] + "&data1=other&data2=creatine"),
+            ("creatine", self.items[0]["tracked_url"] + "&data1=xfit&data2=whey"),
+            ("creatine", self.items[0]["tracked_url"] + "&data1=xfit&data2=creatine&data1=xfit"),
+            ("whey", self.items[0]["tracked_url"] + "&data1=xfit&data2=creatine"),
+        ):
+            with self.subTest(kind=kind, url=url):
+                bad = [dict(item) for item in self.items]
+                bad[0]["tracked_url"] = url
+                with self.assertRaises(PublishError):
+                    quick_pick(bad, product_kind=kind)
+
     def test_both_documents_link_only_to_their_rendered_product_cards(self):
         for builder, category, titles in [
             (creatine, "Kreatin", ("Creatine Monohydrate 1kg", "Creatine Monohydrate 500g", "Creatine Monohydrate 750g")),
@@ -135,6 +156,12 @@ class QuickPickTests(unittest.TestCase):
                 all_nodes.feed(document)
                 self.assertTrue(all(href.removeprefix("#") in all_nodes.ids for href in internal))
                 self.assertEqual(document.count('rel="sponsored nofollow'), 5)
+                if builder is whey:
+                    self.assertNotIn("data1=", document)
+                    self.assertNotIn("data2=", document)
+                else:
+                    self.assertEqual(document.count("data1=xfit"), 5)
+                    self.assertEqual(document.count("data2=creatine"), 5)
 
 
 if __name__ == "__main__":
