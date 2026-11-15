@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Read-only verification that Xfit affiliate cards reach the public visitor.
+"""Read-only verification that Xfit affiliate CTAs reach the public visitor.
 
-Unlike an authenticated WP REST-only check, this compares the exact selected
-offer CTAs and affiliate campaign parameters in source and public HTML.
+Unlike an authenticated WP REST-only check, this compares product cards AND
+first-screen quick-pick CTAs with the same offers in source and public HTML.
 No external merchant requests, WP writes, cookies, personal data or events.
 Only redacted aggregate counts and enumerated failure reasons are emitted.
 """
@@ -58,6 +58,58 @@ class Cards(HTMLParser):
             if not self.depth:
                 self.cards.append(self.current)
                 self.current = None
+
+
+class QuickPicks(HTMLParser):
+    """Observe the real hero CTA section, including its visible no-buy path."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.depth = 0
+        self.sections = 0
+        self.no_buy = 0
+        self.no_buy_link = False
+        self.in_no_buy = False
+        self.links = []
+        self.copy = []
+        self.suppressed = 0
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        if tag == "section":
+            if self.depth:
+                self.depth += 1
+            elif a.get("id") == "xfit-rychly-vyber":
+                self.sections += 1
+                self.depth = 1
+        if tag in ("script", "style", "noscript", "template"):
+            self.suppressed += 1
+        if self.depth and tag == "p" and a.get("data-xfit-quick-pick") == "no-buy":
+            self.no_buy += 1
+            self.in_no_buy = True
+        if tag == "a":
+            if self.depth and self.in_no_buy and a.get("href") == "#xfit-need":
+                self.no_buy_link = True
+            if a.get("data-xfit-cta") == "quick-pick":
+                self.links.append({
+                    "inside": bool(self.depth),
+                    "href": unescape(a.get("href") or ""),
+                    "rel": (a.get("rel") or "").lower().split(),
+                    "engine": a.get("data-xfit-engine"),
+                    "partner": a.get("data-xfit-partner"),
+                    "product_id": a.get("data-xfit-product-id"),
+                })
+
+    def handle_data(self, data):
+        if self.depth and not self.suppressed:
+            self.copy.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "p":
+            self.in_no_buy = False
+        if tag == "section" and self.depth:
+            self.depth -= 1
+        if tag in ("script", "style", "noscript", "template") and self.suppressed:
+            self.suppressed -= 1
 
 
 class VisibleText(HTMLParser):
@@ -199,6 +251,59 @@ def card_evidence(body, slug, affiliate_base):
     }
 
 
+def quick_pick_evidence(body, slug, affiliate_base, card_signature):
+    """Hero destinations must be byte-equivalent in meaning to selected cards.
+
+    Never log or return merchant URLs, campaign tokens or catalog IDs.
+    The private signature is removed by the caller before printing.
+    """
+    if not isinstance(body, str) or not 1 <= len(body.encode("utf-8")) <= MAX_PUBLIC_BYTES:
+        raise ValueError("invalid_html_body")
+    hero = QuickPicks()
+    hero.feed(body)
+    aid, bid = affiliate_signature(affiliate_base)
+    engine = PAGES[slug][1]
+    card_by_id = {numeric: (card_engine, partner, href)
+                  for numeric, card_engine, partner, href in card_signature}
+    errors = set()
+    if hero.sections != 1:
+        errors.add("missing_or_repeated_quick_pick_section")
+    if not 1 <= len(hero.links) <= 2:
+        errors.add("unexpected_quick_pick_cta_count")
+    if hero.no_buy != 1 or not hero.no_buy_link:
+        errors.add("missing_quick_pick_no_buy_path")
+    visible = " ".join(hero.copy).casefold()
+    if "affiliate" not in visible or "provizi" not in visible:
+        errors.add("missing_quick_pick_disclosure")
+    seen = set()
+    signature = []
+    for link in hero.links:
+        numeric = link["product_id"]
+        if not link["inside"]:
+            errors.add("quick_pick_cta_outside_hero")
+        if (link["engine"] != engine or link["partner"] != "namaximum"
+                or not isinstance(numeric, str)
+                or not re.fullmatch(r"[1-9][0-9]{0,9}", numeric)
+                or int(numeric) > 2**31 - 1):
+            errors.add("invalid_quick_pick_metadata")
+        elif numeric in seen:
+            errors.add("duplicate_quick_pick_product")
+        else:
+            seen.add(numeric)
+        if "sponsored" not in link["rel"]:
+            errors.add("missing_quick_pick_sponsored_rel")
+        if not safe_affiliate_url(link["href"], aid, bid):
+            errors.add("invalid_quick_pick_merchant_campaign")
+        card = card_by_id.get(numeric)
+        if (card is None or card != (link["engine"], link["partner"],
+                                     comparable_href(link["href"]))):
+            errors.add("quick_pick_not_exact_card_offer")
+        signature.append((numeric, link["engine"], link["partner"],
+                          comparable_href(link["href"])))
+    return {"count": len(hero.links), "metadata_count": len(seen),
+            "errors": sorted(errors), "_private_quick_signature": signature}
+
+
 def read_wp_post(slug):
     url = "https://xfit.cz/wp-json/wp/v2/posts?" + urlencode({
         "slug": slug, "per_page": 2, "_fields": "id,slug,status,link,content",
@@ -245,10 +350,18 @@ def audit_page(slug, base, *, wp_reader=read_wp_post, public_reader=read_public_
     b = card_evidence(public, slug, base)
     source_sig = a.pop("_private_card_signature")
     public_sig = b.pop("_private_card_signature")
+    q_source = quick_pick_evidence(source, slug, base, source_sig)
+    q_public = quick_pick_evidence(public, slug, base, public_sig)
+    source_quick_sig = q_source.pop("_private_quick_signature")
+    public_quick_sig = q_public.pop("_private_quick_signature")
     errors = {"wp_" + e for e in a["errors"]}
     errors.update("public_" + e for e in b["errors"])
+    errors.update("wp_" + e for e in q_source["errors"])
+    errors.update("public_" + e for e in q_public["errors"])
     if source_sig != public_sig:
         errors.add("wp_public_offer_or_tracking_mismatch")
+    if source_quick_sig != public_quick_sig:
+        errors.add("wp_public_quick_pick_or_tracking_mismatch")
     return {
         "slug": slug, "wp_post_id": expected_id,
         "public_url": "https://xfit.cz/" + slug + "/",
@@ -257,6 +370,11 @@ def audit_page(slug, base, *, wp_reader=read_wp_post, public_reader=read_public_
         "source_cta_metadata_count": a["metadata_count"],
         "public_cta_metadata_count": b["metadata_count"],
         "offer_destinations_match": source_sig == public_sig,
+        "source_quick_pick_count": q_source["count"],
+        "public_quick_pick_count": q_public["count"],
+        "source_quick_pick_metadata_count": q_source["metadata_count"],
+        "public_quick_pick_metadata_count": q_public["metadata_count"],
+        "quick_pick_destinations_match": source_quick_sig == public_quick_sig,
         # This is limited URL-to-catalog identity evidence, NOT proof that
         # Affial/GA4 credited a click or that the product remains in stock.
         "catalog_variant_linkage": (

@@ -40,6 +40,25 @@ merchant CTA. No new plugin, cookie, personal data or conversion claim is added.
   events without *current* verified WebToffee analytics consent and GA4; it
   transmits no affiliate credentials, page query parameters or visitor details.
 
+### Ongoing public health contract
+
+The scheduled `XFIT Affiliate Link Health` workflow now checks **both** the
+lower product cards and the new first-screen direct merchant CTAs against
+WordPress REST's rendered content and the independent public page. Per adviser:
+
+- Exactly one `xfit-rychly-vyber` section, with one or two merchant CTAs.
+- Each hero CTA retains its sponsored rel, valid Affial campaign identifiers,
+  source catalog engine/partner/product ID and **identical** merchant URL to
+  its corresponding product card (query order may differ).
+- The hero includes readable affiliate disclosure and its no-purchase link.
+- A broken link fails even when WordPress and the public page contain the
+  **same** broken URL; cross-surface parity alone is not sufficient.
+- Reports provide only counts and typed errors; catalog IDs, affiliate IDs,
+  merchant deeplinks and personal data are never included in the output.
+
+This is an early warning for purchase-path breakage, **not** evidence of
+actual clicks, valid orders or paid commission. No merchant URLs are visited.
+
 ## Hypothesis and measurement
 
 Visitors with a clear price priority should be able to open a source-verified
