@@ -30,11 +30,16 @@ function harness({consent = true, bridge = true, page = "/xfit-os-kreatin-poradc
   return {
     calls, root,
     click({href = URL_OK, id = "392", engine = "creatine",
-           rel = "sponsored nofollow", trusted = true, card = true} = {}) {
+           rel = "sponsored nofollow", trusted = true, card = true,
+           hero = false} = {}) {
       const link = {
-        dataset: { xfitProductId: id, xfitEngine: engine, xfitPartner: "namaximum" },
+        dataset: { xfitProductId: id, xfitEngine: engine, xfitPartner: "namaximum",
+                   xfitCta: hero ? "quick-pick" : undefined },
         getAttribute: (name) => ({href, rel})[name] || null,
-        closest: (selector) => selector === "article.xfit-product-card" && card ? {} : null,
+        closest: (selector) =>
+          (selector === "article.xfit-product-card" && card && !hero) ||
+          (selector === "[data-xfit-quick-pick]" && hero) ||
+          (selector === "section#xfit-rychly-vyber" && hero) ? {} : null,
       };
       listeners.click({
         isTrusted: trusted,
@@ -62,6 +67,25 @@ test("valid real click after explicit consent emits only four whitelisted fields
   for (const forbidden of ["http", "a_aid", "a_bid", "email", "answer", "health"]) {
     assert.equal(serialized.includes(forbidden), false);
   }
+});
+
+test("hero one-click offer records the same consented product event as its card", () => {
+  const h = harness();
+  h.click({hero:true});
+  h.click({hero:false});
+  assert.equal(h.calls.length, 2);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.calls[0])),
+                   JSON.parse(JSON.stringify(h.calls[1])));
+  assert.equal(h.calls[0][2].product_id, 392);
+
+  const denied = harness({consent:false});
+  denied.click({hero:true});
+  assert.equal(denied.calls.length, 0);
+
+  const spoof = harness();
+  spoof.click({hero:true, id:"393"});
+  spoof.click({hero:true, href:URL_OK.replace("utm_medium=affiliate", "utm_medium=cpc")});
+  assert.equal(spoof.calls.length, 0);
 });
 
 test("no CMP bridge, denied consent, missing gtag => no event", () => {
