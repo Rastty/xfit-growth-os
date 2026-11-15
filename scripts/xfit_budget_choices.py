@@ -71,10 +71,18 @@ def budget_choices(selected, limits, *, product_kind):
         'zobrazené níže, nikoli celý trh. Ceny se mohou změnit.</p>',
     ]
 
+    opened_a_choice = False
     for limit in limits:
         possible = [offer for offer in offers if offer[2] <= Decimal(limit)]
+        # The first budget with a genuine feed-backed choice is immediately
+        # usable on mobile after jumping here from the quick navigation.
+        # Leave the empty and higher-budget alternatives collapsed.
+        is_default_open = bool(possible) and not opened_a_choice
+        if is_default_open:
+            opened_a_choice = True
         result.append(
-            '<details><summary><strong>Do ' + str(limit) + ' Kč — ' +
+            ('<details open>' if is_default_open else '<details>') +
+            '<summary><strong>Do ' + str(limit) + ' Kč — ' +
             str(len(possible)) +
             (' nabídka' if len(possible) == 1 else
              ' nabídky' if 2 <= len(possible) <= 4 else ' nabídek') +
