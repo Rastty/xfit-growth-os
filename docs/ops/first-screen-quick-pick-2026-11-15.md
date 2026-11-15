@@ -59,6 +59,31 @@ WordPress REST's rendered content and the independent public page. Per adviser:
 This is an early warning for purchase-path breakage, **not** evidence of
 actual clicks, valid orders or paid commission. No merchant URLs are visited.
 
+### Bounded Affial click-origin pilot: creatine only
+
+The first-screen and lower-card URLs for the *creatine* adviser now carry the
+same nonpersonal `data1=xfit` and `data2=creatine` parameters. The existing
+`a_aid`, `a_bid`, three UTM campaign values, merchant route and product variant
+are preserved unchanged. The whey adviser remains untagged as a control.
+The `quick_pick` gate rejects one-sided, duplicate, unexpected or whey-tagged
+parameters rather than building a separate hero link.
+
+Post Affiliate Pro documentation states that `data1`/`data2` can be carried
+from clicks into commissions (https://support.qualityunit.com/438945-SubID--Channels-tracking?r=1).
+Affial confirms channels and SubID tracking within its system
+(https://www.affial.com/prechod-na-novy-affiliate-software/).
+**This proves only a documented capability, not that this NaMaximum campaign
+actually records either field or pays commission to XFIT.**
+
+Validation order: automated generator tests, WordPress prewrite backup,
+idempotent creatine deployment, public source-vs-rendered-HTML affiliate audit,
+then a real **organic** click and an Affial Prokliky/Provize export that shows
+the expected `data1` and `data2` without exposing visitor data. Do not place
+test merchant clicks or infer sales from CTA link integrity. Keep paid
+commission attribution `UNKNOWN` until an independently reconciled payment
+receipt is available. If the partner's click report rejects or strips these
+parameters, restore from the prewrite backup and remove the pilot tags.
+
 The first extended production audit hit a transient `URLError`; an unchanged
 re-run passed for both advisers (6 card CTAs and 2 hero CTAs each, zero
 tracking mismatch). To reduce network-only false alarms, the read-only public
