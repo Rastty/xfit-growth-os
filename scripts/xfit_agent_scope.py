@@ -28,7 +28,18 @@ LANE_PATHS={
  ],
 }
 NO_EDIT_PREFIXES=(".github/workflows/",".github/agents/",".git/",".gemini/","content/ready/")
-IMMUTABLE_EVIDENCE={"scripts/xfit_archive_wave01.py","config/xfit-offtopic-wave01.json"}
+# These editorial snapshots are pinned by live release scripts. A lane agent
+# cannot revise them in isolation: the full release contract would then fail.
+# New editor-* proposals remain in the editor lane's ownership scope.
+RELEASE_BOUND_EDITOR_REVISIONS={
+ "content/revisions/editor-protein-pack-use.json",
+ "content/revisions/editor-protein-checkout-cost.json",
+ "content/revisions/editor-protein-table-opt-out.json",
+}
+IMMUTABLE_EVIDENCE={
+ "scripts/xfit_archive_wave01.py","config/xfit-offtopic-wave01.json",
+ *RELEASE_BOUND_EDITOR_REVISIONS,
+}
 DANGEROUS_PATTERNS=(
   re.compile(r"(?:sk|ghp|gho|github_pat)_[A-Za-z0-9_-]{18,}"),
   re.compile(r"secretKey\s*=\s*[A-Za-z0-9_-]{20,}",re.I),
