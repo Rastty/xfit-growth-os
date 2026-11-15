@@ -3,7 +3,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['.github/workflows/xfit-seo-capabilities.yml']
+    paths:
+      - '.github/workflows/xfit-seo-capabilities.yml'
+      - 'scripts/xfit_seo_capabilities.py'
 permissions:
   contents: read
 jobs:
