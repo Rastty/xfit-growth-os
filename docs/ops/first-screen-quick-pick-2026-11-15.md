@@ -84,6 +84,33 @@ commission attribution `UNKNOWN` until an independently reconciled payment
 receipt is available. If the partner's click report rejects or strips these
 parameters, restore from the prewrite backup and remove the pilot tags.
 
+#### Post-deploy and private export verification
+
+The scheduled Affiliate Link Health audit now **fails** if public or WordPress
+creatine offer/quick-pick links omit, duplicate or alter the exact origin pair,
+or if the whey control unexpectedly contains either parameter. The report
+shows only counts, never full links, affiliate tokens or catalog product IDs.
+
+If Affial makes the Extra Data 1/2 fields available in a *commissions* CSV,
+keep the raw file **outside this repository** and run offline, after verifying
+the exact column names and that commission amounts are in EUR:
+
+```bash
+python -m scripts.xfit_affial_origin_reconcile \
+  --file /path/outside/repository/private-affial-commissions.csv \
+  --campaign 'EXACT_CAMPAIGN_LABEL_FROM_PRIVATE_EXPORT' \
+  --transaction-id-column 'Transaction ID' \
+  --data1-column 'Extra Data 1' --data2-column 'Extra Data 2' \
+  --currency-column 'Currency' --expected-currency EUR
+```
+
+Only the exact campaign and `xfit`/`creatine` tag pair are attributed to this
+experiment. Untagged, partial and foreign tags are excluded. A missing matching
+pair is reported as **UNKNOWN**, not evidence of zero lifetime revenue. Even a
+matching approved commission in a user-provided export is **not a payout**;
+independent Affial payment evidence and the export time filter remain necessary.
+No matching real export has been received or evaluated in this change.
+
 The first extended production audit hit a transient `URLError`; an unchanged
 re-run passed for both advisers (6 card CTAs and 2 hero CTAs each, zero
 tracking mismatch). To reduce network-only false alarms, the read-only public
