@@ -1,0 +1,44 @@
+name: XFIT Coupon 11264 One-post Recovery
+# One-time recovery. Earlier batch's seven successful posts are untouched.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-coupon-post-11264-recovery.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  recover-one-post:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run full regression suite and exact recovery tests
+        run: python -m unittest discover -s tests -v
+      - name: Read-only prewrite snapshot of exact WordPress 11264
+        run: python -m scripts.xfit_coupon_recovery_11264 snapshot
+      - name: Store full rollback source before the single WordPress POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-onepost-11264-rollback-${{ github.run_id }}
+          path: reports/backups/xfit-coupon-post-11264-recovery.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Single guarded WP update and public readback
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_coupon_recovery_11264 apply | tee -a "$GITHUB_STEP_SUMMARY"

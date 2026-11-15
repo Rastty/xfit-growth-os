@@ -10,7 +10,10 @@ MAX_COUNT=8
 # Quarantine until its encoding/permissions are inspected independently.
 # WP 11595 was unchanged in run 42465256593 after seven successful edits;
 # recovery is isolated to one post; see issue #75.
-QUARANTINE_IDS={11945,11595}
+# WP 11264 was the sole unchanged item in run 43630700797 (14 Nov):
+# seven neighboring posts were verified, but its write_request did not persist.
+# Keep it out of the recurring batch while one-post recovery investigates it.
+QUARANTINE_IDS={11945,11595,11264}
 BACKUP=Path("reports/backups/xfit-expired-coupon-wave01.json")
 PROMO=re.compile(r"\[su_button\b[^\]]{0,1200}\][^\[]*?5NM2022\[/su_button\]",re.I|re.S)
 def sha(s):return hashlib.sha256(s.encode("utf-8")).hexdigest()
