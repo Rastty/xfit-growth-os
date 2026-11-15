@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "site": "https://xfit.cz/",
+  "date": "2026-11-15",
+  "purpose": "Evidence-backed XFIT intent-to-adviser production interventions and pre-impact GSC baseline",
+  "source_of_gsc": {
+    "repository": "Rastty/prometheus-growth-os",
+    "run_id": 43722262547,
+    "workflow": "Prometheus XFIT GSC Read-only Baseline",
+    "final_period": {"from": "2026-10-16", "to": "2026-11-12", "days": 28},
+    "sitewide": {"clicks": 9, "impressions": 1250, "ctr": 0.0072, "position": 31.37},
+    "url_inspection": {
+      "xfit-os-kreatin-poradce": "Discovered - currently not indexed",
+      "xfit-os-syrovatkovy-protein-porovnani": "Submitted and indexed"
+    }
+  },
+  "changes": [
+    {
+      "post_id": 10854,
+      "source_slug": "navod-jak-vybrat-nejlevnejsi-a-zaroven-ucinny-kreatin-pro-fitness",
+      "target_slug": "xfit-os-kreatin-poradce",
+      "run_id": 43722244539,
+      "state": "PUBLIC_VERIFIED",
+      "remote_post_attempts": 1,
+      "posts_changed": 1
+    },
+    {
+      "post_id": 10738,
+      "source_slug": "4-jak-nakoupit-nejlevnejsi-kreatin-pro-optimalni-vykon-ve-fitness",
+      "target_slug": "xfit-os-kreatin-poradce",
+      "run_id": 43722244539,
+      "state": "PUBLIC_VERIFIED",
+      "remote_post_attempts": 1,
+      "posts_changed": 1
+    },
+    {
+      "post_id": 7363,
+      "source_slug": "proteiny-na-svaly-a-jejich-ucinnost-pri-cviceni",
+      "target_slug": "xfit-os-syrovatkovy-protein-porovnani",
+      "run_id": 43722244539,
+      "read_only_diagnostic_run_id": 43722689086,
+      "state": "UNRESOLVED_OR_DRIFTED",
+      "remote_post_attempts": 1,
+      "posts_changed": 0,
+      "postwrite_source_unchanged": true,
+      "retry_performed": false
+    },
+    {
+      "post_id": 9772,
+      "source_slug": "nejlepsi-kreatin-monohydrat-jak-vybrat-a-efektivne-vyuzit-pro-posileni-svalu-fitness-tajemstvi",
+      "target_slug": "xfit-os-kreatin-poradce",
+      "run_id": 43722983627,
+      "state": "PUBLIC_VERIFIED",
+      "remote_post_attempts": 1,
+      "posts_changed": 1
+    },
+    {
+      "post_id": 7195,
+      "source_slug": "jaky-typ-proteinu-si-vybrat-pro-pripravu-proteinovych-snacku-a-napoju",
+      "target_slug": "xfit-os-syrovatkovy-protein-porovnani",
+      "run_id": 43722983627,
+      "state": "PUBLIC_VERIFIED",
+      "remote_post_attempts": 1,
+      "posts_changed": 1
+    }
+  ],
+  "original_content_backups": [
+    {"artifact_id": 14164184099, "run_id": 43722244539, "expires_on": "2027-02-13"},
+    {"artifact_id": 14165216907, "run_id": 43722983627, "expires_on": "2027-02-13"}
+  ],
+  "evaluation": {
+    "causal_uplift_claimed": false,
+    "approved_or_paid_commissions": "UNKNOWN",
+    "next_measurement": "Use a comparable finalized 28-day GSC window after Google has had time to recrawl; track target index coverage and source/target impressions and clicks, then validate GA4 adviser starts/outbound partner clicks and actual approved commissions."
+  }
+}
