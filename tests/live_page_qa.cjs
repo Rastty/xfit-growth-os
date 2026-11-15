@@ -253,11 +253,11 @@ for(const spec of checks){
     // Only inspect links; never trigger a merchant click or analytics event.
     const quickNavs=[...document.querySelectorAll('nav[aria-label="Rychlá navigace poradcem"]')];
     const quickLinks=quickNavs.length===1 ? [...quickNavs[0].querySelectorAll("a")] : [];
-    const quickExpected=["#xfit-need","#xfit-offers"];
+    const quickExpected=["#xfit-need","#xfit-vyber-podle-rozpoctu","#xfit-offers"];
     const quickNav={
       count:quickNavs.length,
       countLinks:quickLinks.length,
-      exactTargets:quickLinks.length===2 && quickLinks.every((a,i)=>
+      exactTargets:quickLinks.length===3 && quickLinks.every((a,i)=>
         a.getAttribute("href")===quickExpected[i] &&
         a.getAttribute("target")===null &&
         !a.hasAttribute("onclick")),
@@ -476,7 +476,7 @@ for(const spec of checks){
       doc.proteinCheckout.count!==1 || !doc.proteinCheckout.noNewCommercialLink))
     failures.push("published_protein_checkout_total_advice_missing_or_incomplete");
   if(spec.commercial && (doc.quickNav.count!==1 ||
-      doc.quickNav.countLinks!==2 || !doc.quickNav.exactTargets ||
+      doc.quickNav.countLinks!==3 || !doc.quickNav.exactTargets ||
       !doc.quickNav.noBuyOpen || !doc.quickNav.offerHeadingExists ||
       !doc.quickNav.resolvedOnce || !doc.quickNav.noMerchantLinks))
     failures.push("live_mobile_adviser_shortcuts_missing_or_invalid");
