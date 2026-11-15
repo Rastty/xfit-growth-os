@@ -71,9 +71,12 @@ class GuideNavigationTests(unittest.TestCase):
                 self.assertIn("Vybrat podle rozpočtu</a>", body)
                 self.assertIn("padding:12px 0", parser.shortcuts[1]["style"])
                 self.assertLess(body.index("<nav "), body.index("<details "))
-                # Jump lands above disclosure, never directly on a purchase CTA.
-                self.assertLess(body.index('id="xfit-offers"'),
-                                body.index("provizi"))
+                # The first-screen purchase option explains its affiliate
+                # relationship and offers an explicit no-purchase exit first.
+                self.assertLess(body.index('může získat provizi'),
+                                body.index('rel="sponsored nofollow'))
+                self.assertLess(body.index('data-xfit-quick-pick="no-buy"'),
+                                body.index('rel="sponsored nofollow'))
 
 
 if __name__ == "__main__":
