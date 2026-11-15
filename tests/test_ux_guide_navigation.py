@@ -53,7 +53,8 @@ class GuideNavigationTests(unittest.TestCase):
                 parser.feed(body)
                 self.assertEqual(parser.label, "Rychlá navigace poradcem")
                 self.assertEqual([a["href"] for a in parser.shortcuts],
-                                 ["#xfit-need", "#xfit-offers"])
+                                 ["#xfit-need", "#xfit-vyber-podle-rozpoctu",
+                                  "#xfit-offers"])
                 for link in parser.shortcuts:
                     self.assertEqual(len(parser.ids[link["href"][1:]]), 1)
                     self.assertNotIn("target", link)
@@ -62,6 +63,13 @@ class GuideNavigationTests(unittest.TestCase):
                 self.assertEqual(tag, "details")
                 self.assertIn("open", decision)
                 self.assertEqual(parser.ids["xfit-offers"][0][0], "h2")
+                # The budget shortcut reaches the decision section before
+                # product cards, keeping the reader within their spend limit.
+                budget_id = 'id="xfit-vyber-podle-rozpoctu"'
+                self.assertEqual(parser.ids["xfit-vyber-podle-rozpoctu"][0][0], "h2")
+                self.assertLess(body.index(budget_id), body.index('id="xfit-offers"'))
+                self.assertIn("Vybrat podle rozpočtu</a>", body)
+                self.assertIn("padding:12px 0", parser.shortcuts[1]["style"])
                 self.assertLess(body.index("<nav "), body.index("<details "))
                 # Jump lands above disclosure, never directly on a purchase CTA.
                 self.assertLess(body.index('id="xfit-offers"'),
