@@ -1,5 +1,7 @@
 """Public-versus-WP affiliate truth, without browsing merchant click URLs."""
 import unittest
+from unittest.mock import patch
+from urllib.error import HTTPError, URLError
 
 from scripts import xfit_affiliate_public_audit as probe
 
@@ -55,6 +57,70 @@ def wp(content=None):
 
 
 class AffiliateParityTests(unittest.TestCase):
+    def test_transient_public_read_recovers_without_any_write(self):
+        class Response:
+            status = 200
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                return False
+
+            def geturl(self):
+                return "https://xfit.cz/" + SLUG + "/"
+
+            def read(self, limit):
+                return body().encode("utf-8")[:limit]
+
+        with patch.object(probe, "urlopen", side_effect=[URLError("dns timeout"), Response()]) as fetch, \
+                patch.object(probe.time, "sleep") as delay:
+            self.assertEqual(probe.read_public_page(SLUG), body())
+        self.assertEqual(fetch.call_count, 2)
+        delay.assert_called_once_with(1)
+
+    def test_read_retry_does_not_hide_permanent_status_errors(self):
+        req = object()
+        forbidden = HTTPError("https://xfit.cz/", 403, "Forbidden", {}, None)
+        with patch.object(probe, "urlopen", side_effect=forbidden) as fetch, \
+                patch.object(probe.time, "sleep") as delay:
+            with self.assertRaises(HTTPError):
+                probe.fetch_bytes_with_retry(req, 200)
+        self.assertEqual(fetch.call_count, 1)
+        delay.assert_not_called()
+
+    def test_server_503_is_transient_but_wrong_response_is_not_trusted(self):
+        class WrongPage:
+            status = 200
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                return False
+
+            def geturl(self):
+                return "https://xfit.cz/not-our-guide/"
+
+            def read(self, limit):
+                return body().encode("utf-8")[:limit]
+
+        unavailable = HTTPError("https://xfit.cz/", 503, "Busy", {}, None)
+        with patch.object(probe, "urlopen", side_effect=[unavailable, WrongPage()]) as fetch, \
+                patch.object(probe.time, "sleep") as delay:
+            with self.assertRaisesRegex(ValueError, "wrong_public_page_or_redirect"):
+                probe.read_public_page(SLUG)
+        self.assertEqual(fetch.call_count, 2)
+        delay.assert_called_once_with(1)
+
+    def test_read_retry_exhaustion_is_bounded_and_fail_closed(self):
+        with patch.object(probe, "urlopen", side_effect=URLError("network unavailable")) as fetch, \
+                patch.object(probe.time, "sleep") as delay:
+            with self.assertRaises(URLError):
+                probe.fetch_bytes_with_retry(object(), 100)
+        self.assertEqual(fetch.call_count, 3)
+        self.assertEqual([x.args[0] for x in delay.call_args_list], [1, 2])
+
     def test_two_real_matching_cards_are_safely_reported(self):
         result = probe.audit_page(
             SLUG, BASE, wp_reader=lambda slug: wp(),
