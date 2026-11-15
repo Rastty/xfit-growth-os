@@ -19,6 +19,7 @@ from scripts.xfit_budget_choices import budget_choices
 from scripts.xfit_price_tradeoff import price_tradeoff
 from scripts.xfit_model_portions import model_portion_intro, model_portion_line
 from scripts.xfit_availability import delivery_note
+from scripts.xfit_quick_pick import quick_pick
 from scripts.xfit_catalog_retrieval import (verified_catalog_fetch_time,
                                             catalog_retrieval_notice)
 from scripts.wp_publish import PublishError, normalized_base, MARKER, existing_content, wp_request, validate_document, publish, verify_public
@@ -88,6 +89,7 @@ def build_document(catalog, base, sample):
         '<li><a href="#xfit-offers" style="display:inline-block;padding:12px 0;">'
         'Porovnat balení a ceny</a></li></ul></nav>',
         catalog_retrieval_notice(catalog),
+        quick_pick(chosen, product_kind="whey"),
         '<p><strong>Jak srovnáváme:</strong> níže používáme cenu za 100 g proteinového '
         'prášku, nikoli za 100 g skutečných bílkovin. K tomu bychom potřebovali '
         'spolehlivý údaj o jejich obsahu pro každou variantu; nelze jej odhadovat '
