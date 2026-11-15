@@ -502,8 +502,14 @@ for(const spec of checks){
   if(spec.commercial && !doc.budget.defaultOpenCorrect)
     failures.push("budget_first_affordable_choice_not_expanded");
   if(spec.commercial && doc.budget.choices===3){
-    const expandedSummary=page.locator('h2#xfit-vyber-podle-rozpoctu ~ details[open] > summary').first();
-    if(await expandedSummary.count()){
+    // Keep a stable element reference: pressing Enter removes [open] from
+    // the parent, so a locator containing details[open] would stop matching
+    // that very summary and time out while trying to assert it closed.
+    const expandedSummary=await page.locator(
+      'h2#xfit-vyber-podle-rozpoctu ~ details[open] > summary'
+    ).first().elementHandle();
+    if(expandedSummary){
+      stage="budget_keyboard";
       await expandedSummary.focus();
       await page.keyboard.press("Enter");
       if(await expandedSummary.evaluate(el=>!!el.parentElement?.open)){
@@ -512,6 +518,7 @@ for(const spec of checks){
       await page.keyboard.press("Enter");
       if(!await expandedSummary.evaluate(el=>!!el.parentElement?.open))
         failures.push("budget_first_choice_not_keyboard_restored");
+      stage="document_checks";
     }else failures.push("budget_first_choice_not_keyboard_accessible");
   }
   if(spec.commercial && doc.modelPortions.count!==doc.merchantLinks)
