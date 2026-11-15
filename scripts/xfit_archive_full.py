@@ -210,6 +210,14 @@ def main():
             # Reject the whole page before extending the partial inventory.
             if not isinstance(batch,list) or any(not isinstance(post,dict) for post in batch):
                 raise ValueError("WP archive page must be a list of post objects")
+            # Missing evidence must not become an empty/thin article finding.
+            # Validate the whole page before accepting any of its records;
+            # an explicitly empty rendered string is still valid evidence.
+            for post in batch:
+                for field in ("title","content"):
+                    value=post.get(field)
+                    if not isinstance(value,dict) or not isinstance(value.get("rendered"),str):
+                        raise ValueError("WP post must include rendered title and content strings")
         except (HTTPError,URLError,TimeoutError,ValueError) as exc:
             failed={"page":page,"error_type":type(exc).__name__}
             break
