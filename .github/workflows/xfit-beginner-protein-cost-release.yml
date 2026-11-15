@@ -1,0 +1,47 @@
+name: XFIT Beginner Real Protein Cost Guide Release
+# One existing WP article, one exact block, one possible POST. No blind retries.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-beginner-protein-cost-release.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  beginner-protein-cost:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check reviewed proposal and all content/release tests
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -v
+      - name: Read WordPress article and save full rollback source before POST
+        run: python -m scripts.xfit_beginner_protein_cost_release snapshot
+      - name: Upload immutable original body and identity manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-beginner-protein-cost-before-${{ github.run_id }}
+          path: reports/backups/xfit-beginner-protein-cost-25458.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Replace exact model price section and verify WP + public page
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_beginner_protein_cost_release apply | tee -a "$GITHUB_STEP_SUMMARY"

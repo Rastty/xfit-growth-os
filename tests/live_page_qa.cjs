@@ -445,6 +445,22 @@ for(const spec of checks){
       placeholderLinksObserved:placeholderLinks,
       allNativeSummaries:beginnerDetails.every(d=>!!d.querySelector("summary")),
     };
+    // Check that the price example became a usable label-and-basket decision.
+    const proteinCostDetails=[...document.querySelectorAll("details")].filter(d=>
+      (d.querySelector("summary")?.textContent||"")
+        .includes("Jak porovnat cenu proteinu podle skutečné etikety"));
+    const proteinCostText=proteinCostDetails[0]?.textContent||"";
+    const beginnerProteinCost={
+      count:proteinCostDetails.length,
+      foodFirst:proteinCostText.includes("protein nemusíte kupovat"),
+      usesRealLabel:proteinCostText.includes("pro konkrétní příchuť") &&
+        proteinCostText.includes("nikoli hodnoty nápoje s mlékem"),
+      includesFullCheckout:proteinCostText.includes("včetně dopravy a povinných poplatků"),
+      hasFormula:proteinCostText.includes("Cena za 100 g bílkovin =") &&
+        proteinCostText.includes("675 g bílkovin"),
+      noInventedOffer:!proteinCostText.includes("900 Kč") &&
+        !proteinCostText.includes("133 Kč"),
+    };
     // The 11945 rewrite replaced four complete nested HTML documents with a
     // readable, source-bound article. Verify the public mobile render too;
     // a green WordPress REST write by itself does not establish visitor UX.
@@ -488,7 +504,7 @@ for(const spec of checks){
         emptyFeaturedAlt,featuredImageCount:featuredImages.length,
         productImages:productImages.length,brokenProductImages:brokenProductImages.length,
         productImageStatus,themeImagesMissingAlt,firstProductLoaded,firstCTASize,
-        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,sameMassDecision,noPurchase,proteinPackUse,proteinFoodFirst,proteinCheckout,productTitleDisplay,productCardWrap,quickNav,offTopicPlacement,beginnerGoals,creatineMuscle};
+        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,sameMassDecision,noPurchase,proteinPackUse,proteinFoodFirst,proteinCheckout,productTitleDisplay,productCardWrap,quickNav,offTopicPlacement,beginnerGoals,beginnerProteinCost,creatineMuscle};
   });
   if(!doc.h1.includes(spec.expected))failures.push("h1_missing_expected");
   if(doc.h2<spec.minH2)failures.push("insufficient_h2");
@@ -507,6 +523,11 @@ for(const spec of checks){
       !doc.beginnerGoals.linkTargetsValid ||
       !doc.beginnerGoals.allNativeSummaries))
     failures.push("beginner_goal_paths_not_visible_or_incomplete");
+  if(spec.name==="beginner" && (doc.beginnerProteinCost.count!==1 ||
+      !doc.beginnerProteinCost.foodFirst || !doc.beginnerProteinCost.usesRealLabel ||
+      !doc.beginnerProteinCost.includesFullCheckout || !doc.beginnerProteinCost.hasFormula ||
+      !doc.beginnerProteinCost.noInventedOffer))
+    failures.push("beginner_protein_price_decision_tool_missing_or_incomplete");
   if(spec.name==="beginner" && doc.beginnerGoals.count===4){
     const secondSummary=page.locator('h2#zacatecnik-rozhodnuti ~ details summary').nth(1);
     if(await secondSummary.count()){
