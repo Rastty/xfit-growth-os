@@ -108,3 +108,17 @@ ani původ katalogu; to musí nadále ověřit volající.
 Ověření této úpravy: `python -m unittest tests.test_revenue_events tests.test_revenue_product_rollup_safety tests.test_agent_scope`.
 Stav: připraveno lokálně, bez nasazení a bez měření dopadu (UNKNOWN).
 Rollback: vrátit diff této úpravy ve třech souborech.
+
+## Jediné ověření katalogu pro celý souhrn
+
+Souhrn používá stejnou ověřenou neměnnou kopii pro všechny prokliky.
+Nekopíruje a nekontroluje celý katalog znovu při každé akci; nadále ověřuje
+pole každého záznamu i členství produktu v katalogu správného poradce.
+Samostatné volání `build_event` si katalog stále ověřuje samo.
+Regresní test kontroluje jediné ověření katalogu pro opakované prokliky
+napříč oběma poradci; nejde o naměřený výkonnostní benchmark.
+
+Ověření: `python -m unittest tests.test_revenue_events tests.test_revenue_product_rollup_safety tests.test_agent_scope`.
+Stav: připraveno lokálně; CI, nasazení a veřejná stránka neověřeny.
+Dopad na prokliky, objednávky a provize: UNKNOWN.
+Rollback: vrátit diff této úpravy ve třech souborech.

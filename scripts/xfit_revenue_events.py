@@ -36,6 +36,14 @@ def build_event(event_name, fields, *, analytics_consent=False,
         raise ValueError("consent must be boolean")
     if not analytics_consent:
         return None
+    catalogs = verified_product_ids_by_page
+    if event_name == "affiliate_outbound_click":
+        catalogs = _snapshot_catalogs(catalogs)
+    return _build_event(event_name, fields, catalogs)
+
+
+def _build_event(event_name, fields, catalogs):
+    """Validate one action against an already frozen catalog snapshot."""
     if not isinstance(event_name, str) or event_name not in EVENTS:
         raise ValueError("unsupported event")
     if not isinstance(fields, dict):
@@ -59,9 +67,7 @@ def build_event(event_name, fields, *, analytics_consent=False,
         # Only catalog item numbers, never free text or tracking URLs.
         if type(product_id) is not int or not 1 <= product_id <= 2**31 - 1:
             raise ValueError("product_id must be a positive catalog integer")
-        verified_product_ids_by_page = _snapshot_catalogs(
-            verified_product_ids_by_page)
-        if product_id not in verified_product_ids_by_page.get(page, set()):
+        if product_id not in (catalogs or {}).get(page, frozenset()):
             raise ValueError("product is not in the verified advisor catalog")
         params.update(partner=partner, product_id=product_id)
     return {"name": event_name, "params": params}
@@ -88,9 +94,8 @@ def summarize_funnel(events, *, analytics_consent=False,
     for event in events:
         if not isinstance(event, dict) or set(event) != {"name", "params"}:
             raise ValueError("unsupported event record")
-        validated = build_event(
-            event["name"], event["params"], analytics_consent=True,
-            verified_product_ids_by_page=verified_product_ids_by_page,
+        validated = _build_event(
+            event["name"], event["params"], verified_product_ids_by_page,
         )
         page = validated["params"]["page"]
         counts[page][validated["name"]] += 1
