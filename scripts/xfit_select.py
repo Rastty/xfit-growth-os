@@ -18,6 +18,7 @@ import re
 import sys
 from pathlib import Path
 from urllib.parse import urlsplit
+from scripts.xfit_availability import delivery_state
 
 KINDS = {
     "creatine": {"title": ("creatine", "kreatin", "creapure"), "category": ()},
@@ -116,6 +117,11 @@ def select_offers(catalog, kind, max_price=None, min_mass_g=100, limit=12):
     for item in catalog.get("products", []):
         if item.get("merchant") != "NaMaximum.cz" or not safe_merchant(item.get("source_url")):
             continue
+        availability = delivery_state(item)
+        if availability in ("unavailable", "slow_dispatch", "preorder"):
+            # Buyer shortlists must not promote known-unavailable offers,
+            # preorders or an explicitly quoted >7-day dispatch delay.
+            continue
         if not matches_kind(item, kind):
             continue
         if isinstance(item.get("price_czk"), bool):
@@ -145,6 +151,7 @@ def select_offers(catalog, kind, max_price=None, min_mass_g=100, limit=12):
             "source_url": item["source_url"],
             "ean": item.get("ean") or "",
             "affiliate_url": None,
+            "availability_state": availability,
             "publish_ready": False,
             "explanation": "Porovnání ceny za hmotnost prášku, nikoli za množství účinné látky či čistých bílkovin."
         })

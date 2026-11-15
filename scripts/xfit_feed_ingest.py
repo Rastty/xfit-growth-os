@@ -111,6 +111,10 @@ def parse_feed(xml_bytes):
             "source_url": link,
             "image_url": image,
             "stock_indicator": value(el, "DELIVERY_DATE", "AVAILABILITY")[:80],
+            # Keep provenance separate: arbitrary AVAILABILITY text must not
+            # be interpreted as Heureka's numeric DELIVERY_DATE days.
+            "delivery_date": value(el, "DELIVERY_DATE")[:80],
+            "availability_raw": value(el, "AVAILABILITY")[:80],
             "merchant": "NaMaximum.cz",
             "affiliate_url": None,  # Do NOT infer a commissioned product link from a Heureka CPC link.
             "publish_ready": False,

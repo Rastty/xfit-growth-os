@@ -18,6 +18,7 @@ from scripts.xfit_click_metadata import card_click_attributes
 from scripts.xfit_budget_choices import budget_choices
 from scripts.xfit_price_tradeoff import price_tradeoff
 from scripts.xfit_model_portions import model_portion_intro, model_portion_line
+from scripts.xfit_availability import delivery_note
 from scripts.xfit_catalog_retrieval import (verified_catalog_fetch_time,
                                             catalog_retrieval_notice)
 from scripts.wp_publish import PublishError, normalized_base, MARKER, existing_content, wp_request, validate_document, publish, verify_public
@@ -129,6 +130,11 @@ def build_document(catalog, base, sample):
         'může Xfit.cz získat provizi. Pořadí určuje jednotková cena za hmotnost '
         'prášku, nikoliv provize.</em></p>',
         '<p><strong>Vybrané možnosti:</strong> uvádíme různé výrobky či velikosti balení, ne opakované příchutě stejného prášku.</p>',
+        '<p><strong>Dostupnost:</strong> z XML vyřazujeme výslovně nedostupné nabídky, '
+        'předobjednávky a produkty s uvedenou expedicí delší než 7 dní. '
+        'Pokud katalog dostupnost nepotvrzuje, u konkrétní karty to přiznáváme. '
+        'Jde o stav při načtení XML, nikoli živou kontrolu skladu; finální '
+        'dostupnost zkontrolujte u prodejce.</p>',
         model_portion_intro("whey"),
         '<div class="xfit-product-cards">'
     ]
@@ -151,6 +157,8 @@ def build_document(catalog, base, sample):
             '<p>Typ podle názvu: '+kind+'</p>'
             '<p><strong>Cena: '+price+' Kč</strong> · Balení: '+str(item["mass_g"])+' g</p>'
             '<p><strong>Cena za 100 g prášku: '+unit+' Kč</strong></p>'
+            '<p data-xfit-availability="'+item["availability_state"]+'">'+
+            delivery_note(item)+'</p>'
             +model_portion_line(item, "whey")+
             '<p><a'+card_click_attributes(item["id"], "whey")+' href="'+link+'" rel="sponsored nofollow noopener noreferrer" '
             'aria-label="Zobrazit konkrétní balení na NaMaximum.cz: '+html.escape(item["title"],quote=True)+' (nová karta)" '

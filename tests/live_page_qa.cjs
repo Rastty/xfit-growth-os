@@ -83,6 +83,21 @@ for(const spec of checks){
         getComputedStyle(card).overflowWrap==="anywhere" ||
         getComputedStyle(card).wordBreak==="break-all")
     };
+    const productAvailability={
+      count:cards.length,
+      everyCardExplains:cards.length>=2 && cards.every(card=>{
+        const note=card.querySelector('p[data-xfit-availability]');
+        const state=note?.getAttribute("data-xfit-availability");
+        return ["feed_stocked","up_to_week","unknown"].includes(state) &&
+          (note.textContent||"").includes("Dostupnost:") &&
+          (note.textContent||"").includes("ověřte v obchodě");
+      }),
+      hasExclusionMethod:!!document.querySelector("#xfit-offers")?.previousElementSibling
+        ?.textContent?.includes("Dostupnost") ||
+        !![...document.querySelectorAll("p")].find(p=>
+          p.textContent?.includes("předobjednávky") &&
+          p.textContent?.includes("expedicí delší než 7 dní")),
+    };
     const firstCardImage=firstCard?.querySelector("img");
     const firstCardLink=firstCard?.querySelector('a[href*="namaximum.cz"]');
     const firstCTABox=firstCardLink?.getBoundingClientRect();
@@ -504,7 +519,7 @@ for(const spec of checks){
         emptyFeaturedAlt,featuredImageCount:featuredImages.length,
         productImages:productImages.length,brokenProductImages:brokenProductImages.length,
         productImageStatus,themeImagesMissingAlt,firstProductLoaded,firstCTASize,
-        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,sameMassDecision,noPurchase,proteinPackUse,proteinFoodFirst,proteinCheckout,productTitleDisplay,productCardWrap,quickNav,offTopicPlacement,beginnerGoals,beginnerProteinCost,creatineMuscle};
+        hasViewportMeta:!!document.querySelector('meta[name="viewport"]'),budget,modelPortions,feedProvenance,labelGuideBridge,tradeoff,sameMassDecision,noPurchase,proteinPackUse,proteinFoodFirst,proteinCheckout,productTitleDisplay,productCardWrap,productAvailability,quickNav,offTopicPlacement,beginnerGoals,beginnerProteinCost,creatineMuscle};
   });
   if(!doc.h1.includes(spec.expected))failures.push("h1_missing_expected");
   if(doc.h2<spec.minH2)failures.push("insufficient_h2");
@@ -545,6 +560,9 @@ for(const spec of checks){
     failures.push("protein_food_first_choice_not_first_or_missing_on_mobile");
   if(spec.commercial && !doc.productCardWrap.allAllowUnbrokenTitles)
     failures.push("published_product_card_wrap_missing_on_mobile");
+  if(spec.commercial && (!doc.productAvailability.everyCardExplains ||
+      !doc.productAvailability.hasExclusionMethod))
+    failures.push("public_product_dispatch_evidence_missing_or_unqualified");
   if(spec.name==="protein-guide" &&
       (doc.proteinPackUse.count!==1 || !doc.proteinPackUse.hasArithmetic ||
        !doc.proteinPackUse.hasRealLimits || !doc.proteinPackUse.oldAdviceAbsent))
