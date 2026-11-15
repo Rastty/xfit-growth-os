@@ -16,7 +16,7 @@ from scripts.xfit_click_metadata import card_click_attributes
 AFFIL_KEYS = {"utm_medium", "utm_campaign", "utm_source", "a_aid", "a_bid"}
 
 
-def _tracked_offer(item):
+def _tracked_offer(item, product_kind):
     """Accept only the already assembled NaMaximum/Affial product deeplink."""
     href = item.get("tracked_url") or item.get("affiliate_url")
     if not isinstance(href, str):
@@ -32,12 +32,16 @@ def _tracked_offer(item):
             not url.path or url.path.rstrip("/") in ("", "/") or
             url.path.startswith("//") or
             not AFFIL_KEYS.issubset(params) or
-            not set(params).issubset(AFFIL_KEYS | {"variant"}) or
+            not set(params).issubset(AFFIL_KEYS | {"variant", "data1", "data2"}) or
             any(len(values) != 1 or not values[0] for values in params.values()) or
             params["utm_medium"] != ["affiliate"] or
             params["utm_campaign"] != ["affial.com"] or
             params["utm_source"] != ["pap"] or
-            ("variant" in params and params["variant"] != [item["id"]])):
+            ("variant" in params and params["variant"] != [item["id"]]) or
+            (any(key in params for key in ("data1", "data2")) and
+             (product_kind != "creatine" or
+              params.get("data1") != ["xfit"] or
+              params.get("data2") != ["creatine"]))):
         raise PublishError("Unverified quick-pick merchant tracking or product variant")
     return href
 
@@ -58,7 +62,7 @@ def quick_pick(selected, *, product_kind):
                 type(grams) is not int or not 50 <= grams <= 10000 or
                 not (item.get("tracked_url") or item.get("affiliate_url"))):
             raise PublishError("Quick pick cannot resolve a verified product card")
-        href = _tracked_offer(item)
+        href = _tracked_offer(item, product_kind)
         total = _price(item.get("price_czk"))
         per100 = _price(item.get("price_per_100g_powder_czk"))
         if (total > Decimal("1000000") or per100 > Decimal("1000000") or

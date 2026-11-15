@@ -31,6 +31,10 @@ SLUG = "xfit-os-kreatin-poradce"
 EXAMPLE_PATH = "/kategorie/kreatin/creatine-creapure"
 EXAMPLE_VARIANT = "392"
 AFFIL_KEYS = ("utm_medium", "utm_campaign", "utm_source", "a_aid", "a_bid")
+# Limited, non-personal click-origin pilot. PAP documents that data1/data2
+# can reach the commission report; actual Affial credit remains unproven until
+# the account's click and commission exports corroborate it.
+CREATINE_PILOT_PARAMS = (("data1", "xfit"), ("data2", "creatine"))
 ALLOWED_PRODUCT_PARAMS = {"variant"}
 PRODUCT_HOSTS = {"namaximum.cz", "www.namaximum.cz"}
 IMAGE_HOSTS = {"greenmedical.bwcdn.net"}
@@ -56,8 +60,10 @@ def validate_example(base, sample):
     affiliate_signature(base)
     return True
 
-def build_tracked_url(source_url, base, sample):
+def build_tracked_url(source_url, base, sample, *, source_context=None):
     validate_example(base, sample)
+    if source_context not in (None, "creatine"):
+        raise PublishError("Unsupported affiliate origin context")
     product = urlsplit(source_url)
     if (product.scheme != "https" or product.hostname not in PRODUCT_HOSTS or
         product.username or product.password or product.fragment or
@@ -72,7 +78,11 @@ def build_tracked_url(source_url, base, sample):
         raise PublishError("Ambiguous URL parameters in product feed")
     bp = urlsplit(base)
     base_params = parse_qs(bp.query)
+    if source_context == "creatine" and ("data1" in base_params or "data2" in base_params):
+        raise PublishError("Affial base already has origin tags; refuse to overwrite")
     outgoing = source_params + [(k, base_params[k][0]) for k in AFFIL_KEYS]
+    if source_context == "creatine":
+        outgoing += list(CREATINE_PILOT_PARAMS)
     link = urlunsplit(("https", product.netloc, product.path, urlencode(outgoing), ""))
     # Validate effective tracking/signature exactly as sample.
     if classify_product_link(base, link).get("scheme") != "merchant_direct_query":
@@ -106,7 +116,8 @@ def shortlist(catalog, base, sample, budget=1500):
     candidates=[]
     for p in items:
         try:
-            url = build_tracked_url(p["source_url"], base, sample)
+            url = build_tracked_url(p["source_url"], base, sample,
+                                    source_context="creatine")
         except (PublishError, ValueError):
             continue
         image=safe_image(images_by_id.get(p["id"]) or "")

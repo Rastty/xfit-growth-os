@@ -39,6 +39,23 @@ class CreatineGuideTests(unittest.TestCase):
         self.assertIn("variant=392",link)
         self.assertIn("a_aid=TESTAID",link)
         self.assertNotIn("heureka",link)
+        self.assertNotIn("data1=",link)
+        self.assertNotIn("data2=",link)
+
+    def test_creatine_origin_tags_do_not_change_the_affiliate_signature(self):
+        source = "https://www.namaximum.cz/kategorie/kreatin/creatine-creapure?variant=392"
+        original = build_tracked_url(source, BASE, SAMPLE)
+        tagged = build_tracked_url(source, BASE, SAMPLE, source_context="creatine")
+        original_params = parse_qs(urlsplit(original).query)
+        tagged_params = parse_qs(urlsplit(tagged).query)
+        self.assertEqual(tagged_params.pop("data1"), ["xfit"])
+        self.assertEqual(tagged_params.pop("data2"), ["creatine"])
+        self.assertEqual(tagged_params, original_params)
+        with self.assertRaises(PublishError):
+            build_tracked_url(source, BASE, SAMPLE, source_context="other")
+        with self.assertRaises(PublishError):
+            build_tracked_url(source, BASE + "&data1=other", SAMPLE,
+                              source_context="creatine")
     def test_sample_homepage_fails(self):
         with self.assertRaises(ValueError):
             validate_example(BASE,SAMPLE.replace("/kategorie/kreatin/creatine-creapure","/"))
@@ -219,7 +236,12 @@ class CreatineGuideTests(unittest.TestCase):
         self.assertEqual(len({link["aria-label"] for link in links}), len(chosen))
         by_variant = {product["id"]: product for product in chosen}
         for link in links:
-            variant = parse_qs(urlsplit(link["href"]).query)["variant"][0]
+            params = parse_qs(urlsplit(link["href"]).query)
+            variant = params["variant"][0]
+            self.assertEqual(params["data1"], ["xfit"])
+            self.assertEqual(params["data2"], ["creatine"])
+            self.assertEqual(params["a_aid"], ["TESTAID"])
+            self.assertEqual(params["a_bid"], ["TESTBID"])
             self.assertEqual(link["aria-label"],
                 "Ověřit cenu a dostupnost produktu "
                 + by_variant[variant]["title"] + " na NaMaximum.cz (nová karta)")
