@@ -89,7 +89,6 @@ def build_document(catalog, base, sample):
         '<li><a href="#xfit-offers" style="display:inline-block;padding:12px 0;">'
         'Porovnat balení a ceny</a></li></ul></nav>',
         catalog_retrieval_notice(catalog),
-        quick_pick(chosen, product_kind="whey"),
         '<p><strong>Jak srovnáváme:</strong> níže používáme cenu za 100 g proteinového '
         'prášku, nikoli za 100 g skutečných bílkovin. K tomu bychom potřebovali '
         'spolehlivý údaj o jejich obsahu pro každou variantu; nelze jej odhadovat '
@@ -103,6 +102,7 @@ def build_document(catalog, base, sample):
         'nelze pořadí níže považovat za žebříček nejlevnějších '
         'skutečných bílkovin. Když produkt nepotřebujete, '
         'nemusíte kupovat nic.</p>',
+        quick_pick(chosen, product_kind="whey"),
         '<h2>Než koupíte protein: krátký rozhodovací rozcestník</h2>',
         '<details id="xfit-need" open><summary><strong>Musím protein kupovat, abych nabral svaly?</strong></summary>'
         '<p>Ne. Proteinový prášek je praktický způsob doplnění bílkovin, pokud je '

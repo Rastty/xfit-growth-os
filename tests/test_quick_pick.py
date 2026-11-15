@@ -94,6 +94,9 @@ class QuickPickTests(unittest.TestCase):
                                 document.index('id="xfit-need"'))
                 self.assertLess(document.index('id="xfit-rychly-vyber"'),
                                 document.index('id="xfit-offers"'))
+                if builder is whey:
+                    self.assertLess(document.index('href="https://xfit.cz/xfit-os-cena-proteinu-podle-etikety/"'),
+                                    document.index('id="xfit-rychly-vyber"'))
                 fragment = document.split('<section id="xfit-rychly-vyber"', 1)[1].split('</section>', 1)[0]
                 links = Anchors()
                 links.feed(fragment)

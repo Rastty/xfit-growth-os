@@ -6,9 +6,10 @@ The creatine and whey advisers already have verified XML-backed price tradeoffs,
 budget accordions, real affiliate cards and a no-purchase route. Their actual
 product decisions were below the introduction and several explanatory blocks.
 
-The new `xfit_quick_pick.quick_pick` module creates a compact first-screen
-decision immediately after the existing feed-date notice in **both** owned
-advisers:
+The new `xfit_quick_pick.quick_pick` module creates a compact early decision in
+**both** owned advisers. On whey, the existing explanation that powder weight
+is not pure protein and its nutritional-label comparison link remain before
+the choice; on creatine, the choice follows the feed-date notice:
 
 - Lowest whole-pack checkout spend within the six displayed offers.
 - Lowest cost per 100 g of powder within those same displayed offers.
