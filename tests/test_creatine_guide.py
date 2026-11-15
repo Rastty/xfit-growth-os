@@ -210,7 +210,12 @@ class CreatineGuideTests(unittest.TestCase):
         body = build_document(self.catalog, BASE, SAMPLE)["content"]
         Links().feed(body)
         chosen = shortlist(self.catalog, BASE, SAMPLE)
-        self.assertEqual(len(links), len(chosen))
+        hero = [link for link in links if link.get("data-xfit-cta") == "quick-pick"]
+        cards = [link for link in links if link.get("data-xfit-cta") != "quick-pick"]
+        self.assertEqual(len(cards), len(chosen))
+        self.assertIn(len(hero), (1, 2))
+        self.assertTrue(all(link["href"] in {card["href"] for card in cards}
+                            for link in hero))
         self.assertEqual(len({link["aria-label"] for link in links}), len(chosen))
         by_variant = {product["id"]: product for product in chosen}
         for link in links:
@@ -222,7 +227,7 @@ class CreatineGuideTests(unittest.TestCase):
             self.assertIn("noopener", link["rel"].split())
             self.assertIn("nofollow", link["rel"].split())
         self.assertEqual(body.count(
-            '>Ověřit cenu a dostupnost</a>'), len(chosen))
+            '>Ověřit cenu a dostupnost</a>'), len(links))
         self.assertEqual(body.count('NaMaximum.cz · nová karta</small>'), len(chosen))
 
     def test_prices_preserve_cents_and_explain_rank(self):
