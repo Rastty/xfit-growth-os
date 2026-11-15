@@ -21,6 +21,7 @@ from scripts.xfit_budget_choices import budget_choices
 from scripts.xfit_price_tradeoff import price_tradeoff
 from scripts.xfit_model_portions import model_portion_intro, model_portion_line
 from scripts.xfit_availability import delivery_note
+from scripts.xfit_quick_pick import quick_pick
 from scripts.xfit_catalog_retrieval import (verified_catalog_fetch_time,
                                             catalog_retrieval_notice)
 from scripts.wp_publish import (MARKER, PublishError, normalized_base, plain,
@@ -151,6 +152,7 @@ def build_document(catalog, base, sample):
       '<li><a href="#xfit-offers" style="display:inline-block;padding:12px 0;">'
       'Porovnat balení a ceny</a></li></ul></nav>',
       catalog_retrieval_notice(catalog),
+      quick_pick(chosen, product_kind="creatine"),
       '<p><strong>Jak používat výběr:</strong> Porovnejte cenu za 100 g prášku, '
       'velikost balení a celkovou cenu. Nezaměňujte cenu za 100 g výrobku '
       's přesnou cenou za 100 g čistého kreatinu – čistotu konkrétních '
