@@ -8,7 +8,8 @@ from scripts import xfit_affiliate_public_audit as probe
 BASE = ("https://www.namaximum.cz/?utm_medium=affiliate"
         "&utm_campaign=affial.com&utm_source=pap&a_aid=SENSITIVE_AID&a_bid=SENSITIVE_BID")
 GOOD_QUERY = ("?variant=392&utm_source=pap&utm_medium=affiliate"
-              "&a_aid=SENSITIVE_AID&a_bid=SENSITIVE_BID&utm_campaign=affial.com")
+              "&a_aid=SENSITIVE_AID&a_bid=SENSITIVE_BID&utm_campaign=affial.com"
+              "&data1=xfit&data2=creatine")
 SLUG = "xfit-os-kreatin-poradce"
 
 
@@ -131,6 +132,8 @@ class AffiliateParityTests(unittest.TestCase):
         self.assertEqual(result["source_quick_pick_count"], 1)
         self.assertEqual(result["public_quick_pick_count"], 1)
         self.assertTrue(result["quick_pick_destinations_match"])
+        self.assertEqual(result["public_origin_verified_cards"], 2)
+        self.assertEqual(result["public_origin_verified_quick_picks"], 1)
         for secret in ("SENSITIVE_AID", "SENSITIVE_BID", "392", "393"):
             self.assertNotIn(secret, str(result))
 
@@ -196,6 +199,40 @@ class AffiliateParityTests(unittest.TestCase):
         self.assertIn("public_invalid_quick_pick_merchant_campaign", result["errors"])
         self.assertFalse(result["quick_pick_destinations_match"])
         self.assertTrue(result["offer_destinations_match"])
+
+    def test_untagged_or_partial_creatine_is_a_real_error_even_with_valid_affiliate_ids(self):
+        for bad in ("", "&data1=xfit", "&data2=creatine",
+                    "&data1=xfit&data2=other",
+                    "&data1=xfit&data2=creatine&data1=xfit"):
+            with self.subTest(origin=bad):
+                changed = body().replace("&data1=xfit&data2=creatine", bad)
+                result = probe.audit_page(
+                    SLUG, BASE, wp_reader=lambda slug: wp(changed),
+                    public_reader=lambda slug: changed)
+                self.assertIn("public_incorrect_affiliate_origin_tag", result["errors"])
+                self.assertIn("public_incorrect_quick_pick_origin_tag", result["errors"])
+                self.assertTrue(result["offer_destinations_match"])
+
+    def test_whey_control_must_have_no_origin_tag(self):
+        whey_slug = "xfit-os-syrovatkovy-protein-porovnani"
+        whey_body = body().replace('data-xfit-engine="creatine"',
+                                   'data-xfit-engine="whey"')
+        whey_body = whey_body.replace("&data1=xfit&data2=creatine", "")
+        def whey_wp(slug):
+            post = wp(whey_body)
+            post.update(id=25456, slug=whey_slug,
+                        link="https://xfit.cz/" + whey_slug + "/")
+            return post
+        result = probe.audit_page(whey_slug, BASE, wp_reader=whey_wp,
+                                  public_reader=lambda slug: whey_body)
+        self.assertEqual(result["errors"], [])
+        self.assertEqual(result["public_origin_verified_cards"], 2)
+        contaminated = whey_body.replace("&utm_campaign=affial.com",
+                                         "&utm_campaign=affial.com&data1=xfit&data2=creatine")
+        result = probe.audit_page(whey_slug, BASE, wp_reader=whey_wp,
+                                  public_reader=lambda slug: contaminated)
+        self.assertIn("public_incorrect_affiliate_origin_tag", result["errors"])
+        self.assertIn("public_incorrect_quick_pick_origin_tag", result["errors"])
 
     def test_bad_hero_is_not_hidden_by_good_lower_product_cards(self):
         cases = {
