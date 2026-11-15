@@ -232,6 +232,9 @@ def build_document(catalog, base, sample):
             'background-color:#116a70;color:#ffffff;text-decoration:none;font-weight:700;'
             'border-radius:8px;">Ověřit cenu a dostupnost</a> '
             '<small>NaMaximum.cz · nová karta</small></p>'
+            '<p><a href="#xfit-vyber-podle-rozpoctu" '
+            'style="display:inline-block;padding:12px 0;">'
+            'Zpět k výběru podle rozpočtu</a></p>'
             '</article>')
     bits += [
       '</div>',
