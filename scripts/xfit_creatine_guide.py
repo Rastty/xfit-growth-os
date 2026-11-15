@@ -20,6 +20,7 @@ from scripts.xfit_click_metadata import card_click_attributes
 from scripts.xfit_budget_choices import budget_choices
 from scripts.xfit_price_tradeoff import price_tradeoff
 from scripts.xfit_model_portions import model_portion_intro, model_portion_line
+from scripts.xfit_availability import delivery_note
 from scripts.xfit_catalog_retrieval import (verified_catalog_fetch_time,
                                             catalog_retrieval_notice)
 from scripts.wp_publish import (MARKER, PublishError, normalized_base, plain,
@@ -184,6 +185,10 @@ def build_document(catalog, base, sample):
       'Pokud přes odkaz nakoupíte, Xfit.cz může získat provizi. '
       'Řazení je podle ceny za 100 g baleného prášku, nikoli výše provize.</em></p>',
       '<p><strong>Vybrané možnosti:</strong> odlišné výrobky nebo gramáže, ne šest příchutí téhož balení.</p>',
+      '<p><strong>Dostupnost:</strong> z XML vyřazujeme výslovně nedostupné '
+      'nabídky, předobjednávky a produkty s uvedenou expedicí delší než 7 dní. '
+      'U nabídky bez doložené dostupnosti to výslovně uvádíme. '
+      'Údaj z katalogu není živou rezervací; stav ověřte v obchodě.</p>',
         model_portion_intro("creatine"),
       '<div class="xfit-product-cards">'
     ]
@@ -205,6 +210,8 @@ def build_document(catalog, base, sample):
             '<p><strong>Cena: '+price+' Kč</strong> · Balení: '+
             str(offer["mass_g"])+' g</p>'
             '<p><strong>Cena za 100 g prášku: '+unit+' Kč</strong></p>'
+            '<p data-xfit-availability="'+offer["availability_state"]+'">'+
+            delivery_note(offer)+'</p>'
             +model_portion_line(offer, "creatine")+
             '<p><a'+card_click_attributes(offer["id"], "creatine")+' href="'+href+'" rel="sponsored nofollow noopener noreferrer" '
             'aria-label="Zobrazit konkrétní balení na NaMaximum.cz: '+html.escape(offer["title"],quote=True)+' (nová karta)" '
