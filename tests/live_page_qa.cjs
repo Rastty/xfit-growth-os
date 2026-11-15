@@ -20,6 +20,7 @@ for(const spec of checks){
  const context=await browser.newContext({viewport:{width:375,height:812},deviceScaleFactor:1,hasTouch:true,isMobile:true,locale:"cs-CZ"});
  const page=await context.newPage();
  const failures=[];
+ let stage="navigation";
  try{
   const {response,retries}=await navigatePublicGet(page,spec.url,{timeout:60000});
   if(!response || response.status()>=400)failures.push("http_"+(response?.status()||"none"));
@@ -27,12 +28,14 @@ for(const spec of checks){
   // A full-page screenshot does not automatically fetch off-screen lazy images.
   // Scroll to a real product as a visitor does, then assess loaded imagery.
   if(spec.commercial){
+    stage="product_scroll";
     const firstCard=page.locator(".xfit-product-card").first();
     if(await firstCard.count()){
       await firstCard.scrollIntoViewIfNeeded();
       await page.waitForTimeout(1600);
     }
   }
+  stage="document_checks";
   const doc=await page.evaluate(()=>{
     const h1=[...document.querySelectorAll("h1")].map(n=>n.textContent.trim()).join(" | ");
     const h2=document.querySelectorAll("h2").length;
@@ -532,9 +535,17 @@ for(const spec of checks){
   if(spec.commercial && (!doc.firstCTASize || doc.firstCTASize.height<44))failures.push("merchant_cta_tap_target_under_44px");
   if(["beginner","pilates-cardio","creatine-kidney","creatine-vs-protein","protein-intake","protein-meaning"].includes(spec.name) && doc.details<3)failures.push("interactive_details_missing");
   if(doc.documentWidth>doc.viewport+12)failures.push("horizontal_overflow_"+(doc.documentWidth-doc.viewport));
-  await page.screenshot({path:"reports/browser-qa/"+spec.name+"-mobile.png",fullPage:true});
+  // A dynamic ad-heavy legacy theme can hang full-page screenshots even when
+  // the page is readable. Capture the actual 375px viewport instead. The DOM
+  // checks above cover the full document, including off-screen product cards.
+  // Never lose the evaluated failures if screenshot capture times out.
+  stage="viewport_screenshot";
+  try{
+    await page.screenshot({path:"reports/browser-qa/"+spec.name+"-mobile.png",
+      fullPage:false,animations:"disabled",timeout:10000});
+  }catch(e){failures.push("mobile_viewport_screenshot_"+e.name);}
   console.log(JSON.stringify({page:spec.name,state:failures.length?"FAIL":"PASS",navigation_retries:retries,doc,failures}));
- }catch(e){failures.push("browser_fetch_error_"+e.name);console.log(JSON.stringify({page:spec.name,state:"ERROR",failures}));}
+ }catch(e){failures.push("browser_error_"+e.name);console.log(JSON.stringify({page:spec.name,state:"ERROR",stage,failures}));}
  await context.close();
  bad ||= failures.length>0;
 }
