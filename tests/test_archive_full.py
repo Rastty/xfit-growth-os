@@ -11,6 +11,42 @@ def post(i,slug,title,body):
        "modified":"2026-01-01T00:00:00","title":{"rendered":title},
        "content":{"rendered":"<p>"+body+"</p>"}}
 class ArchiveAuditTests(unittest.TestCase):
+    def test_missing_or_malformed_rendered_fields_reject_the_whole_page(self):
+        first=post(1,"protein","Protein","Praktické informace.")
+        for field in ("title","content"):
+            for value in (None, "text", [], {}, {"rendered":None}, {"rendered":123}):
+                malformed=dict(post(2,"kreatin","Kreatin","Další informace."))
+                malformed[field]=value
+                with self.subTest(field=field,value=value), tempfile.TemporaryDirectory() as directory:
+                    output=Path(directory)/"audit.json"
+                    with patch("sys.argv",["audit","--pages","2","--size","2",
+                                           "--output",str(output)]), \
+                         patch("scripts.xfit_archive_full.fetch",
+                               side_effect=[([first,first],2),([first,malformed],2)]), \
+                         patch("builtins.print"):
+                        self.assertEqual(main(),2)
+                    report=json.loads(output.read_text(encoding="utf-8"))
+                    self.assertFalse(report["complete"])
+                    self.assertEqual(report["raw_page_records"],2)
+                    self.assertEqual(report["scanned"],1)
+                    self.assertEqual(report["pages_fetched"],1)
+                    self.assertEqual(report["interrupted_at"],
+                                     {"page":2,"error_type":"ValueError"})
+                    self.assertFalse(report["mutated_wordpress"])
+
+    def test_explicitly_empty_rendered_fields_are_valid_evidence(self):
+        empty=post(1,"prazdny","","")
+        empty["content"]["rendered"]=""
+        with tempfile.TemporaryDirectory() as directory:
+            output=Path(directory)/"audit.json"
+            with patch("sys.argv",["audit","--pages","1","--output",str(output)]), \
+                 patch("scripts.xfit_archive_full.fetch",return_value=([empty],1)), \
+                 patch("builtins.print"):
+                self.assertEqual(main(),0)
+            report=json.loads(output.read_text(encoding="utf-8"))
+            self.assertTrue(report["complete"])
+            self.assertEqual(report["thin_count"],1)
+
     def test_malformed_page_preserves_partial_report_as_incomplete(self):
         first=post(1,"kreatin","Kreatin","Praktické informace.")
         for batch in ({}, {"code":"rest_error"}, None, "", [first,None], [True]):
