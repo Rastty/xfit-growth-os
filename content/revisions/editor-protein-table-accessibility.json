@@ -1,0 +1,13 @@
+{
+  "status": "editorial_proposal_not_deployed",
+  "issue": 4,
+  "wp_post_id": 25451,
+  "slug": "xfit-os-protein-guide",
+  "source_file": "content/ready/xfit-os-protein-guide.json",
+  "source_file_sha256": "bef752e44534dd3cffef24f8f703a213d9f9024d1ed3a229afe5bab6a0402f58",
+  "source_content_sha256": "46810fac0512352ab26814978c7a4213038417c5c9465f7a614f7aec7deff0d3",
+  "operation": "replace_exact_once",
+  "original": "<table><thead><tr><th>Vaše potřeba</th><th>Co zvážit</th><th>Na co si dát pozor</th></tr></thead><tbody>\n<tr><td>Univerzální protein za rozumnou cenu</td><td>Syrovátkový koncentrát (WPC)</td><td>Obsah laktózy, množství bílkovin na 100 g</td></tr>\n<tr><td>Nižší obsah laktózy</td><td>Syrovátkový izolát (WPI), případně ověřenou bezlaktózovou variantu</td><td>„Izolát“ automaticky neznamená nulovou laktózu</td></tr>\n<tr><td>Veganská strava</td><td>Sójový protein nebo vhodně složená rostlinná směs</td><td>Aminokyselinové složení, alergeny, chuť</td></tr>\n<tr><td>Hustější nápoj nebo večerní svačina</td><td>Kasein podle chuti a sytivosti</td><td>Není nutnou součástí jídelníčku</td></tr>\n<tr><td>Co nejnižší cena</td><td>Porovnat cenu za 100 g skutečných bílkovin</td><td>Cena kilogramu prášku může klamat</td></tr>\n</tbody></table>",
+  "replacement": "<table>\n<caption>Rychlá volba podle potřeby: co zvážit a co ověřit před nákupem. Nejde o žebříček výrobků.</caption><thead><tr><th scope=\"col\">Vaše potřeba</th><th scope=\"col\">Co zvážit</th><th scope=\"col\">Na co si dát pozor</th></tr></thead><tbody>\n<tr><th scope=\"row\">Univerzální protein za rozumnou cenu</th><td>Syrovátkový koncentrát (WPC)</td><td>Obsah laktózy, množství bílkovin na 100 g</td></tr>\n<tr><th scope=\"row\">Nižší obsah laktózy</th><td>Syrovátkový izolát (WPI), případně ověřenou bezlaktózovou variantu</td><td>„Izolát“ automaticky neznamená nulovou laktózu</td></tr>\n<tr><th scope=\"row\">Veganská strava</th><td>Sójový protein nebo vhodně složená rostlinná směs</td><td>Aminokyselinové složení, alergeny, chuť</td></tr>\n<tr><th scope=\"row\">Hustější nápoj nebo večerní svačina</th><td>Kasein podle chuti a sytivosti</td><td>Není nutnou součástí jídelníčku</td></tr>\n<tr><th scope=\"row\">Co nejnižší cena</th><td>Porovnat cenu za 100 g skutečných bílkovin</td><td>Cena kilogramu prášku může klamat</td></tr>\n</tbody></table>",
+  "evidence": "Existing local decision table only. Adds caption and explicit column/row headers; preserves every existing cell, recommendation and link. No new clinical or commercial claims."
+}
