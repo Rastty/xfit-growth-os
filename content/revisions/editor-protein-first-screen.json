@@ -1,0 +1,13 @@
+{
+  "status": "editorial_proposal_not_deployed",
+  "issue": 4,
+  "wp_post_id": 25451,
+  "slug": "xfit-os-protein-guide",
+  "source_file": "content/ready/xfit-os-protein-guide.json",
+  "source_file_sha256": "bef752e44534dd3cffef24f8f703a213d9f9024d1ed3a229afe5bab6a0402f58",
+  "source_content_sha256": "46810fac0512352ab26814978c7a4213038417c5c9465f7a614f7aec7deff0d3",
+  "operation": "replace_exact_once",
+  "original": "<p><strong>Nejlepší protein neexistuje pro každého.</strong> Záleží na tom, zda potřebujete pohodlně doplnit bílkoviny po tréninku, vyhnout se laktóze, hledáte rostlinnou variantu nebo chcete co nejlépe využít rozpočet. Tenhle průvodce vám pomůže srovnat složení a cenu bez marketingových slibů. Proteinový prášek navíc není podmínkou pro růst svalů: bílkoviny lze získat také z normálního jídla.</p>",
+  "replacement": "<p><strong>Protein kupujte jen tehdy, pokud vám pomůže doplnit bílkoviny, které nepokryjete běžným jídlem; jinak nemusíte kupovat nic.</strong> Nejdřív v části 1 započítejte bílkoviny z jídla, potom podle části 2 vyberte typ odpovídající vašim omezením a ověřte složení a alergeny konkrétní varianty. Před nákupem v části 3 porovnejte cenu za stejné množství skutečných bílkovin, nikoli jen cenu balení nebo počet odměrek; bez etikety cenu za bílkoviny neodhadujte.</p>",
+  "evidence": "Summarizes existing sections 1–3 and label-data limits; no new clinical, product, price or performance claim."
+}
