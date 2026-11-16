@@ -109,6 +109,22 @@ Ověření této úpravy: `python -m unittest tests.test_revenue_events tests.te
 Stav: připraveno lokálně, bez nasazení a bez měření dopadu (UNKNOWN).
 Rollback: vrátit diff této úpravy ve třech souborech.
 
+## Přesné typy exportovaných textových hodnot
+
+Název události, slug stránky a partner přijímají pouze běžný Python `str`.
+Podtřídy řetězce se odmítají: mohou přepsat porovnání a hash tak, že projdou
+seznamem povolených hodnot, přestože JSON následně obsahuje jiný text.
+Lokální regresní test tuto možnost ověřuje syntetickou hodnotou pro všechna
+tři pole, v samostatné události i souhrnu. Chyba nevypisuje vstupní text;
+neplatná pozdější událost odmítne celý souhrn. Běžné řetězce z JSON zůstávají
+podporované. Jde o ochranu offline Python rozhraní, nikoli důkaz úniku z GA4.
+
+Ověření: `python -m unittest tests.test_revenue_events tests.test_revenue_product_rollup_safety tests.test_agent_scope`
+a `python -m unittest discover -s tests -q`.
+Stav: připraveno lokálně; CI, nasazení a veřejná stránka neověřeny.
+Dopad na prokliky, objednávky a provize: UNKNOWN.
+Rollback: vrátit tento diff; žádná data ani nastavení webu se nemění.
+
 ## Jediné ověření katalogu pro celý souhrn
 
 Souhrn používá stejnou ověřenou neměnnou kopii pro všechny prokliky.

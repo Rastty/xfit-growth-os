@@ -44,7 +44,9 @@ def build_event(event_name, fields, *, analytics_consent=False,
 
 def _build_event(event_name, fields, catalogs):
     """Validate one action against an already frozen catalog snapshot."""
-    if not isinstance(event_name, str) or event_name not in EVENTS:
+    # Subclasses can override equality/hash to impersonate allowlisted text
+    # while JSON serialization still emits their original, untrusted value.
+    if type(event_name) is not str or event_name not in EVENTS:
         raise ValueError("unsupported event")
     if not isinstance(fields, dict):
         raise ValueError("fields must be a dictionary")
@@ -54,7 +56,7 @@ def _build_event(event_name, fields, catalogs):
     if set(fields) != expected:
         raise ValueError("unsupported or missing fields")
     page = fields["page"]
-    if not isinstance(page, str) or page not in PAGES:
+    if type(page) is not str or page not in PAGES:
         raise ValueError("unsupported page")
     if fields["selection_engine"] != PAGES[page]:
         raise ValueError("page and engine do not match")
@@ -62,7 +64,7 @@ def _build_event(event_name, fields, catalogs):
     if event_name == "affiliate_outbound_click":
         partner = fields["partner"]
         product_id = fields["product_id"]
-        if not isinstance(partner, str) or partner not in PARTNERS:
+        if type(partner) is not str or partner not in PARTNERS:
             raise ValueError("unsupported partner")
         # Only catalog item numbers, never free text or tracking URLs.
         if type(product_id) is not int or not 1 <= product_id <= 2**31 - 1:

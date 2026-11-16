@@ -19,6 +19,37 @@ def click(product_id):
 
 
 class ProductRollupSafetyTests(unittest.TestCase):
+    def test_disguised_strings_cannot_export_unapproved_text(self):
+        class Disguised(str):
+            def __new__(cls, allowed):
+                value = super().__new__(cls, "private-answer")
+                value.allowed = allowed
+                return value
+
+            def __eq__(self, other):
+                return self.allowed == other
+
+            def __hash__(self):
+                return hash(self.allowed)
+
+        for field in ("name", "page", "partner"):
+            with self.subTest(field=field):
+                event = click(392)
+                target = event if field == "name" else event["params"]
+                target[field] = Disguised(target[field])
+                # The underlying text differs from the impersonated value.
+                self.assertEqual(json.loads(json.dumps(target[field])),
+                                 "private-answer")
+                with self.assertRaises(ValueError) as error:
+                    xfit_revenue_events.build_event(
+                        event["name"], event["params"], analytics_consent=True,
+                        verified_product_ids_by_page={PAGE: {392}})
+                self.assertNotIn("private-answer", str(error.exception))
+                with self.assertRaises(ValueError):
+                    summarize_funnel(
+                        [click(392), event], analytics_consent=True,
+                        verified_product_ids_by_page={PAGE: {392}})
+
     def test_catalog_is_validated_once_for_multiple_clicks_and_advisors(self):
         whey = "xfit-os-syrovatkovy-protein-porovnani"
         whey_click = {"name": "affiliate_outbound_click", "params": {
