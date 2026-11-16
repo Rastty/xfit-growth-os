@@ -8,7 +8,6 @@ import argparse
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 import hashlib
-import html
 from html.parser import HTMLParser
 import json
 import re
@@ -20,7 +19,6 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
 BASE="https://xfit.cz/wp-json/wp/v2/posts"
-TAG=re.compile(r"<[^>]*>")
 SPACE=re.compile(r"\s+")
 TITLE_NOISE=re.compile(r"\b(aktualizace|přehled|kompletní průvodce|průvodce)\b", re.I)
 SPAM=re.compile(r"(casino|kasino|gambling|slots|betting|viagra|porn|poker|loan|levitra)",re.I)
@@ -47,8 +45,35 @@ class AnchorLinks(HTMLParser):
 
     handle_startendtag=handle_starttag
 
+class ReaderText(HTMLParser):
+    """Extract text evidence without comments or inactive HTML payloads.
+
+    This is not a browser visibility check (CSS and shortcodes are not rendered).
+    """
+    INACTIVE={"script","style","template"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.inactive_depth=0
+        self.parts=[]
+
+    def handle_starttag(self,tag,attrs):
+        if tag in self.INACTIVE:
+            self.inactive_depth+=1
+
+    def handle_endtag(self,tag):
+        if tag in self.INACTIVE and self.inactive_depth:
+            self.inactive_depth-=1
+
+    def handle_data(self,data):
+        if not self.inactive_depth:
+            self.parts.append(data)
+
 def clean(text):
-    return SPACE.sub(" ",html.unescape(TAG.sub(" ",text or ""))).strip()
+    parser=ReaderText()
+    parser.feed(text or "")
+    parser.close()
+    return SPACE.sub(" "," ".join(parser.parts)).strip()
 
 def fetch(page,size):
     url=BASE+"?"+urlencode({"page":page,"per_page":size,"_fields":FIELDS})

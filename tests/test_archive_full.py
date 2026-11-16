@@ -11,6 +11,27 @@ def post(i,slug,title,body):
        "modified":"2026-01-01T00:00:00","title":{"rendered":title},
        "content":{"rendered":"<p>"+body+"</p>"}}
 class ArchiveAuditTests(unittest.TestCase):
+    def test_inactive_html_does_not_hide_thin_reader_content(self):
+        for hidden in ('<!-- {} -->', '<script>{}</script>',
+                       '<style>{}</style>', '<template><p>{}</p></template>',
+                       '<template><template>{}</template></template>'):
+            with self.subTest(markup=hidden):
+                body='<p>Krátká rada.</p>'+hidden.format('x'*400)
+                report=inventory([post(1,"protein","Protein",body)])
+                self.assertEqual(report["thin_count"],1)
+                self.assertEqual(report["flagged_candidates"][0]["body_chars"],
+                                 len("Krátká rada."))
+
+    def test_reader_text_keeps_czech_entities_and_nested_visible_content(self):
+        body='<p>Výživa&nbsp;<strong>a pohyb</strong> &amp; zdraví.</p>'
+        row=inventory([post(1,"vyziva","Výživa",body)])["flagged_candidates"][0]
+        self.assertEqual(row["body_chars"],len("Výživa a pohyb & zdraví."))
+
+    def test_visible_text_after_inactive_html_is_still_counted(self):
+        body='<template>Skryté</template><script>data</script><style>css</style>'
+        body+='<p>'+('Praktická rada. '*40)+'</p>'
+        self.assertEqual(inventory([post(1,"protein","Protein",body)])["thin_count"],0)
+
     def test_missing_or_malformed_rendered_fields_reject_the_whole_page(self):
         first=post(1,"protein","Protein","Praktické informace.")
         for field in ("title","content"):
@@ -215,6 +236,7 @@ class ArchiveAuditTests(unittest.TestCase):
 
     def test_equal_text_with_different_content_is_not_exact_duplicate(self):
         pairs=[
+            ('Rada<script>first()</script>', 'Rada<script>second()</script>'),
             ('<a href="https://example.org/source-a">Zdroj</a>',
              '<a href="https://example.org/source-b">Zdroj</a>'),
             ('<img src="/cvik-a.jpg" alt="Cvik">',
