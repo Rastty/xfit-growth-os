@@ -13,11 +13,18 @@ class NavigationParser(HTMLParser):
         self.shortcuts = []
         self.in_nav = False
         self.label = None
+        self.cards = []
+        self.current_card = None
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
         if "id" in attrs:
             self.ids.setdefault(attrs["id"], []).append((tag, attrs))
+        if tag == "article" and "xfit-product-card" in attrs.get("class", "").split():
+            self.current_card = []
+            self.cards.append(self.current_card)
+        if tag == "a" and self.current_card is not None:
+            self.current_card.append(attrs)
         if tag == "nav":
             self.in_nav = True
             self.label = attrs.get("aria-label")
@@ -27,6 +34,8 @@ class NavigationParser(HTMLParser):
     def handle_endtag(self, tag):
         if tag == "nav":
             self.in_nav = False
+        if tag == "article":
+            self.current_card = None
 
 
 class GuideNavigationTests(unittest.TestCase):
@@ -77,6 +86,22 @@ class GuideNavigationTests(unittest.TestCase):
                                 body.index('rel="sponsored nofollow'))
                 self.assertLess(body.index('data-xfit-quick-pick="no-buy"'),
                                 body.index('rel="sponsored nofollow'))
+                # Every card offers a same-page way to reconsider spending,
+                # including after following a budget shortcut down the page.
+                self.assertEqual(len(parser.cards), 2)
+                for links in parser.cards:
+                    returns = [a for a in links if a.get("href") ==
+                               "#xfit-vyber-podle-rozpoctu"]
+                    self.assertEqual(len(returns), 1)
+                    back = returns[0]
+                    self.assertNotIn("target", back)
+                    self.assertNotIn("onclick", back)
+                    self.assertFalse(any(k.startswith("data-") for k in back))
+                    self.assertIn("padding:12px 0", back["style"])
+                    purchases = [a for a in links if "sponsored" in
+                                 a.get("rel", "").split()]
+                    self.assertEqual(len(purchases), 1)
+                self.assertEqual(body.count("Zpět k výběru podle rozpočtu</a>"), 2)
 
 
 if __name__ == "__main__":
