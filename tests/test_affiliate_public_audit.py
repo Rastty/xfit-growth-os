@@ -137,6 +137,41 @@ class AffiliateParityTests(unittest.TestCase):
         for secret in ("SENSITIVE_AID", "SENSITIVE_BID", "392", "393"):
             self.assertNotIn(secret, str(result))
 
+    def test_budget_jump_is_not_mistaken_for_second_affiliate_cta(self):
+        # Current live cards contain one commercial offer and a separate
+        # same-page link to the budget picker. Both WP and public HTML are
+        # required to preserve the complete commercial CTA signature.
+        with_jump = body().replace(
+            "</article>",
+            '<a href="#xfit-vyber-podle-rozpoctu">Změnit rozpočet</a></article>',
+        )
+        result = probe.audit_page(
+            SLUG, BASE, wp_reader=lambda slug: wp(with_jump),
+            public_reader=lambda slug: with_jump)
+        self.assertEqual(result["errors"], [])
+        self.assertEqual(result["source_cta_metadata_count"], 2)
+        self.assertEqual(result["public_cta_metadata_count"], 2)
+        self.assertEqual(result["catalog_variant_linkage"], "EXACT_VARIANT_IDS_MATCH")
+
+    def test_unapproved_second_card_link_cannot_hide_behind_valid_offer(self):
+        for extra in (
+            '<a href="https://www.namaximum.cz/other">Untracked shop link</a>',
+            '<a href="#unapproved-target">Unknown jump</a>',
+            '<a data-xfit-product-id="392" href="#xfit-vyber-podle-rozpoctu">'
+            'Misleading tracked jump</a>',
+            '<a href="#xfit-vyber-podle-rozpoctu" rel="sponsored">'
+            'Misleading sponsored jump</a>',
+            '<a href="#xfit-vyber-podle-rozpoctu">One</a>'
+            '<a href="#xfit-vyber-podle-rozpoctu">Two</a>',
+        ):
+            with self.subTest(extra=extra.split('>')[1][:25]):
+                altered = body().replace("</article>", extra + "</article>")
+                result = probe.audit_page(
+                    SLUG, BASE, wp_reader=lambda slug: wp(altered),
+                    public_reader=lambda slug: altered)
+                self.assertIn("public_card_needs_exactly_one_link", result["errors"])
+                self.assertIn("wp_card_needs_exactly_one_link", result["errors"])
+
     def test_catalog_variant_match_is_explicit_evidence_not_revenue(self):
         result = probe.audit_page(
             SLUG, BASE, wp_reader=lambda slug: wp(),
