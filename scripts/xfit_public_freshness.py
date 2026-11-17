@@ -216,11 +216,27 @@ def product_card_identities(value):
 
 
 def safe_affiliate_card(identity):
-    """Each public card must have exactly one disclosed HTTPS product link."""
+    """Accept one disclosed merchant CTA and, optionally, the known return link.
+
+    The guides intentionally include an on-page budget anchor in each card.
+    It is not a second affiliate link. No other additional links are allowed,
+    including duplicate merchant CTAs or unapproved external destinations.
+    """
     title, links = identity
-    if not title or len(links) != 1:
+    if not title or not 1 <= len(links) <= 2:
         return False
-    href, sponsored = links[0]
+    merchant_links = []
+    budget_backlink_seen = False
+    for href, sponsored in links:
+        if href == "#xfit-vyber-podle-rozpoctu":
+            if sponsored or budget_backlink_seen:
+                return False
+            budget_backlink_seen = True
+        else:
+            merchant_links.append((href, sponsored))
+    if len(merchant_links) != 1:
+        return False
+    href, sponsored = merchant_links[0]
     parsed = urllib.parse.urlsplit(href or "")
     params = urllib.parse.parse_qs(parsed.query)
     return (
