@@ -7,6 +7,7 @@ const checks = [
   {name:"whey",url:"https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/",expected:"Srovnání syrovátkových proteinů",minH2:3,commercial:true},
   {name:"protein-guide",url:"https://xfit.cz/xfit-os-protein-guide/",expected:"Jak vybrat protein",minH2:7,commercial:false},
   {name:"pilates-cardio",url:"https://xfit.cz/pilates-vs-kardio-co-je-lepsi-pro-hubnuti/",expected:"Pilates vs. kardio",minH2:6,commercial:false},
+  {name:"pilates-post-surgery",url:"https://xfit.cz/jak-pilates-pro-zada-muze-pomoci-pri-rehabilitaci-po-urazu-nebo-operaci-zad/",expected:"Jak pilates pro záda může pomoci při rehabilitaci po úrazu nebo operaci zad",minH2:7,commercial:false},
   {name:"creatine-kidney",url:"https://xfit.cz/kreatin-a-jeho-vliv-na-ledviny-a-jatra/",expected:"Kreatin, ledviny a játra",minH2:6,commercial:false},
   {name:"creatine-vs-protein",url:"https://xfit.cz/xfit-os-kreatin-nebo-protein/",expected:"Kreatin, nebo protein?",minH2:6,commercial:false},
   {name:"creatine-muscle",url:"https://xfit.cz/jak-kreatin-muze-pomoci-ziskat-svalovy-objem-v-fitness/",expected:"Jak kreatin může pomoci získat svalový objem",minH2:6,commercial:false},
@@ -597,6 +598,20 @@ for(const spec of checks){
       doc.creatineMuscle.faqCount!==4 || !doc.creatineMuscle.faqFirstOpen ||
       !doc.creatineMuscle.faqOtherClosed || !doc.creatineMuscle.faqSummaries))
     failures.push("creatine_muscle_public_editorial_or_faq_regression");
+  if(spec.name==="pilates-post-surgery"){
+    const medicalSafety=await page.locator('.td-post-content').innerText();
+    if(![
+      "Rychlá odpověď:",
+      "po úrazu či operaci páteře nezačínejte podle obecného internetového návodu",
+      "Operace zad: čí plán má přednost?",
+      "Kdy je nutná okamžitá pomoc",
+      "Pět otázek na fyzioterapeuta",
+      "155 nebo 112",
+      "NICE NG59",
+    ].every(text=>medicalSafety.includes(text)) ||
+       medicalSafety.toLowerCase().includes("nenechte se omezovat bolestivými zády"))
+      failures.push("postoperative_medical_safety_copy_missing_or_regressed");
+  }
   if(spec.name==="beginner" && (!doc.beginnerGoals.heading ||
       doc.beginnerGoals.count!==4 || !doc.beginnerGoals.firstOpen ||
       !doc.beginnerGoals.othersClosed || !doc.beginnerGoals.firstAnswersNoBuy ||
@@ -705,7 +720,7 @@ for(const spec of checks){
   if(spec.commercial && doc.brokenProductImages)failures.push("broken_product_images_"+doc.brokenProductImages);
   if(spec.commercial && !doc.firstProductLoaded)failures.push("first_product_photo_not_loaded_after_scroll");
   if(spec.commercial && (!doc.firstCTASize || doc.firstCTASize.height<44))failures.push("merchant_cta_tap_target_under_44px");
-  if(["pilates-cardio","creatine-kidney","creatine-muscle","protein-intake","protein-meaning"].includes(spec.name)
+  if(["pilates-cardio","pilates-post-surgery","creatine-kidney","creatine-muscle","protein-intake","protein-meaning"].includes(spec.name)
       && (doc.featuredImageCount!==1 || doc.emptyFeaturedAlt!==0))
     failures.push("featured_editorial_image_has_no_accessible_description");
   if(["beginner","pilates-cardio","creatine-kidney","creatine-vs-protein","creatine-muscle","protein-intake","protein-meaning"].includes(spec.name) && doc.details<3)failures.push("interactive_details_missing");
