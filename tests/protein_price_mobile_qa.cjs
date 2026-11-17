@@ -7,11 +7,12 @@ const {chromium} = require('playwright');
 
 (async () => {
   const url = pathToFileURL(path.resolve(__dirname, '../assets/tools/protein-price/index.html')).href;
-  // The codex local executor provides system Chromium; CI installs the pinned
-  // Playwright browser. Use one explicitly, with the same browser assertions.
+  // CI installs the pinned Playwright Chromium. Only fall back to the system
+  // binary for local diagnostics when that exact bundle is unavailable.
   const systemChromium = '/usr/bin/chromium';
+  const bundledAvailable = fs.existsSync(chromium.executablePath());
   const browser = await chromium.launch({headless:true,
-    ...(fs.existsSync(systemChromium) ? {executablePath:systemChromium} : {})});
+    ...(!bundledAvailable && fs.existsSync(systemChromium) ? {executablePath:systemChromium} : {})});
   try {
     for(const width of [320, 375, 768]) {
       const context = await browser.newContext({viewport:{width,height:812},locale:'cs-CZ',isMobile:true,hasTouch:true});
