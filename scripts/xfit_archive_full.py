@@ -17,6 +17,10 @@ import time
 from urllib.parse import urlencode, urljoin, urlsplit
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
+if __package__:
+    from .xfit_internal_inlinks import build_coverage
+else:  # GitHub workflow invokes `python scripts/xfit_archive_full.py`.
+    from xfit_internal_inlinks import build_coverage
 
 BASE="https://xfit.cz/wp-json/wp/v2/posts"
 SPACE=re.compile(r"\s+")
@@ -211,6 +215,9 @@ def inventory(posts):
          "mentions":p["stale_2022_promo_mentions"],"shortcodes":p["stale_2022_promo_shortcode_count"]}
         for p in rows if p["stale_2022_promo_mentions"]>0
       ][:500],
+      # This measures sources from post bodies, not all internal links or SEO
+      # orphans. Build from deduplicated posts already downloaded by the audit.
+      "guide_inlink_coverage": build_coverage(seen.values()),
       "suspected_out_of_focus_count":sum(p["suspect_offtopic"] for p in rows),
       "suspected_spam_count":sum(p["suspect_spam"] for p in rows),
       "duplicate_titles":duplicates[:250],
@@ -270,9 +277,19 @@ def main():
        "pagination_warning":"Page-based WordPress enumeration is not an atomic snapshot. Changes during scan can shift records; repeated IDs are deduplicated and a complete page count does not prove zero missed IDs.",
        "mutated_wordpress":False
     })
+    report["guide_inlink_coverage"]["coverage_state"] = (
+        "COMPLETE_PAGINATED_POST_SCAN_WITH_NONATOMIC_CAVEAT"
+        if report["complete"] else "PARTIAL_SCAN_NO_ABSENCE_CONCLUSIONS"
+    )
     dest=Path(args.output);dest.parent.mkdir(parents=True,exist_ok=True)
     dest.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
-    print(json.dumps({k:report[k] for k in ("scanned","invalid_post_id_count","repeated_pagination_post_count","conflicting_pagination_post_count","complete","duplicate_title_groups","exact_body_duplicate_groups","thin_count","stale_2022_promo_posts","stale_2022_promo_shortcodes","suspected_out_of_focus_count","suspected_spam_count","declared_total_pages","interrupted_at","mutated_wordpress")},ensure_ascii=False))
+    brief = {k:report[k] for k in ("scanned","invalid_post_id_count","repeated_pagination_post_count","conflicting_pagination_post_count","complete","duplicate_title_groups","exact_body_duplicate_groups","thin_count","stale_2022_promo_posts","stale_2022_promo_shortcodes","suspected_out_of_focus_count","suspected_spam_count","declared_total_pages","interrupted_at","mutated_wordpress")}
+    brief["guide_post_body_inlinks"] = {
+        p["slug"]: p["source_post_count"]
+        for p in report["guide_inlink_coverage"]["guides"]
+    }
+    brief["guide_inlink_scan_state"] = report["guide_inlink_coverage"]["coverage_state"]
+    print(json.dumps(brief, ensure_ascii=False))
     return 2 if not rows or not report["complete"] else 0
 
 if __name__=="__main__":
