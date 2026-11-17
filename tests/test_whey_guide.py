@@ -93,12 +93,26 @@ class WheyTests(unittest.TestCase):
         # Synthetic title checks attribute escaping as well as link context.
         self.catalog["products"][0]["title"] = 'Whey WPC "Natural" & kakao 1kg'
         links = []
+        disclosures = {}
 
         class Links(HTMLParser):
+            disclosure_id = None
+
             def handle_starttag(self, tag, attrs):
                 attrs = dict(attrs)
                 if tag == "a" and "sponsored" in attrs.get("rel", "").split():
                     links.append(attrs)
+                if tag == "small" and "id" in attrs:
+                    self.disclosure_id = attrs["id"]
+                    disclosures[self.disclosure_id] = ""
+
+            def handle_data(self, data):
+                if self.disclosure_id is not None:
+                    disclosures[self.disclosure_id] += data
+
+            def handle_endtag(self, tag):
+                if tag == "small":
+                    self.disclosure_id = None
 
         body = build_document(self.catalog, BASE, SAMPLE)["content"]
         Links().feed(body)
@@ -121,6 +135,10 @@ class WheyTests(unittest.TestCase):
         self.assertEqual(body.count(
             '>Ověřit cenu a dostupnost</a>'), len(links))
         self.assertEqual(body.count('NaMaximum.cz · nová karta</small>'), len(products))
+        disclosure_ids = [card["aria-describedby"] for card in cards]
+        self.assertEqual(len(set(disclosure_ids)), len(cards))
+        for disclosure_id in disclosure_ids:
+            self.assertIn("Xfit.cz může získat provizi", disclosures[disclosure_id])
     def test_prices_preserve_cents_and_explain_rank(self):
         # Synthetic prices: both unit prices previously displayed as 70 Kč.
         self.catalog["products"] = [
