@@ -90,7 +90,12 @@ class TechnicalReadOnlyTests(unittest.TestCase):
         self.assertEqual(result["post_sitemap_inclusion"]["post_maps_checked"], 1)
         self.assertEqual(result["post_sitemap_inclusion"]["per_slug"][probe.OWNED[0]],
                          "INCLUDED_IN_POST_SITEMAP")
+        self.assertEqual(result["observed_gsc_state"], {
+            "status": "NOT_MEASURED_BY_THIS_PREFLIGHT",
+            "source": "PROMETHEUS_XFIT_GSC_READONLY",
+        })
         serialized = str(result)
+        self.assertNotIn("DISCOVERED_NOT_INDEXED_2026_11_08", serialized)
         self.assertNotIn("<html>", serialized)
         self.assertNotIn("Disallow: /wp-admin", serialized)
         self.assertNotIn("<loc>", serialized)
