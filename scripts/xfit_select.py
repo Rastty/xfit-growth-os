@@ -114,7 +114,7 @@ def select_offers(catalog, kind, max_price=None, min_mass_g=100, limit=12):
     if min_mass_g < 50 or min_mass_g > 10000:
         raise ValueError("Invalid minimum mass")
     choices = []
-    seen = set()
+    raw_prices = []
     for item in catalog.get("products", []):
         if item.get("merchant") != "NaMaximum.cz" or not safe_merchant(item.get("source_url")):
             continue
@@ -136,16 +136,11 @@ def select_offers(catalog, kind, max_price=None, min_mass_g=100, limit=12):
         except (ValueError, KeyError, TypeError, OverflowError):
             continue
         if (not math.isfinite(price) or price <= 0 or price > 1000000
-                or max_price is not None and price > max_price
                 or round(price, 2) <= 0):
             continue
         mass = mass_grams(item.get("title") or "")
-        if mass is None or mass < min_mass_g:
+        if mass is None:
             continue
-        key = item.get("ean") or item.get("source_url")
-        if key in seen:
-            continue
-        seen.add(key)
         choices.append({
             "id": str(item.get("id") or ""),
             "title": item["title"],
@@ -160,8 +155,48 @@ def select_offers(catalog, kind, max_price=None, min_mass_g=100, limit=12):
             "publish_ready": False,
             "explanation": "Porovnání ceny za hmotnost prášku, nikoli za množství účinné látky či čistých bílkovin."
         })
-    choices.sort(key=lambda x: (x["price_per_100g_powder_czk"], x["price_czk"], x["title"]))
-    return choices if limit is None else choices[:limit]
+        raw_prices.append(price)
+    # Some merchant feeds repeat an EAN, product ID or canonical URL. If the
+    # repeated identity disagrees on the variant, package mass or price,
+    # neither row is a trustworthy price recommendation. Do not silently pick
+    # the first (feed-order dependent), nor the cheapest (possibly stale) row.
+    # Only exact identity/price duplicates may be collapsed safely.
+    by_identity = {}
+    for index, offer in enumerate(choices):
+        for field in ("id", "ean", "source_url"):
+            value = offer[field]
+            if value:
+                by_identity.setdefault((field, value), []).append(index)
+    ambiguous = set()
+    for indices in by_identity.values():
+        signatures = {
+            (choices[i]["id"], choices[i]["ean"], choices[i]["source_url"],
+             choices[i]["mass_g"], choices[i]["price_czk"])
+            for i in indices
+        }
+        if len(signatures) > 1:
+            ambiguous.update(indices)
+
+    ranked = sorted(enumerate(choices), key=lambda pair: (
+        pair[1]["price_per_100g_powder_czk"], pair[1]["price_czk"],
+        pair[1]["title"], pair[1]["id"], pair[1]["source_url"]))
+    seen = set()
+    unique = []
+    for index, offer in ranked:
+        if index in ambiguous:
+            continue
+        identities = {(field, offer[field]) for field in ("id", "ean", "source_url")
+                      if offer[field]}
+        if identities & seen:
+            continue
+        seen.update(identities)
+        # Apply the user's filters AFTER resolving identity conflicts. A
+        # second contradictory row just above a budget or just below the
+        # requested minimum mass must still invalidate the purported deal.
+        if ((max_price is None or raw_prices[index] <= max_price)
+                and offer["mass_g"] >= min_mass_g):
+            unique.append(offer)
+    return unique if limit is None else unique[:limit]
 
 def choose_price_scenarios(offers, limit=6):
     """Preserve both best per-100g price and lowest eligible upfront cost."""
