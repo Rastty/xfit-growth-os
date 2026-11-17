@@ -1,0 +1,53 @@
+name: XFIT Legacy Testosterone Ranking Safety Revision
+# The existing homepage-promoted 2025 article claims unsupported booster effects.
+# Run once on main when this exact reviewed workflow is merged. Any drift in
+# slug, legacy body, modification timestamp or source hash aborts before POST.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-testosterone-ranking-safety-live.yml'
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Exact one-article legacy testosterone ranking correction'
+        type: choice
+        required: true
+        options: [REVISE_TESTOSTERONE_RANKING]
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  revise-one:
+    if: github.event_name == 'push' || inputs.confirm == 'REVISE_TESTOSTERONE_RANKING'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Full regression and editorial safety checks
+        run: python -m unittest discover -s tests -q
+      - name: Discover exact legacy slug, check unsupported claims and save original
+        run: python -m scripts.xfit_testosterone_legacy_revision snapshot
+      - name: Mandatory full 90-day rollback artifact before any WP mutation
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-testosterone-ranking-original-${{ github.run_id }}
+          path: reports/backups/xfit-testosterone-ranking-original.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Single content and title POST, authenticated and public verification
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_testosterone_legacy_revision deploy | tee -a "$GITHUB_STEP_SUMMARY"
