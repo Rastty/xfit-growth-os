@@ -20,6 +20,28 @@ test('one-pack mode is meaningful without asking for B', () => {
   const result = tool.compare(base, empty);
   assert.equal(result.error, undefined);
   assert.equal(result.second, null);
+  assert.equal(result.shippingComparison, 'single');
+});
+
+test('only comparable shipping data permits a two-pack price verdict', () => {
+  const noShipping = tool.compare(base, other);
+  assert.equal(noShipping.shippingComparison, 'excluded');
+  assert.match(tool.priceVerdict(noShipping), /Porovnání nezahrnuje dopravu/);
+  assert.match(tool.priceVerdict(noShipping), /balení A/);
+
+  const bothShipping = tool.compare({...base, delivery:'0'}, {...other, delivery:'99'});
+  assert.equal(bothShipping.shippingComparison, 'included');
+  assert.match(tool.priceVerdict(bothShipping), /Doprava je zahrnuta u obou/);
+
+  for(const result of [
+    tool.compare({...base, delivery:'99'}, other),
+    tool.compare(base, {...other, delivery:'0'})
+  ]){
+    assert.equal(result.shippingComparison, 'incomplete');
+    assert.match(tool.priceVerdict(result), /Nelze férově určit levnější balení/);
+    assert.doesNotMatch(tool.priceVerdict(result), /Nižší cenu.*balení [AB]/);
+  }
+  assert.equal(tool.priceVerdict(tool.compare(base, empty)), '');
 });
 
 test('optional delivery adds to exactly one whole-pack purchase', () => {

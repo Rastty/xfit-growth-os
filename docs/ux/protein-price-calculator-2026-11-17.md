@@ -17,6 +17,10 @@ interaction gap. A compact calculator does.
   per-purchase shipping, and a prominent no-purchase path.
 - `calculator.css`: scoped styles, responsive layout, visible focus, 44px+
   controls; no external assets.
+- Shipping comparison safety: if the visitor specifies delivery for just one
+  of two packs, the tool still shows arithmetic but **does not declare a
+  cheaper winner**. Both fields must be present (including 0 for free shipping),
+  or both empty (clearly labelled as shipping-excluded).
 - Node unit tests and real Chromium viewports 320/375/768, including no outbound
   requests and error/reset behavior. Workflow runs tests on PR and main.
 
@@ -30,6 +34,17 @@ fake current prices, product recommendations or affiliate links.
    `xfit.cz` (WEDOS/theme-managed asset publishing), or an equivalent approved
    hosted path with stable URL and appropriate Content Security Policy. Do NOT
    create a new WordPress plugin or try an inline `<script>` bypass.
+   Once the owner has published the reviewed files in that exact directory,
+   run the read-only byte/MIME/redirect gate:
+
+   ```bash
+   python -m scripts.xfit_protein_price_host_preflight \
+     --base-url https://xfit.cz/OWNER_APPROVED_ASSET_DIRECTORY/
+   ```
+
+   A green result verifies both hosted files against local SHA-256 bytes, but
+   **does not authorize or perform a WordPress post edit**. Missing files,
+   redirect, HTML response or unexpected bytes block the next stage.
 2. Serve the reviewed JS and CSS by versioned URL; include the semantic HTML
    markup in the existing WP post 25541 **only** through a separately reviewed,
    backed-up exact-one-post release. Do not publish this demo URL as another
