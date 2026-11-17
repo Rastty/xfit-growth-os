@@ -11,6 +11,24 @@ def post(i,slug,title,body):
        "modified":"2026-01-01T00:00:00","title":{"rendered":title},
        "content":{"rendered":"<p>"+body+"</p>"}}
 class ArchiveAuditTests(unittest.TestCase):
+    def test_template_links_are_not_reader_navigation_or_spam_evidence(self):
+        body=('''<template><a href="/skryty/">Skryté</a>
+            <template><a href="https://casino.example/">Skryté</a></template>
+            <a href="https://example.org/">Skrytý zdroj</a></template>
+            <a href="/kreatin/">Kreatin</a>
+            <a href="https://ods.od.nih.gov/">Zdroj</a>''')
+        row=inventory([post(1,"protein","Protein",body)])["flagged_candidates"][0]
+        self.assertEqual(row["internal_link_count"],1)
+        self.assertEqual(row["external_hosts"],{"ods.od.nih.gov":1})
+        self.assertFalse(row["suspect_spam"])
+
+    def test_self_closing_elements_do_not_end_or_extend_template_scope(self):
+        anchors=AnchorLinks()
+        anchors.feed('''<template/><a href="/protein/"/>
+            <template><a href="/skryty/"/><template/>
+            <a href="/take-skryty/"/></template><a href="/kreatin/"/>''')
+        self.assertEqual(anchors.links,["/protein/","/kreatin/"])
+
     def test_inactive_html_does_not_hide_thin_reader_content(self):
         for hidden in ('<!-- {} -->', '<script>{}</script>',
                        '<style>{}</style>', '<template><p>{}</p></template>',
