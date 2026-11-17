@@ -43,14 +43,14 @@ def _canonical_xfit_page(value):
             and parsed.path.startswith("/") and parsed.path.endswith("/")
             and "//" not in parsed.path and not parsed.query
             and not parsed.fragment and not parsed.username
-            and not parsed.password)
+            and not parsed.password and parsed.geturl() == value)
 
 
 def _nonnegative_count(value):
     return type(value) is int and value >= 0
 
 
-def parse_gsc_evidence(payload, *, as_of=None):
+def parse_gsc_evidence(payload, *, as_of=None, window_days=(84, 100)):
     """Validate provenance, freshness, aggregation scope and unique pages.
 
     Absence from an export is *unknown*, because GSC may truncate exported rows.
@@ -66,8 +66,8 @@ def parse_gsc_evidence(payload, *, as_of=None):
     if payload.get("search_type") != "web" or payload.get("dimension") != "page":
         raise ValueError("GSC must be web search aggregated by page")
     start, end = _date(payload.get("start_date")), _date(payload.get("end_date"))
-    if not 84 <= (end - start).days + 1 <= 100:
-        raise ValueError("GSC evidence must cover approximately 90 days")
+    if not window_days[0] <= (end - start).days + 1 <= window_days[1]:
+        raise ValueError("Unexpected GSC observation window")
     if not 0 <= (now - end).days <= MAX_DAYS_OLD:
         raise ValueError("GSC evidence is future-dated or stale")
     rows = payload.get("rows")
@@ -98,6 +98,52 @@ def parse_gsc_evidence(payload, *, as_of=None):
     }
 
 
+def parse_prometheus_baseline(payload, *, as_of=None):
+    """Consume Prometheus' ACTUAL 28-day bounded XFIT GSC artifact format.
+
+    Its top 20 directional candidates are not the complete 25,000-page GSC
+    response. Missing queue URLs are unknown, even if not among those 20.
+    """
+    if (not isinstance(payload, dict) or payload.get("schemaVersion") != 1
+            or payload.get("status") != "SOURCE_BACKED_GSC_BASELINE"
+            or payload.get("source") != "Google Search Console Search Analytics API"
+            or payload.get("mode") != "authenticated_read_only"
+            or payload.get("site") != "https://xfit.cz/"
+            or payload.get("wordpressWrites") != 0
+            or payload.get("credentialsExported") is not False):
+        raise ValueError("Not a verified read-only Prometheus GSC baseline")
+    period = payload.get("period")
+    rows = payload.get("prioritizedReviewCandidates")
+    if (not isinstance(period, dict) or period.get("days") != 28
+            or period.get("searchType") != "web"
+            or period.get("dataState") != "final"
+            or not isinstance(rows, list) or len(rows) > 20):
+        raise ValueError("Unexpected Prometheus baseline scope")
+    normalized_rows = []
+    for item in rows:
+        if not isinstance(item, dict) or not isinstance(item.get("slug"), str):
+            raise ValueError("Malformed Prometheus page candidate")
+        slug = item["slug"]
+        if (not slug or "/" in slug or "?" in slug or "#" in slug
+                or slug.strip() != slug):
+            raise ValueError("Invalid Prometheus candidate slug")
+        normalized_rows.append({
+            "page": "https://xfit.cz/" + slug + "/",
+            "clicks": item.get("clicks"),
+            "impressions": item.get("impressions"),
+        })
+    normalized = {
+        "source": EXPECTED_SOURCE, "property": payload.get("gscProperty"),
+        "search_type": "web", "dimension": "page",
+        "start_date": period.get("startDate"), "end_date": period.get("endDate"),
+        "rows": normalized_rows,
+    }
+    report = parse_gsc_evidence(normalized, as_of=as_of, window_days=(28, 28))
+    report["coverage"] = "PROMETHEUS_TOP_20_HEURISTIC_REVIEW_CANDIDATES_ONLY"
+    report["source_format"] = "prometheus_xfit_native_28day_baseline"
+    return report
+
+
 def join_review_queue(archive, gsc, *, as_of=None):
     """Reorder preselected editorial candidates by measured exposure.
 
@@ -113,7 +159,13 @@ def join_review_queue(archive, gsc, *, as_of=None):
     candidates = queue.get("candidates")
     if not isinstance(candidates, list) or len(candidates) > 70:
         raise ValueError("Invalid bounded editorial triage candidates")
-    evidence = parse_gsc_evidence(gsc, as_of=as_of)
+    if isinstance(gsc, dict) and gsc.get("source") == "Google Search Console Search Analytics API":
+        evidence = parse_prometheus_baseline(gsc, as_of=as_of)
+        property_value = gsc["gscProperty"]
+    else:
+        evidence = parse_gsc_evidence(gsc, as_of=as_of)
+        evidence["source_format"] = "normalized_private_90day_export"
+        property_value = gsc["property"]
     output = []
     seen = set()
     for item in candidates:
@@ -152,7 +204,8 @@ def join_review_queue(archive, gsc, *, as_of=None):
     return {
         "state": "GSC_EVIDENCE_JOIN_READ_ONLY", "mutated_wordpress": False,
         "gsc_period": evidence["start_date"] + ".." + evidence["end_date"],
-        "gsc_property": gsc["property"],
+        "gsc_property": property_value,
+        "gsc_source_format": evidence["source_format"],
         "gsc_export_coverage": evidence["coverage"],
         "gsc_supplied_rows": evidence["rows_supplied"],
         "gsc_noncanonical_rows_ignored": evidence["rows_ignored_noncanonical"],

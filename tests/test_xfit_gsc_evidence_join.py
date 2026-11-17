@@ -2,7 +2,9 @@ import copy
 from datetime import date
 import unittest
 
-from scripts.xfit_gsc_evidence_join import join_review_queue, parse_gsc_evidence
+from scripts.xfit_gsc_evidence_join import (
+    join_review_queue, parse_gsc_evidence, parse_prometheus_baseline,
+)
 
 
 TODAY = date(2026, 11, 17)
@@ -35,6 +37,23 @@ def archive():
                  "topic": "hubnutí", "priority_score": 11, "reasons": ["old_promo"]},
             ],
         },
+    }
+
+
+def native_prometheus_baseline():
+    return {
+        "schemaVersion": 1, "status": "SOURCE_BACKED_GSC_BASELINE",
+        "source": "Google Search Console Search Analytics API",
+        "mode": "authenticated_read_only", "site": "https://xfit.cz/",
+        "gscProperty": "https://xfit.cz/", "wordpressWrites": 0,
+        "credentialsExported": False,
+        "period": {
+            "startDate": "2026-10-17", "endDate": "2026-11-13",
+            "days": 28, "searchType": "web", "dataState": "final",
+        },
+        "prioritizedReviewCandidates": [
+            {"slug": "protein", "clicks": 22, "impressions": 280},
+        ],
     }
 
 
@@ -133,6 +152,44 @@ class EvidenceJoinTests(unittest.TestCase):
         a["content_quality_review_queue"]["candidates"] *= 25
         with self.assertRaises(ValueError):
             join_review_queue(a, evidence(), as_of=TODAY)
+
+    def test_existing_prometheus_core_28day_baseline_is_compatible(self):
+        result = join_review_queue(archive(), native_prometheus_baseline(), as_of=TODAY)
+        self.assertEqual(result["gsc_source_format"], "prometheus_xfit_native_28day_baseline")
+        self.assertEqual(result["gsc_period"], "2026-10-17..2026-11-13")
+        self.assertEqual(result["matched_candidates"], 1)
+        self.assertEqual(result["candidates"][0]["id"], 2)
+        self.assertEqual(result["unmatched_candidates_are_unknown_not_zero"], 2)
+        self.assertIn("TOP_20", result["gsc_export_coverage"])
+
+    def test_prometheus_baseline_provenance_and_window_fail_closed(self):
+        for field, value in [("status", "GSC_SOURCE_UNAVAILABLE"),
+                             ("credentialsExported", True), ("wordpressWrites", 1),
+                             ("gscProperty", "https://evil.invalid/")]:
+            with self.subTest(field=field):
+                e = native_prometheus_baseline()
+                e[field] = value
+                with self.assertRaises(ValueError):
+                    parse_prometheus_baseline(e, as_of=TODAY)
+        for field, value in [("days", 90), ("dataState", "all"),
+                             ("endDate", "2026-11-01")]:
+            with self.subTest(field=field):
+                e = native_prometheus_baseline()
+                e["period"][field] = value
+                with self.assertRaises(ValueError):
+                    parse_prometheus_baseline(e, as_of=TODAY)
+
+    def test_prometheus_native_candidate_cap_and_duplicate_key(self):
+        e = native_prometheus_baseline()
+        e["prioritizedReviewCandidates"] *= 21
+        with self.assertRaises(ValueError):
+            parse_prometheus_baseline(e, as_of=TODAY)
+        e["prioritizedReviewCandidates"] = [
+            {"slug": "protein", "clicks": 2, "impressions": 3},
+            {"slug": "protein", "clicks": 2, "impressions": 3},
+        ]
+        with self.assertRaises(ValueError):
+            parse_prometheus_baseline(e, as_of=TODAY)
 
 
 if __name__ == "__main__":

@@ -5,11 +5,28 @@ via Google Search, without mistaking an old article/coupon for a revenue signal.
 
 The public full-archive workflow produces `content_quality_review_queue` in
 `xfit-archive-full-audit.json` (max. 70, editorial heuristics, read-only). This
-new explicit offline bridge joins those candidates to an owner-controlled,
-recent, 90-day GSC *page aggregate* exported from Prometheus Core. It does not
-query an API, assume Prometheus already exported the data or change a WP page.
+new explicit offline bridge joins those candidates to two permitted GSC inputs:
+the **existing Prometheus XFIT GSC Read-only Baseline V1** (28-day, top 20
+directional candidate rows) or a normalized owner-controlled 90-day page
+aggregate. It does not query an API or change a WP page.
 
-## Required normalized GSC input
+## Existing Prometheus Core data (usable now)
+
+The existing `Prometheus XFIT GSC Read-only Baseline` GitHub Action in
+`Rastty/prometheus-growth-os` produces the source-backed artifact
+`XFIT-GSC-READONLY-BASELINE-V1.json`. This is a 28-day finalized observation
+window. Pass that downloaded JSON directly as `--gsc`. The importer requires
+the exact source/scope, `SOURCE_BACKED_GSC_BASELINE`, zero WP writes, no
+exported credentials, XFIT property and fresh period. No special adapter or
+OAuth token is needed in XFIT.
+
+**Important limitation:** the native JSON contains the **20 highest-ranked
+candidate pages**, not all source rows. If an XFIT triage page is absent,
+its performance remains *unknown*, not zero. The baseline from 2026-11-08
+is too old for some future runs; use the most recent successful workflow
+artifact. The owner's GSC OAuth stays entirely in Prometheus.
+
+## Optional normalized 90-day GSC input
 
 Save the private file **outside this public Git checkout**; never commit GSC
 metrics, credentials or the joined output. Example *illustrative schema*:
@@ -62,7 +79,8 @@ is printed on the command line.
 - `gsc_export_coverage` explicitly records that the input may omit pages.
 - Only the **preselected 70 archive candidates** are reordered; high-traffic
   URLs outside this queue are not discovered by V1. Prometheus Core should
-  eventually supply an all-posts measured prioritizer.
+  eventually supply a source-backed all-posts measured prioritizer rather
+  than only its 20 most promising search candidates.
 - GSC clicks/impressions are **not** GA4 landing sessions, affiliate clicks,
   conversions or revenue. Verify the live source, medical claims, destination
   and user intent before a rollback-safe, one-post editorial proposal.
