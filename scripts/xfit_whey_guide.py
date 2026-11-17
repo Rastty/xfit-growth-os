@@ -111,6 +111,10 @@ def build_document(catalog, base, sample):
         'Konečnou částku ověřte v košíku prodejce. '
         'Pokud by překročila váš rozpočet, nemusíte nákup dokončit ani přidávat '
         'další zboží jen kvůli dopravě zdarma.</p>',
+        '<p><strong>Rozsah srovnání:</strong> Vybíráme pouze z katalogu '
+        'jediného prodejce, NaMaximum.cz, nikoli z celého trhu. '
+        'Pořadí podle ceny není nezávislý test kvality ani účinnosti. '
+        'Před nákupem můžete porovnat stejné balení i u jiných prodejců.</p>',
         quick_pick(chosen, product_kind="whey"),
         '<h2>Než koupíte protein: krátký rozhodovací rozcestník</h2>',
         '<details id="xfit-need" open><summary><strong>Musím protein kupovat, abych nabral svaly?</strong></summary>'
