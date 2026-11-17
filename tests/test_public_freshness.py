@@ -363,6 +363,55 @@ class PublicFreshnessTests(unittest.TestCase):
         self.assertNotIn("a_aid", str(result))
         self.assertNotIn("demo", str(result))
 
+    def test_card_budget_backlink_is_not_a_second_merchant_offer(self):
+        """The real guides have one merchant CTA plus a same-page return link."""
+        for target in TARGETS[2:]:
+            with self.subTest(guide=target[0]):
+                original = post(*target)
+                source = original["content"]["raw"].replace(
+                    "</article>",
+                    '<a href="#xfit-vyber-podle-rozpoctu">Zpět k rozpočtu</a></article>',
+                )
+                original["content"]["raw"] = source
+                result = probe(
+                    target, read_post=lambda _: original,
+                    read_public=lambda _: ("<html>" + source + "</html>", {}),
+                )
+                self.assertEqual(result["status"], "PUBLIC_FRESH")
+                self.assertTrue(result["public_affiliate_link_integrity"])
+                self.assertEqual(result["unsafe_affiliate_link_positions"], [])
+
+                # Extra external links and undisclosed merchant CTAs still
+                # fail, even if source and public HTML contain the same flaw.
+                changes = {
+                    "unapproved_external": source.replace(
+                        "</article>",
+                        '<a href="https://unapproved.example/offer">Jiný obchod</a></article>', 1,
+                    ),
+                    "duplicate_merchant": source.replace(
+                        "</article>",
+                        '<a rel="sponsored" href="https://www.namaximum.cz/offer'
+                        '?utm_medium=affiliate&amp;a_aid=demo&amp;a_bid=test">Duplicitní CTA</a>'
+                        '</article>', 1,
+                    ),
+                    "sponsored_internal": source.replace(
+                        'href="#xfit-vyber-podle-rozpoctu"',
+                        'href="#xfit-vyber-podle-rozpoctu" rel="sponsored"', 1,
+                    ),
+                    "missing_disclosure": source.replace(
+                        "rel='sponsored nofollow'", "rel='nofollow'", 1,
+                    ),
+                }
+                for reason, changed in changes.items():
+                    with self.subTest(guide=target[0], reason=reason):
+                        original["content"]["raw"] = changed
+                        failed = probe(
+                            target, read_post=lambda _: original,
+                            read_public=lambda _: ("<html>" + changed + "</html>", {}),
+                        )
+                        self.assertEqual(failed["status"], "PUBLIC_STALE_OR_RENDERED_DIFFERENTLY")
+                        self.assertFalse(failed["public_affiliate_link_integrity"])
+
     def test_wordpress_typographic_title_is_equivalent_without_weakening_prices(self):
         target = TARGETS[2]
         original = post(*target)
