@@ -1,0 +1,17 @@
+/* Scoped XFIT calculator presentation. No remote fonts or assets. */
+.xfit-protein-tool { font: 16px/1.55 system-ui, sans-serif; color: #172a31; max-width: 950px; margin: 24px auto; padding: 16px; }
+.xfit-protein-tool * { box-sizing: border-box; }
+.xfit-protein-tool h1 { font-size: clamp(1.5rem, 3vw, 2.2rem); line-height: 1.18; }
+.xfit-protein-tool__packs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.xfit-protein-tool fieldset { min-width: 0; margin: 0; padding: 16px; border: 1px solid #b6cbd0; border-radius: 12px; }
+.xfit-protein-tool legend { padding: 0 6px; font-weight: 700; }
+.xfit-protein-tool label { display: block; margin-top: 12px; font-weight: 600; }
+.xfit-protein-tool input { display: block; font: inherit; width: 100%; min-height: 44px; margin-top: 5px; padding: 10px 12px; border: 1px solid #687e84; border-radius: 7px; background: #fff; color: #172a31; }
+.xfit-protein-tool input:focus-visible, .xfit-protein-tool button:focus-visible, .xfit-protein-tool a:focus-visible { outline: 3px solid #e5982e; outline-offset: 2px; }
+.xfit-protein-tool__actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.xfit-protein-tool button { min-height: 48px; padding: 10px 16px; font: inherit; font-weight: 700; border: 1px solid #116a70; border-radius: 8px; color: #fff; background: #116a70; cursor: pointer; }
+.xfit-protein-tool__secondary { color: #116a70 !important; background: #fff !important; }
+.xfit-protein-tool__result[data-state] { margin-top: 22px; padding: 12px 16px; border: 1px solid #bad5c9; border-radius: 10px; background: #f2faf6; }
+.xfit-protein-tool__result[data-state="error"] { border-color: #c88b73; background: #fff5f1; }
+.xfit-protein-tool__note { margin-top: 24px; border-left: 4px solid #116a70; padding-left: 14px; }
+@media (max-width: 680px) { .xfit-protein-tool__packs { grid-template-columns: minmax(0, 1fr); } .xfit-protein-tool { padding: 12px; margin: 0 auto; } .xfit-protein-tool button { width: 100%; } }
