@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 from urllib.parse import urlsplit
 from scripts.xfit_availability import delivery_state
+from scripts.xfit_feed_ingest import catalog_identity_matches_url
 
 KINDS = {
     "creatine": {"title": ("creatine", "kreatin", "creapure"), "category": ()},
@@ -116,6 +117,10 @@ def select_offers(catalog, kind, max_price=None, min_mass_g=100, limit=12):
     seen = set()
     for item in catalog.get("products", []):
         if item.get("merchant") != "NaMaximum.cz" or not safe_merchant(item.get("source_url")):
+            continue
+        # Defense in depth for independently supplied/previously normalized
+        # catalogs: never show a tracked CTA with an invented or mismatched ID.
+        if not catalog_identity_matches_url(item.get("id"), item.get("source_url")):
             continue
         availability = delivery_state(item)
         if availability in ("unavailable", "slow_dispatch", "preorder"):
