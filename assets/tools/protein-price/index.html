@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Kalkulačka ceny bílkovin podle etikety — XFIT (testovací náhled)</title>
+  <link rel="stylesheet" href="calculator.css">
+  <script src="calculator.js" defer></script>
+</head>
+<body>
+  <main>
+    <section class="xfit-protein-tool" data-xfit-tool="protein-price" aria-labelledby="xfit-protein-tool-title">
+      <h1 id="xfit-protein-tool-title">Kolik stojí 100 g skutečných bílkovin?</h1>
+      <p>Opište cenu, gramáž balení a údaj „bílkoviny na 100 g“ z etiket. Balení B je volitelné. Výsledek se počítá jen ve vašem prohlížeči — nic neodesíláme.</p>
+      <form novalidate>
+        <div class="xfit-protein-tool__packs">
+          <fieldset>
+            <legend>Balení A</legend>
+            <label for="xfit-a-price">Cena balení (Kč) <span aria-hidden="true">*</span></label>
+            <input id="xfit-a-price" name="a-price" type="text" inputmode="decimal" autocomplete="off" placeholder="např. 899" required>
+            <label for="xfit-a-mass">Hmotnost prášku (g) <span aria-hidden="true">*</span></label>
+            <input id="xfit-a-mass" name="a-mass" type="text" inputmode="numeric" autocomplete="off" placeholder="např. 900" required>
+            <label for="xfit-a-protein">Bílkoviny na 100 g prášku (g) <span aria-hidden="true">*</span></label>
+            <input id="xfit-a-protein" name="a-protein" type="text" inputmode="decimal" autocomplete="off" placeholder="např. 75" required>
+            <label for="xfit-a-delivery">Doprava (Kč, volitelné)</label>
+            <input id="xfit-a-delivery" name="a-delivery" type="text" inputmode="decimal" autocomplete="off" placeholder="prázdné = nezapočítat">
+          </fieldset>
+          <fieldset>
+            <legend>Balení B (volitelné)</legend>
+            <label for="xfit-b-price">Cena balení (Kč)</label>
+            <input id="xfit-b-price" name="b-price" type="text" inputmode="decimal" autocomplete="off" placeholder="např. 849">
+            <label for="xfit-b-mass">Hmotnost prášku (g)</label>
+            <input id="xfit-b-mass" name="b-mass" type="text" inputmode="numeric" autocomplete="off" placeholder="např. 750">
+            <label for="xfit-b-protein">Bílkoviny na 100 g prášku (g)</label>
+            <input id="xfit-b-protein" name="b-protein" type="text" inputmode="decimal" autocomplete="off" placeholder="např. 82">
+            <label for="xfit-b-delivery">Doprava (Kč, volitelné)</label>
+            <input id="xfit-b-delivery" name="b-delivery" type="text" inputmode="decimal" autocomplete="off" placeholder="prázdné = nezapočítat">
+          </fieldset>
+        </div>
+        <div class="xfit-protein-tool__actions">
+          <button type="submit">Spočítat cenu bílkovin</button>
+          <button type="reset" class="xfit-protein-tool__secondary">Vymazat údaje</button>
+        </div>
+      </form>
+      <div data-role="result" class="xfit-protein-tool__result" role="status" aria-live="polite" aria-atomic="true"></div>
+      <p class="xfit-protein-tool__note"><strong>Co výpočet neříká:</strong> Nehodnotí chuť, alergeny, složení ani to, zda doplněk potřebujete. Údaj o bílkovinách vždy opište ze správné etikety konkrétní varianty. Pro srovnání ceny nákupu započítejte dopravu na obou stranách.</p>
+      <p><a href="https://xfit.cz/xfit-os-cena-proteinu-podle-etikety/">Přečíst celý postup a příklady na XFIT.cz</a></p>
+      <p><small>Toto je samostatný technický náhled. Na xfit.cz zatím není nasazen; po schváleném hostingu se vloží do příslušné stránky.</small></p>
+    </section>
+  </main>
+</body>
+</html>
