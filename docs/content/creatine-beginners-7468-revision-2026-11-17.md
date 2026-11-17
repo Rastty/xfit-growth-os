@@ -8,6 +8,12 @@
 - The live public 2023 page on 17 Nov 2026 repeated essentially identical
   headings and prescribed contradictory regimens: 5 g, 20–30 g, 5–10 g,
   inconsistent timing and a blanket eight-week cycle claim.
+- The first release attempt [run 44093188284](https://github.com/Rastty/xfit-growth-os/actions/runs/44093188284)
+  stopped safely at source preflight: the legacy body also contains an obsolete
+  `5NM2022` coupon (three occurrences in the public rendered content). No
+  backup artifact was created and **zero WordPress writes** happened. The
+  bounded reattempt now requires 1–8 exact raw occurrences, records their
+  number in the immutable snapshot and verifies none survive in the new body.
 - The XFIT GSC captured window ending 13 Nov 2026 reports **29 impressions,
   0 clicks, average position 22.66** for the source-backed query opportunity.
   These are prior observations, not a promised improvement.

@@ -14,7 +14,8 @@ from scripts import xfit_creatine_beginners_7468 as r
 
 OLD = ("<h2>Kreatin pro začátečníky v fitness</h2>"
        "<p>Začněte s 20-30g, potom 5-10g."
-       "Užívejte 30 minut před tréninkem; pauza po 8 týdnů.</p>" * 12)
+       "Užívejte 30 minut před tréninkem; pauza po 8 týdnů.</p>" * 12
+       + "<p>Starý slevový kód 5NM2022 už neplatí.</p>" * 3)
 MODIFIED = "2023-05-15T08:23:01"
 
 
@@ -34,6 +35,7 @@ class LegacyCreatine7468Tests(unittest.TestCase):
         self.assertIn("kreatinu monohydrátu", body)
         self.assertNotIn("20-30g", body)
         self.assertNotIn("5-10g", body)
+        self.assertNotIn("5NM2022", body)
         self.assertNotIn("<script", body)
         self.assertNotIn("namaximum.cz", body)
 
@@ -43,6 +45,7 @@ class LegacyCreatine7468Tests(unittest.TestCase):
             post(id=123), post(slug="another"), post(status="draft"),
             post(link="https://xfit.cz/"), post(modified="today"),
             post(body="<p>new concise guidance</p>" * 70),
+            post(body=OLD.replace("5NM2022", "REMOVED")),
         ):
             with self.subTest(bad=str(bad.get("id"))):
                 with self.assertRaises(PublishError):
@@ -57,6 +60,7 @@ class LegacyCreatine7468Tests(unittest.TestCase):
                 saved = json.loads(r.BACKUP.read_text(encoding="utf-8"))
                 self.assertEqual(saved["original_raw"], OLD)
                 self.assertEqual(saved["modified_gmt"], MODIFIED)
+                self.assertEqual(saved["old_coupon_mentions"], 3)
                 self.assertEqual(saved["remote_writes"], 0)
                 writer.assert_not_called()
                 with self.assertRaises(PublishError):

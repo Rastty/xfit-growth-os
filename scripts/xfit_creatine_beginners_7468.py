@@ -23,6 +23,7 @@ URL = "https://xfit.cz/" + SLUG + "/"
 TARGET = Path("content/revisions/creatine-beginners-7468.html")
 BACKUP = Path("reports/backups/xfit-creatine-beginners-7468-original.json")
 OLD_MARKERS = ("20-30g", "5-10g", "30 minut před tréninkem", "8 týdnů")
+OLD_COUPON = "5nm2022"
 REVISED_MARKERS = (
     "Rychlá odpověď:",
     "Potřebuji kreatin hned na začátku?",
@@ -65,8 +66,11 @@ def legacy(post):
     flattened = text_only(raw)
     if not all(marker.casefold() in flattened for marker in OLD_MARKERS):
         raise PublishError("Old contradictory evidence no longer matches; manual review")
-    if "5nm2022" in flattened:
-        raise PublishError("Unrecovered expired coupon detected")
+    # The public legacy post also contains an expired 2022 coupon. This
+    # complete, exact-body revision removes it; do not leak it into the new
+    # article or use the broad coupon-cleanup writer on this URL.
+    if not 1 <= raw.casefold().count(OLD_COUPON) <= 8:
+        raise PublishError("Expected bounded legacy coupon evidence changed")
     return raw, modified
 
 
@@ -93,6 +97,7 @@ def clean_revision(raw):
                 for marker in REVISED_MARKERS)
             # The old timing claim may be quoted to explicitly debunk it.
             and not any(marker in visible for marker in ("20-30g", "5-10g"))
+            and OLD_COUPON not in normalized
             and not re.search(r"<\s*(?:script|iframe|form|html|head|body)\b", raw, re.I))
 
 
@@ -106,6 +111,7 @@ def snapshot():
         "schema": 1, "post_id": POST_ID, "slug": SLUG, "url": URL,
         "original_raw": before, "original_sha256": sha(before),
         "modified_gmt": modified, "target_sha256": sha(after),
+        "old_coupon_mentions": before.casefold().count(OLD_COUPON),
         "remote_writes": 0,
     }, ensure_ascii=False), encoding="utf-8")
     print(json.dumps({"state": "BACKUP_READY_NO_WRITE", "post_id": POST_ID,
@@ -152,6 +158,7 @@ def deploy():
     after = new_body()
     if (before != saved.get("original_raw") or sha(before) != saved.get("original_sha256")
             or modified != saved.get("modified_gmt")
+            or before.casefold().count(OLD_COUPON) != saved.get("old_coupon_mentions")
             or sha(after) != saved.get("target_sha256")):
         raise PublishError("Source drift after mandatory snapshot")
     write_error = False
@@ -172,6 +179,7 @@ def deploy():
     print(json.dumps({"state": "PUBLIC_VERIFIED", "post_id": POST_ID,
                       "url": URL, "articles_revised": 1, "post_attempts": 1,
                       "write_response_uncertain": write_error,
+                      "expired_coupon_mentions_removed": saved["old_coupon_mentions"],
                       "new_posts": 0, "deletes": 0, "redirects": 0}))
 
 

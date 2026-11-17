@@ -1,6 +1,6 @@
 name: XFIT Creatine Beginners 7468 Editorial Safety Revision
-# One-time exact-post release on this workflow's first merge; later source
-# mismatch fails closed rather than rewriting or retrying the live article.
+# Exact-post reattempt after preflight found three old 5NM2022 coupon mentions.
+# Source and coupon counts must match before backup and the only content POST.
 on:
   push:
     branches: [main]
