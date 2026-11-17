@@ -168,6 +168,10 @@ def build_document(catalog, base, sample):
       'Konečnou částku ověřte v košíku prodejce. '
       'Pokud by překročila váš rozpočet, nemusíte nákup dokončit ani přidávat '
       'další zboží jen kvůli dopravě zdarma.</p>',
+      '<p><strong>Rozsah srovnání:</strong> Vybíráme pouze z katalogu '
+      'jediného prodejce, NaMaximum.cz, nikoli z celého trhu. '
+      'Pořadí podle ceny není nezávislý test kvality ani účinnosti. '
+      'Před nákupem můžete porovnat stejné balení i u jiných prodejců.</p>',
       quick_pick(chosen, product_kind="creatine"),
       '<p><strong>Jak používat výběr:</strong> Porovnejte cenu za 100 g prášku, '
       'velikost balení a celkovou cenu. Nezaměňujte cenu za 100 g výrobku '

@@ -39,15 +39,26 @@ class AnchorLinks(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.links=[]
+        self.template_depth=0
 
     def handle_starttag(self,tag,attrs):
+        if tag=="template":
+            self.template_depth+=1
+        if self.template_depth:
+            return
         if tag=="a":
             for name,value in attrs:
                 if name=="href":
                     self.links.append(value or "")
                     break
 
-    handle_startendtag=handle_starttag
+    def handle_endtag(self,tag):
+        if tag=="template" and self.template_depth:
+            self.template_depth-=1
+
+    def handle_startendtag(self,tag,attrs):
+        self.handle_starttag(tag,attrs)
+        self.handle_endtag(tag)
 
 class ReaderText(HTMLParser):
     """Extract text evidence without comments or inactive HTML payloads.
