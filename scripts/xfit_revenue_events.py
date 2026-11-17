@@ -37,9 +37,15 @@ def build_event(event_name, fields, *, analytics_consent=False,
     if not analytics_consent:
         return None
     catalogs = verified_product_ids_by_page
-    if event_name == "affiliate_outbound_click":
+    if type(event_name) is str and event_name == "affiliate_outbound_click":
         catalogs = _snapshot_catalogs(catalogs)
     return _build_event(event_name, fields, catalogs)
+
+
+def _has_exact_fields(record, expected):
+    return (type(record) is dict
+            and all(type(key) is str for key in record)
+            and record.keys() == expected)
 
 
 def _build_event(event_name, fields, catalogs):
@@ -48,17 +54,16 @@ def _build_event(event_name, fields, catalogs):
     # while JSON serialization still emits their original, untrusted value.
     if type(event_name) is not str or event_name not in EVENTS:
         raise ValueError("unsupported event")
-    if not isinstance(fields, dict):
-        raise ValueError("fields must be a dictionary")
     expected = {"page", "selection_engine"}
     if event_name == "affiliate_outbound_click":
         expected |= {"partner", "product_id"}
-    if set(fields) != expected:
+    if not _has_exact_fields(fields, expected):
         raise ValueError("unsupported or missing fields")
     page = fields["page"]
     if type(page) is not str or page not in PAGES:
         raise ValueError("unsupported page")
-    if fields["selection_engine"] != PAGES[page]:
+    engine = fields["selection_engine"]
+    if type(engine) is not str or engine != PAGES[page]:
         raise ValueError("page and engine do not match")
     params = {"page": page, "selection_engine": PAGES[page]}
     if event_name == "affiliate_outbound_click":
@@ -94,7 +99,7 @@ def summarize_funnel(events, *, analytics_consent=False,
     counts = {page: {name: 0 for name in sorted(EVENTS)} for page in PAGES}
     product_clicks = {page: {} for page in PAGES}
     for event in events:
-        if not isinstance(event, dict) or set(event) != {"name", "params"}:
+        if not _has_exact_fields(event, {"name", "params"}):
             raise ValueError("unsupported event record")
         validated = _build_event(
             event["name"], event["params"], verified_product_ids_by_page,
