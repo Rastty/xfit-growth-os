@@ -23,6 +23,7 @@ MAX_BYTES = 35 * 1024 * 1024
 MAX_ITEMS = 100000
 ALLOWED_HOST = "greenmedical.venalio.com"  # feed infrastructure, NOT the seller
 PRODUCT_HOSTS = {"namaximum.cz", "www.namaximum.cz"}
+MAX_CATALOG_ID = 2**31 - 1  # Same bound as public CTA click metadata.
 BLOCK_TERMS = re.compile(r"(?i)\b(cbd|thc|hhc|kratom|steroid\w*|nikotin\w*|nicotine|marihuan\w*|konopn\w*\s+kv[eě]t)\b")
 DROP_QUERY_KEYS = {"secretkey", "token", "api_key", "apikey", "password", "authorization", "auth", "gclid", "fbclid", "a_aid", "a_bid", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"}
 
@@ -47,6 +48,23 @@ def safe_product_url(text):
         if k.lower() not in DROP_QUERY_KEYS
     ])
     return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path, safe_query, ""))
+
+def catalog_identity_matches_url(item_id, product_url):
+    """Do not publish guessed IDs or link a card to a different merchant variant.
+
+    Some merchant product URLs have no variant parameter; those still require
+    an authentic ITEM_ID. If present, variant must be a single exact ITEM_ID.
+    Never derive the ID from XML row position or a URL query string.
+    """
+    if not isinstance(item_id, str) or not re.fullmatch(r"[1-9][0-9]{0,9}", item_id):
+        return False
+    if int(item_id) > MAX_CATALOG_ID:
+        return False
+    variants = urllib.parse.parse_qs(
+        urllib.parse.urlsplit(product_url or "").query, keep_blank_values=True
+    ).get("variant")
+    return variants is None or variants == [item_id]
+
 
 def parse_price(value):
     """Only finite, positive CZK prices can enter the published catalog.
@@ -94,15 +112,18 @@ def parse_feed(xml_bytes):
         if BLOCK_TERMS.search(title + " " + category):
             skipped["restricted_or_sensitive_product"] += 1
             continue
-        item_id = value(el, "ITEM_ID", "ITEMID", "ID")[:120]
+        item_id = value(el, "ITEM_ID", "ITEMID", "ID")
         link = safe_product_url(value(el, "URL", "LINK"))
         image = safe_product_url(value(el, "IMGURL", "IMAGE", "IMGURL_ALTERNATIVE"))
         # Merchant identity is proved by EACH item URL, not the feed hosting CDN.
         if urllib.parse.urlsplit(link).hostname not in PRODUCT_HOSTS:
             skipped["not_namaximum_product_link"] += 1
             continue
+        if not catalog_identity_matches_url(item_id, link):
+            skipped["invalid_or_mismatched_catalog_identity"] += 1
+            continue
         offers.append({
-            "id": item_id or str(i + 1),
+            "id": item_id,
             "title": title[:250],
             "category": category[:300],
             "price_czk": price,  # Verify feed's actual currency before use in public UI.

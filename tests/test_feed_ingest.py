@@ -123,7 +123,7 @@ class AffiliateFeedTests(unittest.TestCase):
         sample=b"""<?xml version="1.0" encoding="UTF-8"?>
         <SHOP><SHOPITEM><ITEM_ID>123</ITEM_ID><PRODUCTNAME>Protein A</PRODUCTNAME>
         <CATEGORYTEXT>Sport a fitness</CATEGORYTEXT><PRICE_VAT>299.90</PRICE_VAT>
-        <URL>https://www.namaximum.cz/p/a?secretKey=hidden&amp;variant=1</URL>
+        <URL>https://www.namaximum.cz/p/a?secretKey=hidden&amp;variant=123</URL>
         </SHOPITEM></SHOP>"""
         items, skipped=parse_feed(sample)
         self.assertEqual(len(items), 1)
@@ -158,12 +158,40 @@ class AffiliateFeedTests(unittest.TestCase):
         <SHOPITEM><ITEM_ID>102</ITEM_ID><PRODUCTNAME>Whey WPC 1000g</PRODUCTNAME>
           <PRICE_VAT>Infinity</PRICE_VAT><URL>https://www.namaximum.cz/p/b?variant=2</URL></SHOPITEM>
         <SHOPITEM><ITEM_ID>103</ITEM_ID><PRODUCTNAME>Creatine Monohydrate 1000g</PRODUCTNAME>
-          <PRICE_VAT>899.90</PRICE_VAT><URL>https://www.namaximum.cz/p/c?variant=3</URL></SHOPITEM>
+          <PRICE_VAT>899.90</PRICE_VAT><URL>https://www.namaximum.cz/p/c?variant=103</URL></SHOPITEM>
         </SHOP>"""
         result, skipped = parse_feed(sample)
         self.assertEqual([p["id"] for p in result], ["103"])
         self.assertEqual(result[0]["price_czk"], 899.9)
         self.assertEqual(skipped["missing_title_or_price"], 2)
+
+    def test_missing_identity_never_falls_back_to_feed_row_number(self):
+        sample = b"""<SHOP>
+          <SHOPITEM><PRODUCTNAME>Creatine 500g</PRODUCTNAME><PRICE_VAT>300</PRICE_VAT>
+            <URL>https://www.namaximum.cz/p/creatine?variant=5</URL></SHOPITEM>
+          <SHOPITEM><ITEM_ID>42</ITEM_ID><PRODUCTNAME>Creatine 1000g</PRODUCTNAME>
+            <PRICE_VAT>510</PRICE_VAT><URL>https://www.namaximum.cz/p/creatine?variant=42</URL></SHOPITEM>
+        </SHOP>"""
+        items, skipped = parse_feed(sample)
+        self.assertEqual([p["id"] for p in items], ["42"])
+        self.assertEqual(skipped["invalid_or_mismatched_catalog_identity"], 1)
+
+    def test_variant_mismatch_duplicate_and_out_of_range_ids_are_skipped(self):
+        sample = b"""<SHOP>
+          <SHOPITEM><ITEM_ID>392</ITEM_ID><PRODUCTNAME>Creatine 500g</PRODUCTNAME>
+            <PRICE_VAT>300</PRICE_VAT><URL>https://www.namaximum.cz/p/a?variant=393</URL></SHOPITEM>
+          <SHOPITEM><ITEM_ID>393</ITEM_ID><PRODUCTNAME>Creatine 500g</PRODUCTNAME>
+            <PRICE_VAT>300</PRICE_VAT><URL>https://www.namaximum.cz/p/a?variant=393&amp;variant=394</URL></SHOPITEM>
+          <SHOPITEM><ITEM_ID>2147483648</ITEM_ID><PRODUCTNAME>Creatine 500g</PRODUCTNAME>
+            <PRICE_VAT>300</PRICE_VAT><URL>https://www.namaximum.cz/p/a?variant=2147483648</URL></SHOPITEM>
+          <SHOPITEM><ITEM_ID>nonnumeric</ITEM_ID><PRODUCTNAME>Creatine 500g</PRODUCTNAME>
+            <PRICE_VAT>300</PRICE_VAT><URL>https://www.namaximum.cz/p/a</URL></SHOPITEM>
+          <SHOPITEM><ITEM_ID>395</ITEM_ID><PRODUCTNAME>Creatine 1000g</PRODUCTNAME>
+            <PRICE_VAT>600</PRICE_VAT><URL>https://www.namaximum.cz/p/b</URL></SHOPITEM>
+        </SHOP>"""
+        items, skipped = parse_feed(sample)
+        self.assertEqual([p["id"] for p in items], ["395"])
+        self.assertEqual(skipped["invalid_or_mismatched_catalog_identity"], 4)
 
     def test_doctype_rejected(self):
         with self.assertRaises(ValueError):
