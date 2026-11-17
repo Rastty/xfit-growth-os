@@ -17,7 +17,7 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from scripts.xfit_affil_deeplink import affiliate_signature
 from scripts.xfit_affiliate_public_audit import (
-    Cards, MERCHANTS, PAGES, read_public_page, safe_affiliate_url,
+    Cards, MERCHANTS, PAGES, merchant_offer_anchor, read_public_page, safe_affiliate_url,
     variant_identity_status,
 )
 
@@ -56,9 +56,9 @@ def card_destinations(public_html, slug, base):
         raise ValueError("unexpected_public_product_count")
     destinations = []
     for card in parser.cards:
-        if len(card["anchors"]) != 1:
+        item = merchant_offer_anchor(card)
+        if item is None:
             raise ValueError("ambiguous_product_card")
-        item = card["anchors"][0]
         if (item["engine"] != PAGES[slug][1]
                 or item["partner"] != "namaximum"
                 or "sponsored" not in item["rel"]):

@@ -65,6 +65,28 @@ class MerchantDestinationProbeTests(unittest.TestCase):
             self.assertNotIn("data1", url)
             self.assertNotIn("TESTID", url)
 
+    def test_live_budget_navigation_is_allowed_without_probe_or_tracking(self):
+        html = page("creatine", [392, 393]).replace(
+            "</article>",
+            '<a href="#xfit-vyber-podle-rozpoctu">Změnit rozpočet</a></article>',
+        )
+        urls = card_destinations(html, "xfit-os-kreatin-poradce", BASE)
+        self.assertEqual(len(urls), 2)
+        self.assertTrue(all("#" not in url and "a_aid" not in url for url in urls))
+
+    def test_untracked_second_merchant_or_misleading_budget_link_blocks_probe(self):
+        for extra in (
+            '<a href="https://www.namaximum.cz/bad">Untracked purchase</a>',
+            '<a href="#not-budget">Misleading jump</a>',
+            '<a data-xfit-product-id="392" href="#xfit-vyber-podle-rozpoctu">'
+            'Tracked jump</a>',
+        ):
+            with self.subTest(link_type=extra.split('>')[1][:24]):
+                html = page("creatine", [392, 393]).replace(
+                    "</article>", extra + "</article>")
+                with self.assertRaisesRegex(ValueError, "ambiguous_product_card"):
+                    card_destinations(html, "xfit-os-kreatin-poradce", BASE)
+
     def test_rejects_variant_mismatch_and_unapproved_hosts(self):
         with self.assertRaisesRegex(ValueError, "unverified_merchant_variant"):
             clean_product_destination(tracked(392), "393", "TESTID", "TESTCAMPAIGN")
