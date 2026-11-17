@@ -27,13 +27,23 @@ for(const spec of checks){
   if(!response || response.status()>=400)failures.push("http_"+(response?.status()||"none"));
   await page.waitForTimeout(1200);
   // A full-page screenshot does not automatically fetch off-screen lazy images.
-  // Scroll to a real product as a visitor does, then assess loaded imagery.
+  // A tall product card can be centered with its image still outside the
+  // viewport. Scroll to the actual photo and wait for its load/decode instead
+  // of treating a still-pending request after 1.6s as a broken customer image.
+  // Keep the existing failure if a photo remains missing or broken after 10s.
   if(spec.commercial){
-    stage="product_scroll";
-    const firstCard=page.locator(".xfit-product-card").first();
-    if(await firstCard.count()){
-      await firstCard.scrollIntoViewIfNeeded();
-      await page.waitForTimeout(1600);
+    stage="product_image_scroll";
+    const firstPhoto=page.locator(".xfit-product-card img").first();
+    if(await firstPhoto.count()){
+      await firstPhoto.scrollIntoViewIfNeeded();
+      try{
+        await page.waitForFunction(()=>{
+          const img=document.querySelector(".xfit-product-card img");
+          return !!(img && img.complete && img.naturalWidth>0);
+        },null,{timeout:10000,polling:250});
+      }catch(_){
+        // A timed-out or failed image remains an observable QA failure below.
+      }
     }
   }
   stage="document_checks";
