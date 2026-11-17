@@ -1,6 +1,11 @@
 name: XFIT Creatine Beginners 7468 Editorial Safety Revision
-# Manual, exact-one-post release; never run automatically just from a merge.
+# One-time exact-post release on this workflow's first merge; later source
+# mismatch fails closed rather than rewriting or retrying the live article.
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-creatine-beginners-7468-live.yml'
   workflow_dispatch:
     inputs:
       confirm:
@@ -15,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   revise-one:
-    if: inputs.confirm == 'REVISE_7468'
+    if: github.event_name == 'push' || inputs.confirm == 'REVISE_7468'
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     env:
