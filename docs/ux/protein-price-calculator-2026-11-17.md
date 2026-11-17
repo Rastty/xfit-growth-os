@@ -34,6 +34,13 @@ fake current prices, product recommendations or affiliate links.
    `xfit.cz` (WEDOS/theme-managed asset publishing), or an equivalent approved
    hosted path with stable URL and appropriate Content Security Policy. Do NOT
    create a new WordPress plugin or try an inline `<script>` bypass.
+   The `XFIT Protein Price Tool QA` GitHub workflow now produces an artifact
+   `xfit-protein-price-hosting-bundle` with a ZIP containing ONLY reviewed
+   JavaScript, CSS and their SHA-256 manifest. Its `protein-price/<digest>/`
+   directory is immutable: **upload/extract it only to the explicitly approved
+   static hosting location**. The ZIP deliberately excludes HTML to avoid a
+   competing SEO page or an executable WordPress plugin. Building the ZIP does
+   not install or activate anything.
    Once the owner has published the reviewed files in that exact directory,
    run the read-only byte/MIME/redirect gate:
 
