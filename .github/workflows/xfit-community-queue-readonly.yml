@@ -1,0 +1,42 @@
+name: XFIT Czech Community Queue Read-only
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/xfit_community_queue.py"
+      - "config/xfit-community-queue.json"
+      - "tests/test_xfit_community_queue.py"
+      - ".github/workflows/xfit-community-queue-readonly.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xfit-community-queue-readonly
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate safe queue policy
+        run: python -m unittest tests.test_xfit_community_queue -q
+      - name: Classify public candidate discussions
+        run: |
+          mkdir -p reports/community
+          python -m scripts.xfit_community_queue \
+            --today "$(date -u +%F)" > reports/community/read-only-queue.json
+      - name: Publish redacted planning receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-community-readonly-queue
+          path: reports/community/read-only-queue.json
+          if-no-files-found: error
+          retention-days: 30
