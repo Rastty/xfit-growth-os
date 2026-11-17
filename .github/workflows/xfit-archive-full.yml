@@ -9,8 +9,10 @@ on:
       - '.github/workflows/xfit-archive-full.yml'
       - 'scripts/xfit_archive_full.py'
       - 'scripts/xfit_internal_inlinks.py'
+      - 'scripts/xfit_inlink_opportunities.py'
       - 'tests/test_archive_full.py'
       - 'tests/test_xfit_internal_inlinks.py'
+      - 'tests/test_xfit_inlink_opportunities.py'
   schedule:
     - cron: '29 3 * * 0'
 permissions:
