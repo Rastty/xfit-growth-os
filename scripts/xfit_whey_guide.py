@@ -106,6 +106,11 @@ def build_document(catalog, base, sample):
         'Syrovátka pochází z mléka. Při alergii na mléčnou bílkovinu ji '
         'nepovažujte za bezpečnou volbu; izolát není zárukou absence mléčných '
         'alergenů.</p>',
+        '<p><strong>Rozpočet a doprava:</strong> Uvedené ceny a rozpočtové limity '
+        'zahrnují pouze cenu balení, bez dopravy a případných poplatků za platbu. '
+        'Konečnou částku ověřte v košíku prodejce. '
+        'Pokud by překročila váš rozpočet, nemusíte nákup dokončit ani přidávat '
+        'další zboží jen kvůli dopravě zdarma.</p>',
         quick_pick(chosen, product_kind="whey"),
         '<h2>Než koupíte protein: krátký rozhodovací rozcestník</h2>',
         '<details id="xfit-need" open><summary><strong>Musím protein kupovat, abych nabral svaly?</strong></summary>'
@@ -122,11 +127,6 @@ def build_document(catalog, base, sample):
         '<details><summary><strong>Držím veganskou stravu nebo mám zdravotní omezení</strong></summary>'
         '<p>Pro veganské stravování zvažte vhodné rostlinné zdroje. '
         'Při zdravotním omezení výběr řešte s kvalifikovaným odborníkem.</p></details>',
-        '<p><strong>Rozpočet a doprava:</strong> Uvedené ceny a rozpočtové limity '
-        'zahrnují pouze cenu balení, bez dopravy a případných poplatků za platbu. '
-        'Konečnou částku ověřte v košíku prodejce. '
-        'Pokud by překročila váš rozpočet, nemusíte nákup dokončit ani přidávat '
-        'další zboží jen kvůli dopravě zdarma.</p>',
         price_tradeoff(chosen, product_kind="whey"),
       budget_choices(chosen, (750, 1200, 2000), product_kind="whey"),
         '<h2 id="xfit-offers">Syrovátkové proteiny – porovnání balení a ceny</h2>',
