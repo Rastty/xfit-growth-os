@@ -1,0 +1,42 @@
+name: XFIT Creatine vs Protein Legacy Evidence Refresh 4813
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-creatine-protein-4813-refresh.yml'
+      - 'scripts/xfit_creatine_protein_refresh_4813.py'
+      - 'content/revisions/kreatin-protein-4813.html'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-creatine-protein-refresh-4813
+  cancel-in-progress: false
+jobs:
+  pinned-onepost-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 17
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run all Python tests and validate replacement content
+        run: |
+          python -m unittest discover -s tests -v
+          python -c 'from scripts.xfit_creatine_protein_refresh_4813 import revision; print("reviewed_content_bytes=", len(revision().encode("utf-8")))'
+      - name: Strictly pin public REST content and snapshot authenticated original
+        run: python -m scripts.xfit_creatine_protein_refresh_4813 snapshot
+      - name: Preserve rollback original as artifact BEFORE any WordPress write
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-creatine-protein-4813-rollback-${{ github.run_id }}
+          path: reports/backups/xfit-creatine-protein-4813-original.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Update only WP post 4813 and verify authenticated and public readback
+        run: python -m scripts.xfit_creatine_protein_refresh_4813 apply | tee -a "$GITHUB_STEP_SUMMARY"
