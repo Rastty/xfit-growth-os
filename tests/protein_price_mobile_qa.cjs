@@ -43,6 +43,15 @@ const {chromium} = require('playwright');
       assert.match(result, /138,05 Kč/);
       assert.match(result, /nižší cenu[\s\S]*balení A/i);
 
+      await page.locator('#xfit-a-delivery').fill('99');
+      await page.getByRole('button',{name:'Spočítat cenu bílkovin'}).click();
+      const incomparable = await page.locator('[data-role="result"]').innerText();
+      assert.match(incomparable, /Nelze férově určit levnější balení/);
+      assert.doesNotMatch(incomparable, /nižší cenu[\s\S]*balení [AB]/i);
+      await page.locator('#xfit-b-delivery').fill('0');
+      await page.getByRole('button',{name:'Spočítat cenu bílkovin'}).click();
+      assert.match(await page.locator('[data-role="result"]').innerText(), /Doprava je zahrnuta u obou balení/);
+
       await page.locator('#xfit-b-protein').fill('');
       await page.getByRole('button',{name:'Spočítat cenu bílkovin'}).click();
       assert.match(await page.locator('[data-role="result"]').innerText(), /doplňte všechny tři/);

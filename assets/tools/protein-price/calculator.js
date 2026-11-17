@@ -45,7 +45,10 @@
     if (!secondEmpty && !second) {
       return { error: "U balení B doplňte všechny tři povinné údaje nebo jej nechte prázdné." };
     }
-    return { first, second };
+    const shippingComparison = !second ? "single" :
+      first.deliveryIncluded === second.deliveryIncluded ?
+        (first.deliveryIncluded ? "included" : "excluded") : "incomplete";
+    return { first, second, shippingComparison };
   }
 
   function asCzk(cents) {
@@ -56,6 +59,25 @@
 
   function asGrams(hundredths) {
     return (hundredths / 100n).toString() + "," + String(hundredths % 100n).padStart(2, "0") + " g";
+  }
+
+  function priceVerdict(result) {
+    if (!result || !result.first || !result.second) return "";
+    if (result.shippingComparison === "incomplete") {
+      return "Nelze férově určit levnější balení: doprava je zadaná jen u jednoho. " +
+        "Vyplňte dopravu u obou balení (i 0 Kč pro dopravu zdarma), " +
+        "nebo ji z obou polí vymažte. Uvedené jednotkové ceny teď nejsou přímo srovnatelné.";
+    }
+    // Compare exact fractions, not independently rounded display prices.
+    const a = result.first;
+    const b = result.second;
+    const diff = a.totalCents * b.proteinHundredths - b.totalCents * a.proteinHundredths;
+    return (result.shippingComparison === "excluded" ?
+      "Porovnání nezahrnuje dopravu. " : "Doprava je zahrnuta u obou balení. ") +
+      (diff === 0n
+        ? "Při stejném přepočtu vycházejí obě balení cenově nastejno."
+        : "Nižší cenu za stejné množství deklarovaných bílkovin má balení " +
+          (diff < 0n ? "A" : "B") + ". Neznamená to automaticky lepší složení.");
   }
 
   function text(element, value) {
@@ -101,16 +123,7 @@
       }
       if (result.second) {
         const winner = document.createElement("p");
-        // Compare exact fractions, not independently rounded display prices.
-        const a = result.first;
-        const b = result.second;
-        const aDen = a.proteinHundredths;
-        const bDen = b.proteinHundredths;
-        const diff = a.totalCents * bDen - b.totalCents * aDen;
-        text(winner, diff === 0n
-          ? "Při stejném přepočtu vycházejí obě balení cenově nastejno."
-          : "Nižší cenu za stejné množství deklarovaných bílkovin má balení " +
-            (diff < 0n ? "A" : "B") + ". Neznamená to automaticky lepší složení.");
+        text(winner, priceVerdict(result));
         output.append(winner);
       }
       const caveat = document.createElement("p");
@@ -125,7 +138,7 @@
     });
   }
 
-  const api = { parseHundredths, parsePack, compare, asCzk, asGrams, init };
+  const api = { parseHundredths, parsePack, compare, asCzk, asGrams, priceVerdict, init };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   if (typeof document !== "undefined") {
     const mount = () => document.querySelectorAll('[data-xfit-tool="protein-price"]').forEach(init);

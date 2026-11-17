@@ -5,12 +5,16 @@ on:
     paths:
       - 'assets/tools/protein-price/**'
       - 'tests/test_protein_price_tool.cjs'
+      - 'scripts/xfit_protein_price_host_preflight.py'
+      - 'tests/test_protein_price_host_preflight.py'
       - 'tests/protein_price_mobile_qa.cjs'
       - '.github/workflows/xfit-protein-price-tool.yml'
   pull_request:
     paths:
       - 'assets/tools/protein-price/**'
       - 'tests/test_protein_price_tool.cjs'
+      - 'scripts/xfit_protein_price_host_preflight.py'
+      - 'tests/test_protein_price_host_preflight.py'
       - 'tests/protein_price_mobile_qa.cjs'
       - '.github/workflows/xfit-protein-price-tool.yml'
 permissions:
@@ -26,6 +30,7 @@ jobs:
           node-version: '22'
       - run: node --check assets/tools/protein-price/calculator.js
       - run: node --test tests/test_protein_price_tool.cjs
+      - run: python -m unittest discover -s tests -p test_protein_price_host_preflight.py -v
       - name: Install isolated Chromium test dependency
         run: |
           npm install --no-save playwright@1.56.1
