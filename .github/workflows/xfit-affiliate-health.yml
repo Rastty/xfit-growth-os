@@ -7,7 +7,9 @@ on:
       - '.github/workflows/xfit-affiliate-health.yml'
       - 'scripts/xfit_affiliate_health.py'
       - 'scripts/xfit_affiliate_public_audit.py'
+      - 'scripts/xfit_merchant_destination_probe.py'
       - 'tests/test_affiliate_public_audit.py'
+      - 'tests/test_merchant_destination_probe.py'
   schedule:
     - cron: '43 6 * * *'
 permissions:
@@ -29,3 +31,5 @@ jobs:
         run: python -m scripts.xfit_affiliate_health
       - name: Verify actual public product CTA tracking matches WordPress source
         run: python -m scripts.xfit_affiliate_public_audit
+      - name: Inspect untracked product destinations (diagnostic only)
+        run: python -m scripts.xfit_merchant_destination_probe
