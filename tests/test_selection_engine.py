@@ -80,15 +80,15 @@ class SelectionTests(unittest.TestCase):
             offer("Creatine Monohydrate 1kg", float("-inf"), id="neg-inf"),
             offer("Creatine Monohydrate 500g", True, id="bool"),
             offer("Creatine Monohydrate 250g", 0.001, id="rounded-zero"),
-            offer("Creatine Monohydrate 1000g", 900, id="valid1"),
-            offer("Creatine Monohydrate 500g", 499, id="valid2"),
+            offer("Creatine Monohydrate 1000g", 900, id="901"),
+            offer("Creatine Monohydrate 500g", 499, id="902"),
         ]
         for ceiling in (None, 1500):
             with self.subTest(ceiling=ceiling):
                 selected=select_offers({"products":items},"creatine",
                                        max_price=ceiling,min_mass_g=200)
                 self.assertEqual({p["id"] for p in selected},
-                                 {"valid1","valid2"})
+                                 {"901","902"})
                 self.assertEqual(len(selected),2)
                 self.assertTrue(all(p["price_per_100g_powder_czk"]>0
                                     for p in selected))
@@ -126,6 +126,17 @@ class SelectionTests(unittest.TestCase):
             select_offers({"products":products},"whey",limit=None)
         with self.assertRaisesRegex(ValueError,"too large"):
             select_offers({"products":tuple(products)},"creatine",limit=None)
+
+    def test_mismatched_or_unverified_identity_never_reaches_shortlist(self):
+        good = offer("Creatine Monohydrate 500g", 450, id="392")
+        mismatch = {**offer("Creatine Monohydrate 500g", 100, id="393"),
+                    "source_url": good["source_url"]}
+        missing = {**offer("Creatine Monohydrate 1000g", 150, id="394"),
+                   "id": ""}
+        duplicate = {**offer("Creatine Monohydrate 200g", 90, id="395"),
+                     "source_url": "https://www.namaximum.cz/p/example?variant=395&variant=396"}
+        ranked = select_offers({"products": [mismatch, missing, duplicate, good]}, "creatine")
+        self.assertEqual([x["id"] for x in ranked], ["392"])
 
     def test_invalid_controls(self):
         with self.assertRaises(ValueError):
