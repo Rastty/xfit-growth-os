@@ -29,3 +29,13 @@ class GateTests(unittest.TestCase):
         d=fixture();d["content"]+='<img src="https://cdn.example/x.jpg">'
         with self.assertRaises(EditorialError):
             check_document(d)
+    def test_independent_nhs_and_nice_clinical_sources_are_supported(self):
+        for host in ("www.nice.org.uk", "www.rnoh.nhs.uk", "www.cuh.nhs.uk"):
+            with self.subTest(host=host):
+                d=fixture()
+                d["content"]=d["content"].replace("ods.od.nih.gov", host)
+                self.assertTrue(check_document(d)["passed"])
+        d=fixture()
+        d["content"]=d["content"].replace("ods.od.nih.gov", "www.nice.org.uk.invalid.example")
+        with self.assertRaises(EditorialError):
+            check_document(d)
