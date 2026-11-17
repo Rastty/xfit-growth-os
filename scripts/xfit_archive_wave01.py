@@ -6,7 +6,7 @@ modify URLs, change SEO redirects or change post content.
 Requires preflight backup artifact before any write.
 """
 import argparse
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import hashlib
 import json
 from pathlib import Path
@@ -19,6 +19,34 @@ CONFIG=Path("config/xfit-offtopic-wave01.json")
 BACKUP=Path("reports/backups/xfit-offtopic-wave01-backup.json")
 EXPECTED_NEW_STATUS="draft"
 MAX_BATCH=40
+MAX_EVIDENCE_AGE_DAYS=14
+
+
+def assert_fresh_evidence(cfg, *, today=None):
+    """Fail closed before unpublishing on stale or malformed traffic evidence.
+
+    A restored post must never depend on how old the original decision is,
+    so callers intentionally exclude the restore path from this guard.
+    """
+    today = today or datetime.now(timezone.utc).date()
+    evidence = cfg.get("evidence")
+    if not isinstance(evidence, dict):
+        raise PublishError("Missing archive traffic evidence")
+    for field in ("ga4_period", "gsc_period"):
+        period = evidence.get(field)
+        if not isinstance(period, str) or len(period) != 22 or period[10:12] != "..":
+            raise PublishError("Invalid archive evidence period: " + field)
+        try:
+            start = date.fromisoformat(period[:10])
+            end = date.fromisoformat(period[12:])
+        except ValueError:
+            raise PublishError("Invalid archive evidence date: " + field) from None
+        duration = (end - start).days + 1
+        if not 84 <= duration <= 100:
+            raise PublishError("Archive evidence must cover a near-90-day window: " + field)
+        age = (today - end).days
+        if age < 0 or age > MAX_EVIDENCE_AGE_DAYS:
+            raise PublishError("Archive evidence is future-dated or stale: " + field)
 
 def load():
     cfg=json.loads(CONFIG.read_text(encoding="utf-8"))
@@ -63,6 +91,7 @@ def assert_expected(post,item,allow_draft=False):
         raise PublishError("Unexpected permalink host")
 
 def snapshot(cfg):
+    assert_fresh_evidence(cfg)
     base=normalized_base()
     entries=[]
     for item in cfg["candidates"]:
@@ -90,6 +119,8 @@ def snapshot(cfg):
                       "no_remote_writes":True},ensure_ascii=False))
 
 def perform(cfg, mode):
+    if mode=="apply":
+        assert_fresh_evidence(cfg)
     base=normalized_base()
     snap=json.loads(BACKUP.read_text(encoding="utf-8"))
     rows=snap.get("posts",[])
