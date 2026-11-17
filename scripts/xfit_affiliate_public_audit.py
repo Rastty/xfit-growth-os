@@ -227,10 +227,20 @@ def card_evidence(body, slug, affiliate_base):
     signature = []
     origin_tagged = 0
     for card in parser.cards:
-        if len(card["anchors"]) != 1:
+        anchors = card["anchors"]
+        # The live cards include a separate, non-commercial jump back to the
+        # budget chooser. It is not an affiliate CTA. Allow this *one* exact
+        # in-page navigation link, but never silently ignore extra merchant
+        # links, arbitrary fragments or anchors carrying tracking metadata.
+        if (len(anchors) == 2
+                and anchors[1]["href"] == "#xfit-vyber-podle-rozpoctu"
+                and not any(anchors[1][field] for field in
+                            ("rel", "engine", "partner", "product_id"))):
+            anchors = anchors[:1]
+        if len(anchors) != 1:
             errors.add("card_needs_exactly_one_link")
             continue
-        item = card["anchors"][0]
+        item = anchors[0]
         numeric = item["product_id"]
         if (item["engine"] != engine or item["partner"] != "namaximum"
                 or not isinstance(numeric, str)
