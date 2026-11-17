@@ -12,7 +12,10 @@ from urllib.parse import urlsplit, parse_qs
 
 TRUSTED_EVIDENCE=("commission.europa.eu","ods.od.nih.gov","pmc.ncbi.nlm.nih.gov","pubmed.ncbi.nlm.nih.gov",
                   "efsa.europa.eu","food.ec.europa.eu","knowledge-for-policy.ec.europa.eu",
-                  "who.int","acsm.org")
+                  "who.int","acsm.org",
+                  # UK public healthcare guidance for clinical rehabilitation;
+                  # exact hosts only, never broad suffix or substring matches.
+                  "www.nice.org.uk", "www.rnoh.nhs.uk", "www.cuh.nhs.uk")
 FORBIDDEN=re.compile(r"(garantovaně\s+(vyléčí|odstraní)|100\s*%\s*(vyléčí|účinnost)|jediný\s+zázračný|klikni zde|nejlepší na světě)",re.I)
 NAVIGATION_KW=("na xfit.cz","xfit.cz")
 MIN_WORDS=320
