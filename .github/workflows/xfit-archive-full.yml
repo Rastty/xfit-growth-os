@@ -1,6 +1,16 @@
 name: XFIT Full Archive Audit
 on:
   workflow_dispatch:
+  # Recompute the full evidence snapshot when its own analysis logic changes.
+  # This stays read-only and shares the heavy-read serialization group.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-archive-full.yml'
+      - 'scripts/xfit_archive_full.py'
+      - 'scripts/xfit_internal_inlinks.py'
+      - 'tests/test_archive_full.py'
+      - 'tests/test_xfit_internal_inlinks.py'
   schedule:
     - cron: '29 3 * * 0'
 permissions:

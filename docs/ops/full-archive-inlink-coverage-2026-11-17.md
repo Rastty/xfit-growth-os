@@ -41,8 +41,13 @@ python -m unittest tests.test_xfit_internal_inlinks tests.test_archive_full -q
 python scripts/xfit_archive_full.py --help
 ```
 
-Po merge se změna použije při nejbližším standardním nedělním archivačním
-běhu (nebo manuálním `workflow_dispatch`). Nejde o nově publikovanou stránku,
+Po aktualizaci workflow se při změně auditního skriptu, testu nebo workflow
+na `main` spustí jednorázová read-only inventura; navíc nadále běží každou
+neděli a podporuje manuální `workflow_dispatch`. Sběr celého archivu může
+trvat několik minut. Při plánovaném a push běhu platí stejná serializační
+skupina `xfit-wp-heavy-reads` bez rušení rozběhnuté úlohy.
+
+Nejde o nově publikovanou stránku,
 změnu navigace, vynucenou Google indexaci ani konverzní atribuci.
 
 **Rollback:** revertovat přidaný import, pole `guide_inlink_coverage` a nový
