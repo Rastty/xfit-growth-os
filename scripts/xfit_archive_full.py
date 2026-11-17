@@ -19,8 +19,10 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 if __package__:
     from .xfit_internal_inlinks import build_coverage
+    from .xfit_inlink_opportunities import build_opportunities
 else:  # GitHub workflow invokes `python scripts/xfit_archive_full.py`.
     from xfit_internal_inlinks import build_coverage
+    from xfit_inlink_opportunities import build_opportunities
 
 BASE="https://xfit.cz/wp-json/wp/v2/posts"
 SPACE=re.compile(r"\s+")
@@ -229,6 +231,7 @@ def inventory(posts):
       # This measures sources from post bodies, not all internal links or SEO
       # orphans. Build from deduplicated posts already downloaded by the audit.
       "guide_inlink_coverage": build_coverage(seen.values()),
+      "guide_inlink_editorial_queue": build_opportunities(seen.values()),
       "suspected_out_of_focus_count":sum(p["suspect_offtopic"] for p in rows),
       "suspected_spam_count":sum(p["suspect_spam"] for p in rows),
       "duplicate_titles":duplicates[:250],
