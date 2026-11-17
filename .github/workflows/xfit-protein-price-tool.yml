@@ -1,0 +1,41 @@
+name: XFIT Protein Price Tool QA
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'assets/tools/protein-price/**'
+      - 'tests/test_protein_price_tool.cjs'
+      - 'tests/protein_price_mobile_qa.cjs'
+      - '.github/workflows/xfit-protein-price-tool.yml'
+  pull_request:
+    paths:
+      - 'assets/tools/protein-price/**'
+      - 'tests/test_protein_price_tool.cjs'
+      - 'tests/protein_price_mobile_qa.cjs'
+      - '.github/workflows/xfit-protein-price-tool.yml'
+permissions:
+  contents: read
+jobs:
+  offline-mobile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check assets/tools/protein-price/calculator.js
+      - run: node --test tests/test_protein_price_tool.cjs
+      - name: Install isolated Chromium test dependency
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - run: node tests/protein_price_mobile_qa.cjs
+      - name: Keep mobile QA screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-protein-price-tool-qa
+          path: reports/browser-qa/protein-price-tool-mobile.png
+          retention-days: 7
+          if-no-files-found: ignore
