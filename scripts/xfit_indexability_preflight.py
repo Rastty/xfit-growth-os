@@ -343,10 +343,14 @@ def run(*, reader=read_xfit_path):
         "robots_details": robots_details,
         "declared_sitemap_probes": declared_status,
         "post_sitemap_inclusion": child_membership,
+        # This job has no Google Search Console access. An embedded historical
+        # URL Inspection snapshot becomes false current evidence as soon as
+        # Google recrawls a page. The separately authenticated Prometheus
+        # capture must be consulted by its latest successful *capture* job,
+        # not by this independent public-site probe.
         "observed_gsc_state": {
-            "five": "DISCOVERED_NOT_INDEXED_2026_11_08",
-            "one": "UNKNOWN_TO_GOOGLE_2026_11_08",
-            "source_run": 42470121265,
+            "status": "NOT_MEASURED_BY_THIS_PREFLIGHT",
+            "source": "PROMETHEUS_XFIT_GSC_READONLY",
         },
         "limitations": [
             "Public 200 and self-canonical do not prove Google indexing or quality",
