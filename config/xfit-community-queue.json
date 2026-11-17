@@ -1,0 +1,40 @@
+{
+  "candidates": [
+    {
+      "id": "reddit_protein_price_oct26",
+      "url": "https://www.reddit.com/r/czech/comments/1wy1491/protein/",
+      "topic": "protein_cost",
+      "observed_on": "2026-11-17",
+      "last_activity_on": "2026-11-12",
+      "state": "discovered",
+      "live_thread_verified": false,
+      "rules_reviewed_on": null,
+      "reply_url": null,
+      "affiliate_link_in_reply": false
+    },
+    {
+      "id": "reddit_home_workout_aug26",
+      "url": "https://www.reddit.com/r/czech/comments/1w2qc0c/lidi_co_cvi%C4%8D%C3%ADte_doma_jak_se_k_tomu_kurva_dokopete/",
+      "topic": "home_training",
+      "observed_on": "2026-11-17",
+      "last_activity_on": "2026-08-30",
+      "state": "discovered",
+      "live_thread_verified": false,
+      "rules_reviewed_on": null,
+      "reply_url": null,
+      "affiliate_link_in_reply": false
+    },
+    {
+      "id": "reddit_gym_beginner_jun26",
+      "url": "https://www.reddit.com/r/czech/comments/1u5v6hl/jak_za%C4%8D%C3%ADt_se_cvi%C4%8Den%C3%ADm/",
+      "topic": "beginner_fitness",
+      "observed_on": "2026-11-17",
+      "last_activity_on": "2026-06-14",
+      "state": "discovered",
+      "live_thread_verified": false,
+      "rules_reviewed_on": null,
+      "reply_url": null,
+      "affiliate_link_in_reply": false
+    }
+  ]
+}

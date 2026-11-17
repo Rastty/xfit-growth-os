@@ -71,3 +71,44 @@ Bez takové relevance **nedávat vlastní odkaz do první odpovědi**.
 **Produkční dopad tohoto dokumentu:** žádný WP zápis, žádný publikovaný
 komentář, žádný potvrzený backlink, návštěva ani provize. Jde o schválený
 experimentální podklad pro manuální publikaci po kontrole pravidel.
+
+## Zautomatizované třídění kandidátů bez automatického publikování
+
+Základ pilotu je teď možné opakovat bezpečně a strojově:
+
+```bash
+python -m scripts.xfit_community_queue \
+  --candidates config/xfit-community-queue.json \
+  --today 2026-11-17
+```
+
+Vstupní soubor obsahuje jen veřejné URL diskusí, témata, kalendářní důkazy a
+kontrolní stav. **Nesmí obsahovat osobní údaje, texty soukromých zpráv,
+uživatelská jména, tokeny, ani affiliate tracking.** Neprovádí se žádné
+přihlášení, scraping, komentování, hlasování ani WordPress zápis. Report má
+u návštěv, zpětných odkazů a provizí `UNKNOWN`, dokud nejsou samostatně
+ověřeny. Případný zadaný permalink komentáře je jen tvrzení k ověření, ne
+doklad o zveřejnění.
+
+Výchozí přehled k 17. 11. 2026:
+
+| Diskuse | Strojový stav | Proč | Další krok |
+| --- | --- | --- | --- |
+| `r/czech` protein / říjen | `UNVERIFIED_THREAD` | Ve vyhledávacím záznamu aktivita 12. 11., ale otevřenost živého vlákna a pravidla zatím nepotvrzena | Otevřít diskusi a ověřit pravidla, potom maximálně jedna věcná odpověď bez odkazu |
+| `r/czech` domácí trénink / srpen | `EXPIRED` | Poslední doložená aktivita 30. 8.; starší než 21 dní | Neobnovovat marketingově starou diskusi, hledat novou aktuální otázku |
+| `r/czech` začátky cvičení / červen | `EXPIRED` | Poslední doložená aktivita 14. 6. | Použít téma jako inspiraci, ne jako aktuální linkbuildingový cíl |
+
+Veřejný vyhledávací záznam není ověření konkrétního komentáře na živém webu.
+Kandidáti s aktivitou starší **21 dní** automaticky expirují; pozorování
+starší **7 dní** vyžaduje nové ověření a bez čerstvé kontroly pravidel
+nevznikne ani stav `HUMAN_REVIEW_ONLY`. Žádný stav neumožňuje botové
+publikování. Duplicity se hlídají podle ID diskuse, i kdyby někdo změnil
+slug URL. Tím se projekt posouvá od neomezených seznamů příležitostí k
+ověřitelné malé frontě a omezuje opakovaná práce bez přínosu.
+
+GitHub workflow `XFIT Czech Community Queue Read-only` spustí testy a při
+změně kandidátů na `main` vytvoří 30denní veřejný artifact s aktuální
+klasifikací. Dá se spustit také ručně; neprohledává internet a automaticky
+nehledá nové diskuse. Žádný workflow secret, marketingový účet ani
+publikační oprávnění nepotřebuje. Nové kandidáty lze do fronty přidat až
+po samostatném doložení veřejného zdroje a data poslední aktivity.
