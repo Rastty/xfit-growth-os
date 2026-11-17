@@ -34,10 +34,55 @@ class SelectionTests(unittest.TestCase):
             offer("Creatine 500 g",300,id="2"),
             offer("Creatine 500 g",200,id="2"),
             offer("Creatine 500 g",100,id="3",host="evil.example"),
+            offer("Creatine 1kg",600,id="4"),
         ]
-        ranked=select_offers({"products":items},"creatine")
-        self.assertEqual(len(ranked),1)
-        self.assertEqual(ranked[0]["price_czk"],300)
+        # Two contradictory prices for the very same variant are not a
+        # legitimate bargain: exclude both instead of trusting source order.
+        for reordered in (items, list(reversed(items))):
+            ranked=select_offers({"products":reordered},"creatine")
+            self.assertEqual([row["id"] for row in ranked],["4"])
+            self.assertEqual(ranked[0]["price_czk"],600)
+
+    def test_conflicting_ean_or_url_never_generates_product_cards(self):
+        items = [
+            offer("Creatine Monohydrate 500g", 300, id="11"),
+            offer("Creatine Monohydrate 500g", 200, id="12"),
+            offer("Creatine Monohydrate 1kg", 650, id="13"),
+            offer("Creatine Monohydrate 1kg", 649, id="13"),
+        ]
+        # Same GTIN but different product variant, independently of prices.
+        items[1]["ean"] = items[0]["ean"]
+        # Same merchant URL/variant but a different GTIN and price.
+        items[3]["ean"] = "14"
+        for reordered in (items, list(reversed(items))):
+            self.assertEqual(select_offers({"products":reordered},"creatine"),[])
+
+    def test_exact_repeated_feed_rows_collapse_without_changing_rank(self):
+        first = offer("Creatine Monohydrate 500g", 300, id="15")
+        second = offer("Creatine Monohydrate 1kg", 540, id="16")
+        original=[first, second, dict(first), dict(second)]
+        for reordered in (original, list(reversed(original))):
+            ranked=select_offers({"products":reordered},"creatine",limit=None)
+            self.assertEqual([row["id"] for row in ranked],["16","15"])
+            self.assertEqual(len(ranked),2)
+
+    def test_duplicate_conflicts_cannot_hide_outside_budget_or_pack_filter(self):
+        valid = offer("Creatine Monohydrate 500g", 350, id="91")
+        # Same variant is inconsistently advertised as a much higher priced
+        # item, or a differently sized pack. Both cases must fail closed even
+        # though the conflicting record is outside the requested shortlist.
+        conflicting_price = {**valid, "price_czk": 999}
+        conflicting_mass = {**valid, "title": "Creatine Monohydrate 100g"}
+        for conflict in (conflicting_price, conflicting_mass):
+            for rows in ([valid, conflict], [conflict, valid]):
+                ranked = select_offers({"products": rows}, "creatine",
+                                       max_price=500, min_mass_g=200)
+                self.assertEqual(ranked, [])
+
+    def test_budget_limit_compares_feed_price_before_display_rounding(self):
+        rows = [offer("Creatine Monohydrate 500g", 500.001, id="51")]
+        self.assertEqual(select_offers({"products": rows}, "creatine",
+                                       max_price=500), [])
 
     def test_protein_requires_category_and_powder(self):
         items = [
