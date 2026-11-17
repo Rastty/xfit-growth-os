@@ -30,7 +30,9 @@
 
 ## Release guard
 
-Manual `workflow_dispatch` only. Exact ID/slug/canonical/status and original
+One-time `push` to `main` for the dedicated workflow file, with an optional
+manual `workflow_dispatch` for readback or incident response. Exact
+ID/slug/canonical/status and original
 contradictory text must match immediately before the single POST. Snapshot
 includes the *complete authenticated raw body* and WordPress `modified_gmt`;
 upload to GitHub Actions as immutable 90-day rollback artifact first. If raw
@@ -43,4 +45,6 @@ an isolated exact-one-post restoration with fresh drift checking; never restore
 blindly over later edits.
 
 **No article or traffic lift is claimed on code merge.** Live release is
-complete only with a `PUBLIC_VERIFIED` receipt from its manual workflow.
+complete only with a `PUBLIC_VERIFIED` receipt from its dedicated workflow.
+After a first successful release, a later accidental re-dispatch fails closed
+at the original-source signature rather than overwriting the revised article.
