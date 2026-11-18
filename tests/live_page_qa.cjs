@@ -373,11 +373,11 @@ for(const spec of checks){
       noNewCommercialLink:checkoutParagraphs.every(p=>!p.querySelector("a[href^='http']")),
     };
     const labelGuideLinks=[...document.querySelectorAll('a[href="https://xfit.cz/xfit-os-cena-proteinu-podle-etikety/"]')];
-    const firstDecisionHeading=document.querySelector("h2");
+    const firstMerchantLink=document.querySelector('[data-xfit-cta="quick-pick"]');
     const labelGuideBridge={
       count:labelGuideLinks.length,
-      early:labelGuideLinks.length===1 && (!firstDecisionHeading ||
-        !!(labelGuideLinks[0].compareDocumentPosition(firstDecisionHeading) & Node.DOCUMENT_POSITION_FOLLOWING)),
+      early:labelGuideLinks.length===1 && !!firstMerchantLink &&
+        !!(labelGuideLinks[0].compareDocumentPosition(firstMerchantLink) & Node.DOCUMENT_POSITION_FOLLOWING),
       clear:labelGuideLinks.length===1 &&
         labelGuideLinks[0].textContent.includes("nutriční etikety"),
     };
