@@ -181,17 +181,17 @@ def build_document(catalog, base, sample):
       's přesnou cenou za 100 g čistého kreatinu – čistotu konkrétních '
       'výrobků ověřujte na obalu. Ceny a dostupnost se mohou měnit.</p>',
       '<h2>Než koupíte kreatin: tři rychlé otázky</h2>',
-      '<details id="xfit-need" open><summary><strong>Začínám cvičit. Potřebuji ho hned?</strong></summary>'
+      '<details id="xfit-need" open><summary style="min-height:44px;box-sizing:border-box;padding:12px 0;"><strong>Začínám cvičit. Potřebuji ho hned?</strong></summary>'
       '<p>Ne. Pravidelný trénink, dostatek jídla, spánek a realistický plán mají přednost. '
       'Pokud zatím nevíte, co vám schází, začněte průvodcem '
       '<a href="https://xfit.cz/xfit-os-doplnky-pro-zacatecniky/">doplňky stravy pro začátečníky</a>. '
       'Úplně dobrá volba je dnes nekoupit nic.</p></details>',
-      '<details><summary><strong>Trénuji silově a chci vybrat jednoduchý produkt</strong></summary>'
+      '<details><summary style="min-height:44px;box-sizing:border-box;padding:12px 0;"><strong>Trénuji silově a chci vybrat jednoduchý produkt</strong></summary>'
       '<p>Pokud jste zdravý dospělý a kreatin pro vás dává smysl, '
       'porovnejte monohydrát podle skutečného složení, ceny a velikosti balení. '
       'Zde jsou produkty seřazené podle ceny za 100 g baleného prášku, '
       'nikoli podle výše provize.</p></details>',
-      '<details><summary><strong>Mám obavy o ledviny, játra nebo krevní testy</strong></summary>'
+      '<details><summary style="min-height:44px;box-sizing:border-box;padding:12px 0;"><strong>Mám obavy o ledviny, játra nebo krevní testy</strong></summary>'
       '<p>Nejdříve si ověřte, co se skutečně ví. '
       '<a href="https://xfit.cz/kreatin-a-jeho-vliv-na-ledviny-a-jatra/">'
       'Průvodce kreatinem, ledvinami a játry</a> vysvětluje rozdíl mezi '
