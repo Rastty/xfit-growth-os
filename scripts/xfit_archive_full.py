@@ -139,8 +139,11 @@ def classify(post):
         try:
             p=urlsplit(urljoin(page_url,href))
             host=p.hostname
+            if p.scheme in ("http","https"):
+                # urlsplit validates the port only when it is accessed.
+                _ = p.port
         except ValueError:
-            # Legacy HTML may contain malformed IPv6 or Unicode netlocs.
+            # Legacy HTML may contain malformed hosts or ports.
             # Keep auditing other links; preserve the evidence gap for review.
             invalid_link_count+=1
             continue
