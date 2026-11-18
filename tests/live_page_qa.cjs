@@ -320,6 +320,15 @@ for(const spec of checks){
     const productTargets=new Set([...document.querySelectorAll('.xfit-product-card[id]')]
       .map(card=>'#'+card.id));
     const heroLinks=hero ? [...hero.querySelectorAll('a')] : [];
+    const wheyHero=location.pathname==='/xfit-os-syrovatkovy-protein-porovnani/';
+    const labelGuideHref='https://xfit.cz/xfit-os-cena-proteinu-podle-etikety/';
+    const heroLabelLinks=heroLinks.filter(a=>a.getAttribute('href')===labelGuideHref);
+    const firstQuickMerchant=hero?.querySelector('a[data-xfit-cta="quick-pick"]');
+    const heroEducationSafe=heroLabelLinks.length===(wheyHero?1:0) &&
+      heroLabelLinks.every(link=>firstQuickMerchant &&
+        !!(link.compareDocumentPosition(firstQuickMerchant) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+        !link.hasAttribute('onclick') && !link.hasAttribute('target') &&
+        !link.relList.contains('sponsored'));
     const quickOfferBlocks=heroChoices.filter(row=>
       row.getAttribute('data-xfit-quick-pick')!=='no-buy');
     const heroQuickPick={
@@ -334,7 +343,8 @@ for(const spec of checks){
           ['upfront','unit'].every(kind=>heroChoices.some(row=>
             row.getAttribute('data-xfit-quick-pick')===kind))),
       linksValid:quickOfferBlocks.length>=1 && quickOfferBlocks.length<=2 &&
-        heroLinks.length===quickOfferBlocks.length*2+1 &&
+        heroEducationSafe &&
+        heroLinks.length===quickOfferBlocks.length*2+1+heroLabelLinks.length &&
         quickOfferBlocks.every(row=>{
           const merchant=row.querySelector('a[data-xfit-cta="quick-pick"]');
           const detail=row.querySelector('a[href^="#xfit-offer-"]');

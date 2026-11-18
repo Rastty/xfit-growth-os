@@ -66,6 +66,9 @@ print(json.dumps(data, ensure_ascii=False))
           `${kind} ${width}px first product too far below content start: ${JSON.stringify(metrics)}`);
         assert.ok(metrics.ctaHeight >= 44, `${kind} ${width}px undersized merchant CTA`);
         assert.equal(await page.locator('#xfit-rychly-vyber [data-xfit-cta="quick-pick"]').count(), 2);
+        // Exactly one extra editorial link is allowed on whey; an additional
+        // merchant, tracking or unreviewed outbound link must fail preview QA.
+        assert.equal(await page.locator('#xfit-rychly-vyber a').count(), kind === 'whey' ? 6 : 5);
         if (kind === 'whey') {
           const educationFirst = await page.evaluate(() => {
             const education = document.querySelector(
