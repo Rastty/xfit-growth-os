@@ -1,0 +1,41 @@
+name: XFIT Public Expired Coupon Watch
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/xfit_public_coupon_watch.py'
+      - 'tests/test_public_coupon_watch.py'
+      - '.github/workflows/xfit-public-coupon-watch.yml'
+  schedule:
+    - cron: '11 6 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-public-coupon-watch
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify read-only scanner offline
+        run: python -m unittest tests.test_public_coupon_watch -v
+      - name: Check two public article URLs, no WP authentication or writes
+        id: watch
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_public_coupon_watch | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Preserve public-only evidence even when a coupon remains visible
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-public-coupon-watch-${{ github.run_id }}
+          path: reports/xfit-public-coupon-watch.json
+          retention-days: 30
+          if-no-files-found: warn
