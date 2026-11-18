@@ -102,12 +102,12 @@ def quick_pick(selected, *, product_kind):
     parts = [
         '<section id="xfit-rychly-vyber" aria-label="Rychlý výběr podle ceny">',
         '<h2>Rychlý výběr z porovnaných balení</h2>',
-        '<p>Chcete zaplatit co nejméně za celé balení, nebo získat nejnižší '
-        'cenu za 100 g prášku? Vyberte prioritu a ověřte nabídku u prodejce.</p>',
-        '<p><small>Odkazy na NaMaximum.cz jsou affiliate: pokud přes ně nakoupíte, '
-        'XFIT může získat provizi. Výběr neřadíme podle výše provize.</small></p>',
-        '<p data-xfit-quick-pick="no-buy">Nejste si jistí, že doplněk potřebujete? '
-        '<a href="#xfit-need">Nejdřív zjistit, zda nekoupit nic</a>.</p>',
+        '<p>Porovnejte nejnižší cenu balení a cenu za 100 g prášku. '
+        'Cenu i dostupnost ověřte v obchodě.</p>',
+        '<p><small>Partnerské odkazy NaMaximum.cz: XFIT může získat provizi. '
+        'Výběr neřadíme podle provize.</small></p>',
+        '<p data-xfit-quick-pick="no-buy">Nákup není nutný: '
+        '<a href="#xfit-need">zjistit, zda nepotřebuji doplněk</a>.</p>',
         '<div style="display:flex;flex-wrap:wrap;gap:12px;">',
     ]
     if cheap[0] == unit[0]:

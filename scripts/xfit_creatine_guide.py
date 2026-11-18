@@ -155,14 +155,10 @@ def build_document(catalog, base, sample):
       'je často nejpraktičtější volbou kreatin monohydrát. '
       'Tento přehled srovnává nabídky podle ceny a hmotnosti balení, '
       'nikoli podle marketingových superlativů.</p>',
-      '<nav aria-label="Rychlá navigace poradcem"><ul style="padding-left:24px;">'
-      '<li><a href="#xfit-need" style="display:inline-block;padding:12px 0;">'
-      'Potřebuji vůbec doplněk?</a></li>'
-      '<li><a href="#xfit-vyber-podle-rozpoctu" style="display:inline-block;padding:12px 0;">'
-      'Vybrat podle rozpočtu</a></li>'
-      '<li><a href="#xfit-offers" style="display:inline-block;padding:12px 0;">'
-      'Porovnat balení a ceny</a></li></ul></nav>',
       catalog_retrieval_notice(catalog),
+      '<p><strong>Zdravotní omezení:</strong> Při známém onemocnění ledvin či jater '
+      'nebo nejasných krevních testech výběr nejdřív proberte s lékařem. '
+      'Pokud kreatin nepotřebujete, nemusíte kupovat nic.</p>',
       '<p><strong>Rozpočet a doprava:</strong> Uvedené ceny a rozpočtové limity '
       'zahrnují pouze cenu balení, bez dopravy a případných poplatků za platbu. '
       'Konečnou částku ověřte v košíku prodejce. '
@@ -173,6 +169,13 @@ def build_document(catalog, base, sample):
       'Pořadí podle ceny není nezávislý test kvality ani účinnosti. '
       'Před nákupem můžete porovnat stejné balení i u jiných prodejců.</p>',
       quick_pick(chosen, product_kind="creatine"),
+      '<nav aria-label="Rychlá navigace poradcem"><ul style="padding-left:24px;">'
+      '<li><a href="#xfit-need" style="display:inline-block;padding:12px 0;">'
+      'Potřebuji vůbec doplněk?</a></li>'
+      '<li><a href="#xfit-vyber-podle-rozpoctu" style="display:inline-block;padding:12px 0;">'
+      'Vybrat podle rozpočtu</a></li>'
+      '<li><a href="#xfit-offers" style="display:inline-block;padding:12px 0;">'
+      'Porovnat balení a ceny</a></li></ul></nav>',
       '<p><strong>Jak používat výběr:</strong> Porovnejte cenu za 100 g prášku, '
       'velikost balení a celkovou cenu. Nezaměňujte cenu za 100 g výrobku '
       's přesnou cenou za 100 g čistého kreatinu – čistotu konkrétních '
@@ -210,6 +213,7 @@ def build_document(catalog, base, sample):
       '<div class="xfit-product-cards">'
     ]
     for i,offer in enumerate(chosen):
+        disclosure_id="xfit-creatine-partner-"+str(i+1)
         title=html.escape(offer["title"])
         href=html.escape(offer["tracked_url"],quote=True)
         # Preserve the selector's precision so the displayed prices explain
@@ -232,10 +236,12 @@ def build_document(catalog, base, sample):
             +model_portion_line(offer, "creatine")+
             '<p><a'+card_click_attributes(offer["id"], "creatine")+' href="'+href+'" rel="sponsored nofollow noopener noreferrer" '
             'aria-label="Ověřit cenu a dostupnost produktu '+html.escape(offer["title"],quote=True)+' na NaMaximum.cz (nová karta)" '
+            'aria-describedby="'+disclosure_id+'" '
             'target="_blank" style="display:inline-block;padding:12px 16px;min-height:44px;box-sizing:border-box;'
             'background-color:#116a70;color:#ffffff;text-decoration:none;font-weight:700;'
             'border-radius:8px;">Ověřit cenu a dostupnost</a> '
-            '<small>NaMaximum.cz · nová karta</small></p>'
+            '<small id="'+disclosure_id+'">Partnerský odkaz · Xfit.cz může získat provizi. '
+            'NaMaximum.cz · nová karta</small></p>'
             '<p><a href="#xfit-vyber-podle-rozpoctu" '
             'style="display:inline-block;padding:12px 0;">'
             'Zpět k výběru podle rozpočtu</a></p>'
