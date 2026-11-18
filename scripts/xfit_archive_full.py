@@ -31,6 +31,7 @@ SPACE=re.compile(r"\s+")
 TITLE_NOISE=re.compile(r"\b(aktualizace|přehled|kompletní průvodce|průvodce)\b", re.I)
 SPAM=re.compile(r"(casino|kasino|gambling|slots|betting|viagra|porn|poker|loan|levitra)",re.I)
 STALE_PROMO=re.compile(r"5NM2022|slevový kód\s*:\s*5NM2022",re.I)
+VISIBLE_STALE_CODE=re.compile(r"\b5NM2022\b",re.I)
 STALE_PROMO_FULL=re.compile(r'\[su_button\b[^\]]*\][^\[]*5NM2022\[/su_button\]',re.I)
 OUT_OF_FOCUS=("elektrokolo","koloběžka","skútr","casino","kasino","sázková kancelář","online automaty","půjčky")
 PRIMARY_TOPIC=("fitness","cvičení","trénink","sval","protein","kreatin","posilov","výživ","výživa","jídlo","hubnutí","pilates","jóga","sport","regenerac","zdrav","vitam","pohyb")
@@ -165,6 +166,7 @@ def classify(post):
       "body_hash":hashlib.sha256(body_html.encode("utf-8")).hexdigest() if body_html.strip() else "",
       "title_normalized":TITLE_NOISE.sub("",title).lower().strip(),
       "stale_2022_promo_mentions":len(STALE_PROMO.findall(body_html)),
+      "visible_stale_2022_promo_mentions":len(VISIBLE_STALE_CODE.findall(body)),
       "stale_2022_promo_shortcode_count":len(STALE_PROMO_FULL.findall(body_html)),
       "suspect_thin":len(body)<350,
       "suspect_offtopic":any(x in lower for x in OUT_OF_FOCUS)
@@ -234,7 +236,12 @@ def inventory(posts):
       # orphans. Build from deduplicated posts already downloaded by the audit.
       "guide_inlink_coverage": build_coverage(seen.values()),
       "guide_inlink_editorial_queue": build_opportunities(seen.values()),
-      "content_quality_review_queue": build_review_queue(rows),
+      # The editorial queue scores reader text. Preserve raw markup evidence
+      # separately for the existing coupon diagnostics above.
+      "content_quality_review_queue": build_review_queue(
+          dict(p, stale_2022_promo_mentions=p["visible_stale_2022_promo_mentions"])
+          for p in rows
+      ),
       "suspected_out_of_focus_count":sum(p["suspect_offtopic"] for p in rows),
       "suspected_spam_count":sum(p["suspect_spam"] for p in rows),
       "duplicate_titles":duplicates[:250],

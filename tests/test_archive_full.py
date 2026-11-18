@@ -11,6 +11,21 @@ def post(i,slug,title,body):
        "modified":"2026-01-01T00:00:00","title":{"rendered":title},
        "content":{"rendered":"<p>"+body+"</p>"}}
 class ArchiveAuditTests(unittest.TestCase):
+    def test_coupon_triage_scores_reader_text_and_preserves_raw_diagnostics(self):
+        report = inventory([
+            post(1, "kreatin-skryty-kod", "Kreatin",
+                 '<!-- 5NM2022 --><template>5NM2022</template>'
+                 '<a href="https://example.org/?coupon=5NM2022">Nabídka</a>'),
+            post(2, "kreatin-slevovy-kod", "Kreatin a slevový kód",
+                 'Slevový kód: <strong>5NM202&#50;</strong>'),
+            post(3, "kreatin-jiny-kod", "Kreatin a jiný kód", "5NM20220"),
+        ])
+        self.assertEqual([p["id"] for p in report["stale_promo_candidates"]], [1, 3])
+        queue = report["content_quality_review_queue"]
+        self.assertEqual(queue["expired_promo_eligible"], 1)
+        scored = {p["id"]: p["stale_2022_promo_mentions"] for p in queue["candidates"]}
+        self.assertEqual(scored, {1: 0, 2: 1, 3: 0})
+
     def test_template_links_are_not_reader_navigation_or_spam_evidence(self):
         body=('''<template><a href="/skryty/">Skryté</a>
             <template><a href="https://casino.example/">Skryté</a></template>
