@@ -66,6 +66,15 @@ print(json.dumps(data, ensure_ascii=False))
           `${kind} ${width}px first product too far below content start: ${JSON.stringify(metrics)}`);
         assert.ok(metrics.ctaHeight >= 44, `${kind} ${width}px undersized merchant CTA`);
         assert.equal(await page.locator('#xfit-rychly-vyber [data-xfit-cta="quick-pick"]').count(), 2);
+        if (kind === 'whey') {
+          const educationFirst = await page.evaluate(() => {
+            const education = document.querySelector(
+              '#xfit-rychly-vyber a[href="https://xfit.cz/xfit-os-cena-proteinu-podle-etikety/"]');
+            const merchant = document.querySelector('#xfit-rychly-vyber [data-xfit-cta="quick-pick"]');
+            return !!education && !!merchant && !!(education.compareDocumentPosition(merchant) & Node.DOCUMENT_POSITION_FOLLOWING);
+          });
+          assert.ok(educationFirst, 'whey label-price education must precede first merchant choice');
+        }
         if (width === 375) {
           const dir = path.resolve(__dirname, '../reports/browser-qa');
           fs.mkdirSync(dir, {recursive:true});

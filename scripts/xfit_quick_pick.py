@@ -106,6 +106,15 @@ def quick_pick(selected, *, product_kind):
         'Cenu i dostupnost ověřte v obchodě.</p>',
         '<p><small>Partnerské odkazy NaMaximum.cz: XFIT může získat provizi. '
         'Výběr neřadíme podle provize.</small></p>',
+        *(['<p><strong>Cena prášku není cena čistých bílkovin.</strong> '
+           'Cenu za skutečné bílkoviny zjistíte až z nutriční tabulky. '
+           'Máte konkrétní etiketu? Použijte '
+           '<a href="https://xfit.cz/xfit-os-cena-proteinu-podle-etikety/">'
+           'postup přepočtu ceny podle nutriční etikety</a>. '
+           'Bez ověřeného údaje o bílkovinách u každé varianty nelze '
+           'seřadit nabídky podle ceny za čisté bílkoviny. '
+           'Když protein nepotřebujete, nemusíte kupovat nic.</p>']
+          if product_kind == 'whey' else []),
         '<p data-xfit-quick-pick="no-buy">Nákup není nutný: '
         '<a href="#xfit-need">zjistit, zda nepotřebuji doplněk</a>.</p>',
         '<div style="display:flex;flex-wrap:wrap;gap:12px;">',

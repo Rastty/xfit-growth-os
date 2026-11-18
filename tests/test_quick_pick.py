@@ -54,6 +54,9 @@ class QuickPickTests(unittest.TestCase):
         self.assertIn("450,00 Kč", body)
         self.assertIn("70,00 Kč", body)
         self.assertIn("ne čistých bílkovin", body)
+        self.assertIn('href="https://xfit.cz/xfit-os-cena-proteinu-podle-etikety/"', body)
+        self.assertLess(body.index('postup přepočtu ceny podle nutriční etikety'),
+                        body.index('data-xfit-cta="quick-pick"'))
         self.assertIn("min-height:44px", body)
         self.assertIn('href="https://www.namaximum.cz/product?variant=2', body)
         self.assertNotIn("<script", body)
@@ -161,11 +164,14 @@ class QuickPickTests(unittest.TestCase):
                 fragment = document.split('<section id="xfit-rychly-vyber"', 1)[1].split('</section>', 1)[0]
                 links = Anchors()
                 links.feed(fragment)
-                self.assertEqual(len(links.hrefs), 5)
+                self.assertEqual(len(links.hrefs), 6 if builder is whey else 5)
                 internal = [href for href in links.hrefs if href.startswith("#")]
                 external = [href for href in links.hrefs if href.startswith("https://")]
                 self.assertEqual(len(internal), 3)
-                self.assertEqual(len(external), 2)
+                self.assertEqual(len(external), 3 if builder is whey else 2)
+                if builder is whey:
+                    self.assertEqual(external.count(
+                        "https://xfit.cz/xfit-os-cena-proteinu-podle-etikety/"), 1)
                 all_nodes = Anchors()
                 all_nodes.feed(document)
                 self.assertTrue(all(href.removeprefix("#") in all_nodes.ids for href in internal))
