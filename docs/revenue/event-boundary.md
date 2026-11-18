@@ -138,3 +138,10 @@ Ověření: `python -m unittest tests.test_revenue_events tests.test_revenue_pro
 Stav: připraveno lokálně; CI, nasazení a veřejná stránka neověřeny.
 Dopad na prokliky, objednávky a provize: UNKNOWN.
 Rollback: vrátit diff této úpravy ve třech souborech.
+
+`verified_catalog_product_counts` uvádí pro každého poradce velikost dodané
+ověřené sady. `UNKNOWN` znamená, že sada pro poradce chybí. Nula označuje
+výslovně dodanou prázdnou sadu. Když zároveň chybí prokliky, lze při kontrole
+nejdřív rozlišit chybějící katalogový podklad od prázdného výběru. Počet
+popisuje vstup do souhrnu. Zobrazení nabídek, dostupnost na webu a funkčnost
+měření je potřeba ověřit samostatně.

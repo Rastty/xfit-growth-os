@@ -93,6 +93,23 @@ class ProductRollupSafetyTests(unittest.TestCase):
             PAGE: {392: 2}, whey: {393: 1}})
         self.assertEqual(result["commission"], "UNKNOWN")
 
+    def test_catalog_counts_distinguish_missing_from_verified_empty(self):
+        whey = "xfit-os-syrovatkovy-protein-porovnani"
+        for catalog, expected in (
+            (None, "UNKNOWN"),
+            ({}, "UNKNOWN"),
+            ({PAGE: set()}, 0),
+            ({PAGE: {392, 393}}, 2),
+        ):
+            with self.subTest(catalog=catalog):
+                result = summarize_funnel(
+                    [], analytics_consent=True,
+                    verified_product_ids_by_page=catalog)
+                self.assertEqual(result["verified_catalog_product_counts"], {
+                    PAGE: expected, whey: "UNKNOWN"})
+                self.assertEqual(result["product_click_counts"][PAGE], {})
+                self.assertEqual(result["action_data_status"][PAGE], "UNKNOWN")
+
     def test_invalid_later_click_aborts_entire_aggregate(self):
         # A valid first row must not justify reporting a partly processed
         # dataset after the second row fails the catalog membership check.
