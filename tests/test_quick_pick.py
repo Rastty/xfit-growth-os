@@ -137,12 +137,26 @@ class QuickPickTests(unittest.TestCase):
                                          for i, title, price in zip((901, 902, 903), titles, (700, 450, 900))])
                 document = builder(catalog, BASE, SAMPLE)["content"]
                 self.assertEqual(document.count('id="xfit-rychly-vyber"'), 1)
+                # A useful offer must be discoverable before the navigation
+                # list and long method/price explanation, not hundreds of
+                # words down the page.
+                self.assertLess(document.index('id="xfit-rychly-vyber"'), 1250)
+                self.assertLess(document.index('id="xfit-rychly-vyber"'),
+                                document.index('<nav aria-label="Rychlá navigace poradcem"'))
+                if 'Kdy jsme data nabídky načetli' in document:
+                    self.assertLess(document.index('Kdy jsme data nabídky načetli'),
+                                    document.index('id="xfit-rychly-vyber"'))
                 self.assertLess(document.index('id="xfit-rychly-vyber"'),
                                 document.index('id="xfit-need"'))
                 self.assertLess(document.index('id="xfit-rychly-vyber"'),
                                 document.index('id="xfit-offers"'))
                 if builder is whey:
-                    self.assertLess(document.index('href="https://xfit.cz/xfit-os-cena-proteinu-podle-etikety/"'),
+                    self.assertLess(document.index('id="xfit-milk-allergy"'),
+                                    document.index('id="xfit-rychly-vyber"'))
+                    self.assertLess(document.index('id="xfit-rychly-vyber"'),
+                                    document.index('href="https://xfit.cz/xfit-os-cena-proteinu-podle-etikety/"'))
+                else:
+                    self.assertLess(document.index('Zdravotní omezení:'),
                                     document.index('id="xfit-rychly-vyber"'))
                 fragment = document.split('<section id="xfit-rychly-vyber"', 1)[1].split('</section>', 1)[0]
                 links = Anchors()

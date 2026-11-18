@@ -1,4 +1,5 @@
 import unittest
+import re
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urlsplit
 from scripts.xfit_creatine_guide import (
@@ -92,6 +93,17 @@ class CreatineGuideTests(unittest.TestCase):
         self.assertNotIn("Creatine Monohydrate Complex",guide["content"])
         self.assertGreater(len(guide["content"]),2500)
         self.assertEqual(guide["slug"],"xfit-os-kreatin-poradce")
+
+    def test_each_creatine_product_cta_has_accessible_affiliate_disclosure(self):
+        body = build_document(self.catalog, BASE, SAMPLE)["content"]
+        disclosure_ids = re.findall(
+            r'aria-describedby="(xfit-creatine-partner-\d+)"', body)
+        self.assertGreaterEqual(len(disclosure_ids), 2)
+        self.assertEqual(len(disclosure_ids), len(set(disclosure_ids)))
+        for ident in disclosure_ids:
+            self.assertIn(
+                '<small id="' + ident + '">Partnerský odkaz · '
+                'Xfit.cz může získat provizi.', body)
     def test_price_priority_links_resolve_to_two_valid_product_cards(self):
         from html.parser import HTMLParser
         class PickParser(HTMLParser):

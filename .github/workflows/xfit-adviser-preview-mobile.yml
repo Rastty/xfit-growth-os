@@ -1,0 +1,46 @@
+name: XFIT Adviser PR Mobile Preview
+# Validate generated, source-bound buyer choices in Chromium *before* any WP
+# release. Never fetch affiliate feeds, call WordPress or visit merchant URLs.
+on:
+  pull_request:
+    paths:
+      - 'scripts/xfit_creatine_guide.py'
+      - 'scripts/xfit_whey_guide.py'
+      - 'scripts/xfit_quick_pick.py'
+      - 'tests/adviser_hero_mobile_qa.cjs'
+      - '.github/workflows/xfit-adviser-preview-mobile.yml'
+permissions:
+  contents: read
+jobs:
+  preview-mobile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify source-bound offers and editorial warnings
+        run: |
+          python -m unittest tests.test_quick_pick tests.test_creatine_guide \
+            tests.test_whey_guide tests.test_ux_checkout_budget \
+            tests.test_ux_comparison_scope -q
+      - name: Install test-only mobile Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Render generated 320/375/768 px decisions without network calls
+        run: node tests/adviser_hero_mobile_qa.cjs
+      - name: Preserve mobile screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: adviser-pr-mobile-preview
+          path: reports/browser-qa/adviser-*-early-choices.png
+          retention-days: 7
+          if-no-files-found: ignore

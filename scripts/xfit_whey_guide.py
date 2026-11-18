@@ -81,27 +81,7 @@ def build_document(catalog, base, sample):
         '<p><strong>Výběr syrovátkového proteinu nemusí začínat značkou.</strong> '
         'Nejdříve zvažte, zda vám vyhovuje mléčná bílkovina, co říká etiketa '
         'o složení a jakou porci chcete. Teprve potom má smysl srovnávat cenu.</p>',
-        '<nav aria-label="Rychlá navigace poradcem"><ul style="padding-left:24px;">'
-        '<li><a href="#xfit-need" style="display:inline-block;padding:12px 0;">'
-        'Potřebuji vůbec doplněk?</a></li>'
-        '<li><a href="#xfit-vyber-podle-rozpoctu" style="display:inline-block;padding:12px 0;">'
-        'Vybrat podle rozpočtu</a></li>'
-        '<li><a href="#xfit-offers" style="display:inline-block;padding:12px 0;">'
-        'Porovnat balení a ceny</a></li></ul></nav>',
         catalog_retrieval_notice(catalog),
-        '<p><strong>Jak srovnáváme:</strong> níže používáme cenu za 100 g proteinového '
-        'prášku, nikoli za 100 g skutečných bílkovin. K tomu bychom potřebovali '
-        'spolehlivý údaj o jejich obsahu pro každou variantu; nelze jej odhadovat '
-        'jen z názvu nebo ceny. Ceny se mohou měnit.</p>',
-        '<p><strong>Máte etiketu konkrétního balení?</strong> '
-        'Vedle ceny za prášek si můžete spočítat také cenu za skutečné '
-        'bílkoviny: podívejte se na '
-        '<a href="https://xfit.cz/xfit-os-cena-proteinu-podle-etikety/">'
-        'postup přepočtu ceny podle nutriční etikety</a>. '
-        'Bez ověřeného údaje o bílkovinách u každé varianty '
-        'nelze pořadí níže považovat za žebříček nejlevnějších '
-        'skutečných bílkovin. Když produkt nepotřebujete, '
-        'nemusíte kupovat nic.</p>',
         '<p id="xfit-milk-allergy"><strong>Mléčná alergie: pozor i na izolát.</strong> '
         'Syrovátka pochází z mléka. Při alergii na mléčnou bílkovinu ji '
         'nepovažujte za bezpečnou volbu; izolát není zárukou absence mléčných '
@@ -116,6 +96,26 @@ def build_document(catalog, base, sample):
         'Pořadí podle ceny není nezávislý test kvality ani účinnosti. '
         'Před nákupem můžete porovnat stejné balení i u jiných prodejců.</p>',
         quick_pick(chosen, product_kind="whey"),
+        '<nav aria-label="Rychlá navigace poradcem"><ul style="padding-left:24px;">'
+        '<li><a href="#xfit-need" style="display:inline-block;padding:12px 0;">'
+        'Potřebuji vůbec doplněk?</a></li>'
+        '<li><a href="#xfit-vyber-podle-rozpoctu" style="display:inline-block;padding:12px 0;">'
+        'Vybrat podle rozpočtu</a></li>'
+        '<li><a href="#xfit-offers" style="display:inline-block;padding:12px 0;">'
+        'Porovnat balení a ceny</a></li></ul></nav>',
+        '<p><strong>Jak srovnáváme:</strong> níže používáme cenu za 100 g proteinového '
+        'prášku, nikoli za 100 g skutečných bílkovin. K tomu bychom potřebovali '
+        'spolehlivý údaj o jejich obsahu pro každou variantu; nelze jej odhadovat '
+        'jen z názvu nebo ceny. Ceny se mohou měnit.</p>',
+        '<p><strong>Máte etiketu konkrétního balení?</strong> '
+        'Vedle ceny za prášek si můžete spočítat také cenu za skutečné '
+        'bílkoviny: podívejte se na '
+        '<a href="https://xfit.cz/xfit-os-cena-proteinu-podle-etikety/">'
+        'postup přepočtu ceny podle nutriční etikety</a>. '
+        'Bez ověřeného údaje o bílkovinách u každé varianty '
+        'nelze pořadí níže považovat za žebříček nejlevnějších '
+        'skutečných bílkovin. Když produkt nepotřebujete, '
+        'nemusíte kupovat nic.</p>',
         '<h2>Než koupíte protein: krátký rozhodovací rozcestník</h2>',
         '<details id="xfit-need" open><summary><strong>Musím protein kupovat, abych nabral svaly?</strong></summary>'
         '<p>Ne. Proteinový prášek je praktický způsob doplnění bílkovin, pokud je '
