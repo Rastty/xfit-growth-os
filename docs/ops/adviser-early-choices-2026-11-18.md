@@ -27,7 +27,9 @@ This is a visibility hypothesis, **not evidence of conversion lift**.
 1. Python guide and source-bound tracking tests plus complete code suite.
 2. Local generated Chromium 320/375/768 px test asserts no horizontal overflow,
    >=44 px merchant targets, and priority choices before the navigation; it
-   never clicks merchants. CI executes the same test with pinned Playwright.
+   never clicks merchants. An isolated PR-check workflow executes the same
+   test with pinned Playwright **before merge**, and mobile production QA runs
+   again after release.
 3. Merge triggers both native WP one-page adviser workflows. Each backs up the
    article, updates only on changed content, then checks the public permalink.
    The separate mobile QA waits for the same-commit releases.
