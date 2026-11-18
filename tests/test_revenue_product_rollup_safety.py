@@ -32,7 +32,7 @@ class ProductRollupSafetyTests(unittest.TestCase):
             def __hash__(self):
                 return hash(self.allowed)
 
-        for field in ("name", "page", "partner"):
+        for field in ("name", "page", "partner", "selection_engine"):
             with self.subTest(field=field):
                 event = click(392)
                 target = event if field == "name" else event["params"]
@@ -49,6 +49,33 @@ class ProductRollupSafetyTests(unittest.TestCase):
                     summarize_funnel(
                         [click(392), event], analytics_consent=True,
                         verified_product_ids_by_page={PAGE: {392}})
+
+    def test_funnel_rejects_non_json_mapping_shapes(self):
+        class CustomDict(dict):
+            pass
+
+        class CustomKey(str):
+            pass
+
+        event = click(392)
+        params = event["params"]
+        invalid_params = (CustomDict(params), {
+            CustomKey("page"): PAGE,
+            **{key: value for key, value in params.items() if key != "page"},
+        })
+        options = {"analytics_consent": True,
+                   "verified_product_ids_by_page": {PAGE: {392}}}
+        for fields in invalid_params:
+            with self.subTest(fields_type=type(fields)):
+                with self.assertRaises(ValueError):
+                    xfit_revenue_events.build_event(event["name"], fields, **options)
+                with self.assertRaises(ValueError):
+                    summarize_funnel([dict(event, params=fields)], **options)
+        for record in (CustomDict(event),
+                       {CustomKey("name"): event["name"], "params": params}):
+            with self.subTest(record_type=type(record)):
+                with self.assertRaises(ValueError):
+                    summarize_funnel([record], **options)
 
     def test_catalog_is_validated_once_for_multiple_clicks_and_advisors(self):
         whey = "xfit-os-syrovatkovy-protein-porovnani"
