@@ -147,6 +147,7 @@ def build_document(catalog, base, sample):
         '<div class="xfit-product-cards">'
     ]
     for index,item in enumerate(chosen):
+        disclosure_id = "xfit-whey-partner-" + str(index + 1)
         title=html.escape(item["title"])
         kind=html.escape(kind_label(item["title"]))
         # Keep the selector's two-decimal precision so distinct ranked prices
@@ -170,10 +171,12 @@ def build_document(catalog, base, sample):
             +model_portion_line(item, "whey")+
             '<p><a'+card_click_attributes(item["id"], "whey")+' href="'+link+'" rel="sponsored nofollow noopener noreferrer" '
             'aria-label="Ověřit cenu a dostupnost produktu '+html.escape(item["title"],quote=True)+' na NaMaximum.cz (nová karta)" '
+            'aria-describedby="'+disclosure_id+'" '
             'target="_blank" style="display:inline-block;padding:12px 16px;min-height:44px;box-sizing:border-box;'
             'background-color:#116a70;color:#ffffff;text-decoration:none;font-weight:700;'
             'border-radius:8px;">Ověřit cenu a dostupnost</a> '
-            '<small>NaMaximum.cz · nová karta</small></p>'
+            '<small id="'+disclosure_id+'">Partnerský odkaz · Xfit.cz může získat provizi. '
+            'NaMaximum.cz · nová karta</small></p>'
             '<p><a href="#xfit-vyber-podle-rozpoctu" '
             'style="display:inline-block;padding:12px 0;">'
             'Zpět k výběru podle rozpočtu</a></p></article>')
