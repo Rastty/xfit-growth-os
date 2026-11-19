@@ -162,6 +162,30 @@ class ArchiveAuditTests(unittest.TestCase):
                 self.assertEqual(report["scanned"],1)
                 self.assertFalse(report["mutated_wordpress"])
 
+    def test_changed_page_total_prevents_absence_conclusions(self):
+        first=post(1,"protein","Protein","Praktické informace.")
+        second=post(2,"kreatin","Kreatin","Jak vybrat kreatin.")
+        for changed_total in (2,4):
+            with self.subTest(changed_total=changed_total), \
+                 tempfile.TemporaryDirectory() as directory:
+                output=Path(directory)/"audit.json"
+                with patch("sys.argv",["audit","--pages","2","--size","1",
+                                       "--output",str(output)]), \
+                     patch("scripts.xfit_archive_full.fetch",
+                           side_effect=[([first],3),([second],changed_total)]), \
+                     patch("builtins.print"):
+                    self.assertEqual(main(),2)
+                report=json.loads(output.read_text(encoding="utf-8"))
+                self.assertFalse(report["complete"])
+                self.assertEqual(report["scanned"],1)
+                self.assertEqual(report["declared_total_pages"],3)
+                self.assertEqual(report["interrupted_at"],{
+                    "page":2,"error_type":"PaginationTotalChanged",
+                    "observed_total_pages":changed_total,
+                })
+                self.assertEqual(report["guide_inlink_coverage"]["coverage_state"],
+                                 "PARTIAL_SCAN_NO_ABSENCE_CONCLUSIONS")
+
     def test_rejected_page_is_not_an_empty_successful_page(self):
         error=HTTPError("https://example.invalid/",400,"Bad Request",{},None)
         with patch("scripts.xfit_archive_full.urlopen",side_effect=error) as request:
