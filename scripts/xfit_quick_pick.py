@@ -104,7 +104,7 @@ def quick_pick(selected, *, product_kind):
         '<h2>Rychlý výběr z porovnaných balení</h2>',
         '<p>Porovnejte nejnižší cenu balení a cenu za 100 g prášku. '
         'Cenu i dostupnost ověřte v obchodě.</p>',
-        '<p><small>Partnerské odkazy NaMaximum.cz: XFIT může získat provizi. '
+        '<p><small>Partnerské affiliate odkazy na NaMaximum.cz: XFIT může získat provizi. '
         'Výběr neřadíme podle provize.</small></p>',
         *(['<p><strong>Cena prášku není cena čistých bílkovin.</strong> '
            'Cenu za skutečné bílkoviny zjistíte až z nutriční tabulky. '
