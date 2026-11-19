@@ -113,8 +113,13 @@ def summarize_funnel(events, *, analytics_consent=False,
             )
     return {
         "action_counts": counts,
-        # Only observed, revalidated catalog IDs; absent products are unknown,
-        # not zero-interest offers. Repeated clicks remain separate actions.
+        "verified_catalog_product_counts": {
+            page: len(verified_product_ids_by_page[page])
+            if verified_product_ids_by_page and page in verified_product_ids_by_page
+            else "UNKNOWN"
+            for page in PAGES
+        },
+        # Only observed, revalidated catalog IDs.
         "product_click_counts": {
             page: dict(sorted(clicks.items()))
             for page, clicks in product_clicks.items()
