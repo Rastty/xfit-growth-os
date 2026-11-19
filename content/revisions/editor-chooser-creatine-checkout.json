@@ -1,0 +1,12 @@
+{
+  "status": "editorial_proposal_not_deployed",
+  "issue": 4,
+  "slug": "xfit-os-kreatin-nebo-protein",
+  "source_file": "content/ready/xfit-os-kreatin-nebo-protein.json",
+  "source_file_sha256": "c53029fa584a7842f6ca7ff27a165b2c92ab433735ef649e9eca6f7ba01ae8d5",
+  "source_content_sha256": "4a30ee6fb58ef24b8e4c21b1f6e779b4003cd7eb04fce04ce0bc321bcdd11bfd",
+  "operation": "replace_exact_once",
+  "original": "<p><strong>Modelový příklad kreatinu:</strong> hypotetické 500g balení za 300 Kč vychází na 60 Kč za 100 g prášku. Hodnota ale závisí i na skutečném složení, čistotě a tom, zda jde o deklarovaný monohydrát. Nezaměňujte marketingový název za laboratorní důkaz kvality.</p>",
+  "replacement": "<p><strong>Kreatin: porovnejte cenu za gram při nákupu jednoho balení.</strong> U jednosložkových prášků se stejnou deklarovanou formou (kreatin monohydrát) vydělte celkovou cenu v košíku včetně dopravy a povinných poplatků čistou hmotností prášku v gramech. Vedle ceny za gram si zapište i celkovou útratu. Pokud větší balení vychází lépe za gram, ale část byste nevyužili, vydělte jeho cenu jen gramy, které skutečně využijete. U směsí bez uvedeného množství kreatinu cenu za gram kreatinu nepočítejte.</p>",
+  "evidence": "The local creatine-or-protein decision page compares powder using an illustrative shelf price. The replacement uses checkout and usable weight arithmetic, retaining existing opt-outs and advisor links. Verify live identity and back up the exact body before applying; rollback by reversing the single replacement only if it still matches."
+}
