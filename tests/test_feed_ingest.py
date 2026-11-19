@@ -1,7 +1,36 @@
 import unittest
-from scripts.xfit_feed_ingest import parse_feed, safe_product_url, parse_price, validate_affiliate_link
+from scripts.xfit_feed_ingest import (
+    availability_field_coverage, parse_feed, safe_product_url,
+    parse_price, validate_affiliate_link,
+)
 
 class AffiliateFeedTests(unittest.TestCase):
+    def test_availability_field_coverage_is_not_stock_inference(self):
+        xml = b"""<SHOP>
+        <SHOPITEM><ITEM_ID>1</ITEM_ID><PRODUCTNAME>Creatine 500g</PRODUCTNAME>
+          <PRICE_VAT>300</PRICE_VAT><DELIVERY_DATE>0</DELIVERY_DATE>
+          <URL>https://www.namaximum.cz/p/a?variant=1</URL></SHOPITEM>
+        <SHOPITEM><ITEM_ID>2</ITEM_ID><PRODUCTNAME>Whey 1kg</PRODUCTNAME>
+          <PRICE_VAT>700</PRICE_VAT><AVAILABILITY>Na dotaz</AVAILABILITY>
+          <URL>https://www.namaximum.cz/p/b?variant=2</URL></SHOPITEM>
+        <SHOPITEM><ITEM_ID>3</ITEM_ID><PRODUCTNAME>Plant protein 500g</PRODUCTNAME>
+          <PRICE_VAT>450</PRICE_VAT>
+          <URL>https://www.namaximum.cz/p/c?variant=3</URL></SHOPITEM>
+        </SHOP>"""
+        offers, skipped = parse_feed(xml)
+        self.assertFalse(skipped)
+        self.assertEqual(offers[0]["delivery_date"], "0")
+        self.assertEqual(offers[1]["availability_raw"], "Na dotaz")
+        self.assertEqual(availability_field_coverage(offers), {
+            "offers_checked": 3,
+            "delivery_date_field_present": 1,
+            "availability_raw_field_present": 1,
+            "both_fields_absent": 1,
+            "actual_stock_verified": False,
+            "evidence_scope": "SOURCE_FIELD_PRESENCE_ONLY_NOT_STOCK",
+        })
+        self.assertEqual(availability_field_coverage([])["both_fields_absent"], 0)
+
     def test_valid_namaximum_affial_campaign(self):
         result = validate_affiliate_link(
             "https://www.namaximum.cz?utm_medium=affiliate&utm_campaign=affial.com&utm_source=pap&a_aid=EXAMPLE&a_bid=EXAMPLE"
