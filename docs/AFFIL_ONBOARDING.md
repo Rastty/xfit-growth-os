@@ -57,3 +57,21 @@ Store the generated URL only in GitHub Actions Secret: XFIT_AFFIL_SAMPLE_PRODUCT
 Daily feed workflow validates the sample's attribution IDs and link structure without opening it or registering a click. This is a structural check, not a verified purchase/commission.
 After a valid sample, add safe vendor-matched product deeplink generation and validate it against the Affial campaign before using affiliate URLs on public pages.
 Do not use Heureka CPC URLs as affiliate links. Do not expose publisher IDs in tracked public repo commits.
+
+## Read-only availability evidence, 2026-11-19
+
+The latest authorized feed validation normalized 1,599 NaMaximum offers and
+found structurally consistent sample tracking, but it **did not** establish
+credited purchases, product availability or live stock. The public adviser
+pages separately show six variant-matched product cards each. The merchant-only
+robot diagnostic returned UNKNOWN for all twelve checked destinations: this
+is **not** evidence that any product is unavailable.
+
+Feed validation now reports redacted counts of present `DELIVERY_DATE` and
+`AVAILABILITY` source fields for the full catalog and for deterministic
+creatine/whey/plant-protein candidate selections. `DELIVERY_DATE=0` is counted
+as present, not silently dropped; arbitrary `AVAILABILITY` text is never
+converted into a stock claim. These counts reveal whether the supplier gives
+enough raw availability evidence to justify a later provider-specific check,
+without exposing IDs, URLs, prices or inventory. `actual_stock_verified`
+remains **false**. Existing live offers do not automatically change.
