@@ -1,6 +1,7 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
 const {navigatePublicGet} = require("../scripts/xfit_mobile_navigation.cjs");
+const {summarizeFirstScreen} = require("../scripts/xfit_first_screen_qa.cjs");
 const checks = [
   {name:"beginner",url:"https://xfit.cz/xfit-os-doplnky-pro-zacatecniky/",expected:"Doplňky stravy pro začátečníky",minH2:6,commercial:false},
   {name:"creatine",url:"https://xfit.cz/xfit-os-kreatin-poradce/",expected:"Jak vybrat kreatin",minH2:3,commercial:true},
@@ -27,6 +28,46 @@ for(const spec of checks){
   const {response,retries}=await navigatePublicGet(page,spec.url,{timeout:60000});
   if(!response || response.status()>=400)failures.push("http_"+(response?.status()||"none"));
   await page.waitForTimeout(1200);
+  // An ordinary mobile QA can pass every product-card assertion while a
+  // dynamic top ad obscures the reader's first screen. Measure geometry
+  // before scrolling to a lazy-loaded card image. Observations are non-gating
+  // because ad delivery varies by session, location and consent state.
+  let firstScreen=null;
+  let firstScreenScreenshot="not_attempted";
+  if(spec.commercial){
+    stage="first_screen_observation";
+    const observed=await page.evaluate(()=>{
+      const rectOf=el=>{
+        const r=el.getBoundingClientRect();
+        return {left:r.left,top:r.top,right:r.right,bottom:r.bottom};
+      };
+      const isGoogleAdFrame=el=>{
+        try{return new URL(el.getAttribute("src")||"",location.href).hostname===
+          "pagead2.googlesyndication.com";}
+        catch(_){return false;}
+      };
+      const cookie=document.querySelector("#cookie-law-info-bar");
+      const cookieVisible=!!cookie && getComputedStyle(cookie).display!=="none" &&
+        getComputedStyle(cookie).visibility!=="hidden";
+      return {
+        viewport:{width:innerWidth,height:innerHeight},
+        h1TopPx:document.querySelector("h1")?.getBoundingClientRect().top??null,
+        googleAdFrameRects:[...document.querySelectorAll("iframe")]
+          .filter(el=>isGoogleAdFrame(el) && getComputedStyle(el).display!=="none" &&
+            getComputedStyle(el).visibility!=="hidden")
+          .slice(0,30).map(rectOf),
+        cookieBannerRect:cookieVisible?rectOf(cookie):null,
+      };
+    });
+    firstScreen=summarizeFirstScreen(observed);
+    // Retain the real top-of-page screenshot alongside the later product-card
+    // viewport. A delayed ad must not turn editorial QA into a false failure.
+    try{
+      await page.screenshot({path:"reports/browser-qa/"+spec.name+"-first-screen.png",
+        fullPage:false,animations:"disabled",timeout:10000});
+      firstScreenScreenshot="captured";
+    }catch(_){firstScreenScreenshot="unavailable";}
+  }
   // A full-page screenshot does not automatically fetch off-screen lazy images.
   // A tall product card can be centered with its image still outside the
   // viewport. Scroll to the actual photo and wait for its load/decode instead
@@ -744,7 +785,8 @@ for(const spec of checks){
     await page.screenshot({path:"reports/browser-qa/"+spec.name+"-mobile.png",
       fullPage:false,animations:"disabled",timeout:10000});
   }catch(e){failures.push("mobile_viewport_screenshot_"+e.name);}
-  console.log(JSON.stringify({page:spec.name,state:failures.length?"FAIL":"PASS",navigation_retries:retries,doc,failures}));
+  console.log(JSON.stringify({page:spec.name,state:failures.length?"FAIL":"PASS",
+    navigation_retries:retries,firstScreen,firstScreenScreenshot,doc,failures}));
  }catch(e){failures.push("browser_error_"+e.name);console.log(JSON.stringify({page:spec.name,state:"ERROR",stage,failures}));}
  await context.close();
  bad ||= failures.length>0;
