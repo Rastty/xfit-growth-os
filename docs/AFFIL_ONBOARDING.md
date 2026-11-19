@@ -68,10 +68,14 @@ robot diagnostic returned UNKNOWN for all twelve checked destinations: this
 is **not** evidence that any product is unavailable.
 
 Feed validation now reports redacted counts of present `DELIVERY_DATE` and
-`AVAILABILITY` source fields for the full catalog and for deterministic
-creatine/whey/plant-protein candidate selections. `DELIVERY_DATE=0` is counted
-as present, not silently dropped; arbitrary `AVAILABILITY` text is never
-converted into a stock claim. These counts reveal whether the supplier gives
-enough raw availability evidence to justify a later provider-specific check,
-without exposing IDs, URLs, prices or inventory. `actual_stock_verified`
+`AVAILABILITY` source fields for the **full raw catalog** in the summary
+artifact. `DELIVERY_DATE=0` is counted as present, not silently dropped;
+arbitrary `AVAILABILITY` text is never converted into a stock claim. The
+deterministic creatine/whey/plant-protein shortlists instead report counts by
+**interpreted XML dispatch state** (`feed_stocked`, `up_to_week`, `unknown`):
+selection records do not retain the original source fields, so computing raw
+field coverage on them would misleadingly report all fields absent.
+`feed_stocked` only means the source XML reported dispatch `0`, **not** live
+merchant stock or a successful checkout. Both reporting paths remain aggregate
+and disclose no IDs, URLs, prices or inventory; `actual_stock_verified`
 remains **false**. Existing live offers do not automatically change.
