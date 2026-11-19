@@ -45,5 +45,16 @@ class BeginnerCreatineCostTests(unittest.TestCase):
             self.assertNotIn(text, body)
 
 
+    def test_compare_equal_weight_including_single_item_delivery(self):
+        body = json.loads(Path(
+            'content/revisions/editor-beginner-creatine-cost.json'
+        ).read_text(encoding='utf-8'))['replacement']
+        for text in (
+            'vydělte cenu každého balení čistou hmotností v gramech',
+            'etikety uvádějí různě velké porce',
+            'Pokud objednáváte jen kreatin, přičtěte před výpočtem dopravu a povinné poplatky',
+        ):
+            self.assertIn(text, body)
+
 if __name__ == '__main__':
     unittest.main()
