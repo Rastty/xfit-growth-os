@@ -77,10 +77,19 @@ is printed on the command line.
 - `NO_GSC_ROW_IN_SUPPLIED_EXPORT_NOT_ZERO` means the URL was absent from
   provided rows; GSC exports may be limited. Never call it zero traffic.
 - `gsc_export_coverage` explicitly records that the input may omit pages.
-- Only the **preselected 70 archive candidates** are reordered; high-traffic
-  URLs outside this queue are not discovered by V1. Prometheus Core should
-  eventually supply a source-backed all-posts measured prioritizer rather
-  than only its 20 most promising search candidates.
+- Only the **preselected 70 archive candidates** are reordered. A separate
+  `outside_triage_exposure_review_only` section retains at most 20 exposed
+  canonical GSC pages not present in that queue (ordered by impressions).
+  Those rows have **no archive-quality assessment**, never enter `candidates`,
+  and authorize no content rewrite or WordPress action. The report counts all
+  exposed out-of-queue pages in the supplied input and flags truncation.
+  If the two inputs have zero overlap, `matched_candidates=0` means *no
+  overlap*, not *no search demand*.
+- Both page-level review lists remain in the **private report outside Git**.
+  Console output is restricted to an explicit allowlist of source scope and
+  process counts, never URL rows. The Prometheus baseline is still only its
+  bounded top 20, not an exhaustive page census. Prometheus Core should
+  eventually supply a source-backed all-posts measured prioritizer.
 - GSC clicks/impressions are **not** GA4 landing sessions, affiliate clicks,
   conversions or revenue. Verify the live source, medical claims, destination
   and user intent before a rollback-safe, one-post editorial proposal.

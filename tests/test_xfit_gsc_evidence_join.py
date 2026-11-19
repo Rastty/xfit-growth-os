@@ -3,7 +3,8 @@ from datetime import date
 import unittest
 
 from scripts.xfit_gsc_evidence_join import (
-    join_review_queue, parse_gsc_evidence, parse_prometheus_baseline,
+    join_review_queue, nonsecret_summary, parse_gsc_evidence,
+    parse_prometheus_baseline,
 )
 
 
@@ -77,6 +78,57 @@ class EvidenceJoinTests(unittest.TestCase):
         result = join_review_queue(archive(), e, as_of=TODAY)
         self.assertEqual(result["matched_candidates"], 1)
         self.assertEqual(result["candidates"][0]["gsc_clicks"], 0)
+
+    def test_source_backed_exposure_outside_archive_queue_is_separate(self):
+        e = evidence()
+        e["rows"] = [
+            {"page": "https://xfit.cz/pilates-rozdily/", "clicks": 1,
+             "impressions": 105},
+            {"page": "https://xfit.cz/kreatin-pro-zacatecniky/", "clicks": 0,
+             "impressions": 39},
+            {"page": "https://not-xfit.example/foreign/", "clicks": 10,
+             "impressions": 400},
+            {"page": "https://xfit.cz/zero-exposure/", "clicks": 0,
+             "impressions": 0},
+        ]
+        result = join_review_queue(archive(), e, as_of=TODAY)
+        self.assertEqual(result["matched_candidates"], 0)
+        self.assertEqual(result["unmatched_candidates_are_unknown_not_zero"], 3)
+        self.assertEqual(result["limited_to_existing_triage_candidates"], 3)
+        self.assertEqual(result["outside_triage_exposed_pages_in_supplied_gsc"], 2)
+        self.assertFalse(result["outside_triage_exposure_truncated"])
+        outside = result["outside_triage_exposure_review_only"]
+        self.assertEqual([row["gsc_impressions"] for row in outside], [105, 39])
+        self.assertEqual(outside[0]["url"],
+                         "https://xfit.cz/pilates-rozdily/")
+        self.assertTrue(all(row["review_scope"] ==
+                            "GSC_EXPOSURE_ONLY_NOT_EDITORIAL_TRIAGE"
+                            for row in outside))
+        self.assertTrue(all(row["next_action"] ==
+                            "VERIFY_LIVE_SOURCE_AND_SEARCH_INTENT_ONLY"
+                            for row in outside))
+        self.assertEqual({row["id"] for row in result["candidates"]}, {1, 2, 3})
+        self.assertFalse(result["mutated_wordpress"])
+
+    def test_outside_triage_exposure_bounded_and_logs_hide_urls(self):
+        e = evidence()
+        e["rows"] = [
+            {"page": f"https://xfit.cz/only-gsc-{index}/",
+             "clicks": 0, "impressions": index + 1}
+            for index in range(25)
+        ]
+        result = join_review_queue(archive(), e, as_of=TODAY)
+        self.assertEqual(result["outside_triage_exposed_pages_in_supplied_gsc"], 25)
+        self.assertTrue(result["outside_triage_exposure_truncated"])
+        outside = result["outside_triage_exposure_review_only"]
+        self.assertEqual(len(outside), 20)
+        self.assertEqual(outside[0]["url"], "https://xfit.cz/only-gsc-24/")
+        self.assertEqual(outside[-1]["url"], "https://xfit.cz/only-gsc-5/")
+        summary = nonsecret_summary(result)
+        self.assertNotIn("candidates", summary)
+        self.assertNotIn("outside_triage_exposure_review_only", summary)
+        self.assertNotIn("only-gsc-24", str(summary))
+        self.assertEqual(summary["outside_triage_exposed_pages_in_supplied_gsc"], 25)
 
     def test_incomplete_archive_rejected(self):
         a = archive()
@@ -161,6 +213,18 @@ class EvidenceJoinTests(unittest.TestCase):
         self.assertEqual(result["candidates"][0]["id"], 2)
         self.assertEqual(result["unmatched_candidates_are_unknown_not_zero"], 2)
         self.assertIn("TOP_20", result["gsc_export_coverage"])
+
+    def test_prometheus_source_candidate_without_archive_match_survives(self):
+        baseline = native_prometheus_baseline()
+        baseline["prioritizedReviewCandidates"] = [
+            {"slug": "pilates-porovnani", "clicks": 1, "impressions": 105},
+        ]
+        result = join_review_queue(archive(), baseline, as_of=TODAY)
+        self.assertEqual(result["matched_candidates"], 0)
+        self.assertEqual(result["unmatched_candidates_are_unknown_not_zero"], 3)
+        self.assertEqual(result["outside_triage_exposed_pages_in_supplied_gsc"], 1)
+        self.assertEqual(result["outside_triage_exposure_review_only"][0]["url"],
+                         "https://xfit.cz/pilates-porovnani/")
 
     def test_prometheus_baseline_provenance_and_window_fail_closed(self):
         for field, value in [("status", "GSC_SOURCE_UNAVAILABLE"),

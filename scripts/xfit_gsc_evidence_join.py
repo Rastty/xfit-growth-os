@@ -15,6 +15,7 @@ from urllib.parse import urlsplit
 
 MAX_GSC_ROWS = 25000
 MAX_DAYS_OLD = 14
+MAX_OUTSIDE_TRIAGE_EXPOSURE = 20
 EXPECTED_SOURCE = "google_search_console_page_aggregate"
 EXPECTED_PROPERTY = {"sc-domain:xfit.cz", "https://xfit.cz/"}
 
@@ -201,6 +202,25 @@ def join_review_queue(archive, gsc, *, as_of=None):
                       -(item.get("priority_score") or 0), item["id"]),
         })
     output.sort(key=lambda x: x.pop("_sort"))
+    # The native Prometheus baseline can contain *only* pages outside the
+    # archive's heuristic review queue. Preserve that measured observation in
+    # a separate, capped read-only view. Never promote these pages into the
+    # archive queue or infer that GSC exposure warrants a content change.
+    queued_urls = {item["url"] for item in candidates}
+    outside_exposure = [
+        {
+            "url": url, "gsc_clicks": observed["clicks"],
+            "gsc_impressions": observed["impressions"],
+            "review_scope": "GSC_EXPOSURE_ONLY_NOT_EDITORIAL_TRIAGE",
+            "next_action": "VERIFY_LIVE_SOURCE_AND_SEARCH_INTENT_ONLY",
+        }
+        for url, observed in evidence["pages"].items()
+        if url not in queued_urls and observed["impressions"] > 0
+    ]
+    outside_exposure.sort(key=lambda row: (
+        -row["gsc_impressions"], -row["gsc_clicks"], row["url"],
+    ))
+    outside_exposure_count = len(outside_exposure)
     return {
         "state": "GSC_EVIDENCE_JOIN_READ_ONLY", "mutated_wordpress": False,
         "gsc_period": evidence["start_date"] + ".." + evidence["end_date"],
@@ -213,9 +233,28 @@ def join_review_queue(archive, gsc, *, as_of=None):
         "unmatched_candidates_are_unknown_not_zero": sum(
             x["gsc_clicks"] is None for x in output),
         "limited_to_existing_triage_candidates": len(candidates),
+        "outside_triage_exposed_pages_in_supplied_gsc": outside_exposure_count,
+        "outside_triage_exposure_truncated": (
+            outside_exposure_count > MAX_OUTSIDE_TRIAGE_EXPOSURE),
+        "outside_triage_exposure_review_only": outside_exposure[
+            :MAX_OUTSIDE_TRIAGE_EXPOSURE],
         "not_measured": "GA4_landing_sessions_conversion_events_affiliate_revenue",
         "candidates": output,
     }
+
+
+def nonsecret_summary(report):
+    """Only bounded process metadata goes to logs, never private page rows."""
+    keys = (
+        "state", "mutated_wordpress", "gsc_period", "gsc_property",
+        "gsc_source_format", "gsc_export_coverage", "gsc_supplied_rows",
+        "gsc_noncanonical_rows_ignored", "matched_candidates",
+        "unmatched_candidates_are_unknown_not_zero",
+        "limited_to_existing_triage_candidates",
+        "outside_triage_exposed_pages_in_supplied_gsc",
+        "outside_triage_exposure_truncated", "not_measured",
+    )
+    return {key: report[key] for key in keys}
 
 
 def main():
@@ -236,8 +275,7 @@ def main():
         parser.error("Refusing to overwrite existing GSC evidence output")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps({k: v for k, v in output.items() if k != "candidates"},
-                     ensure_ascii=False))
+    print(json.dumps(nonsecret_summary(output), ensure_ascii=False))
 
 
 if __name__ == "__main__":
