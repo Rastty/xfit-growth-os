@@ -344,6 +344,19 @@ class ArchiveAuditTests(unittest.TestCase):
         self.assertEqual(a["invalid_link_count"],0)
         self.assertEqual(a["flagged_candidates"][0]["invalid_link_count"],0)
 
+    def test_invalid_http_ports_do_not_count_as_navigation_or_spam(self):
+        body = ('<a href="https://xfit.cz:99999/kreatin/">Kreatin</a>'
+                '<a href="//casino.example:bad/nabidka/">Nabídka</a>'
+                '<a href="/vyziva/">Výživa</a>'
+                '<a href="https://example.org:443/zdroj/">Zdroj</a>')
+        report = inventory([post(1, "protein", "Protein", body)])
+        row = report["flagged_candidates"][0]
+        self.assertEqual(report["invalid_link_count"], 2)
+        self.assertEqual(row["invalid_link_count"], 2)
+        self.assertEqual(row["internal_link_count"], 1)
+        self.assertEqual(row["external_hosts"], {"example.org": 1})
+        self.assertFalse(row["suspect_spam"])
+
     def test_html_anchor_attribute_syntax_is_supported(self):
         body='''<A HREF = '/kreatin/'>Kreatin</A>
             <a href=/protein/>Protein</a>
