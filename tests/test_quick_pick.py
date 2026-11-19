@@ -7,6 +7,7 @@ from scripts.xfit_quick_pick import quick_pick
 from tests.test_price_tradeoff import BASE, SAMPLE, catalog_item
 from scripts.xfit_creatine_guide import build_document as creatine
 from scripts.xfit_whey_guide import build_document as whey
+from scripts import xfit_affiliate_public_audit as public_audit
 
 
 def offer(ident, title, total, grams, per100):
@@ -61,6 +62,45 @@ class QuickPickTests(unittest.TestCase):
         self.assertIn('href="https://www.namaximum.cz/product?variant=2', body)
         self.assertNotIn("<script", body)
         self.assertNotIn("onclick", body)
+
+    def test_visible_affiliate_disclosure_satisfies_live_hero_audit(self):
+        # The production audit requires both plain-language affiliate labelling
+        # and commission disclosure *inside* the early-purchase section.
+        # Checking only the full page missed this failure in the live workflow.
+        for kind, slug in (
+            ("creatine", "xfit-os-kreatin-poradce"),
+            ("whey", "xfit-os-syrovatkovy-protein-porovnani"),
+        ):
+            with self.subTest(kind=kind):
+                items = [dict(item) for item in self.items]
+                if kind == "creatine":
+                    for item in items:
+                        item["tracked_url"] += "&data1=xfit&data2=creatine"
+                markup = quick_pick(items, product_kind=kind)
+                parser = public_audit.QuickPicks()
+                parser.feed(markup)
+                visible = " ".join(parser.copy).casefold()
+                self.assertIn("affiliate", visible)
+                self.assertIn("provizi", visible)
+                # The same production validation rule must stay satisfied
+                # even if the wording above the hero section changes.
+                self.assertEqual(parser.sections, 1)
+                self.assertEqual(len(parser.links), 2)
+                self.assertTrue(parser.no_buy_link)
+                card_signature = [
+                    (link["product_id"], link["engine"], link["partner"],
+                     public_audit.comparable_href(link["href"]))
+                    for link in parser.links
+                ]
+                evidence = public_audit.quick_pick_evidence(
+                    markup, slug, items[0]["tracked_url"], card_signature,
+                )
+                self.assertEqual(evidence["errors"], [])
+                unsafe = markup.replace("affiliate", "partnerské")
+                evidence = public_audit.quick_pick_evidence(
+                    unsafe, slug, items[0]["tracked_url"], card_signature,
+                )
+                self.assertIn("missing_quick_pick_disclosure", evidence["errors"])
 
     def test_same_winner_creates_no_fake_second_product(self):
         items = [offer(1, "Vítěz", 400, 1000, 40),
