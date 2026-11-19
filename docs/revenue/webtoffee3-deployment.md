@@ -35,6 +35,16 @@ Jednorázové bezpečné zprovoznění po úspěšném CI:
 
 **Do ukončení kroků 2–4: `ga4_event_observed=UNKNOWN`, `consent_bridge_verified=UNKNOWN`, `orders=UNKNOWN`, `commission=UNKNOWN`.**
 
+### Výpadky veřejného čtení při předběžné kontrole
+
+Read-only preflight zkouší nedostupný veřejný HTML dokument nejvýše třikrát
+pouze při dočasném HTTP 429/5xx nebo síťovém výpadku. HTTP 401/403/404,
+neočekávané přesměrování či jiný obsah se nesmí obcházet ani označit jako
+úspěch. Po vyčerpání pokusů zůstává stav `PUBLIC_READ_UNAVAILABLE`, běh
+končí chybou a přidává jen pevnou kategorii důvodu (`read_failure_category`),
+nikdy URL, cookies, identifikátory nebo chybový text serveru. Zelený preflight
+prokazuje pouze dostupnost HTML, ne funkční consent ani zaznamenané GA4 kliky.
+
 ## Testy a rollback
 
 - `python -m unittest discover -s tests -v`
