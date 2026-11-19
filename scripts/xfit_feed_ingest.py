@@ -142,6 +142,27 @@ def parse_feed(xml_bytes):
         })
     return offers, skipped
 
+
+def availability_field_coverage(offers):
+    """Count source-field presence, never infer stock or purchase readiness.
+
+    DELIVERY_DATE in a Heureka feed may contain numeric days, including '0'.
+    AVAILABILITY is separate, free-form merchant text; neither establishes
+    actual purchasability without a documented provider contract.
+    """
+    delivery = sum(bool(item.get("delivery_date")) for item in offers)
+    raw = sum(bool(item.get("availability_raw")) for item in offers)
+    missing_both = sum(not item.get("delivery_date")
+                       and not item.get("availability_raw") for item in offers)
+    return {
+        "offers_checked": len(offers),
+        "delivery_date_field_present": delivery,
+        "availability_raw_field_present": raw,
+        "both_fields_absent": missing_both,
+        "actual_stock_verified": False,
+        "evidence_scope": "SOURCE_FIELD_PRESENCE_ONLY_NOT_STOCK",
+    }
+
 def fetch_feed():
     # Legacy secret alias is kept so the already-instructed configuration still works.
     url = (os.getenv("XFIT_NAMAXIMUM_FEED_URL") or os.getenv("XFIT_GREENMEDICAL_FEED_URL") or "").strip()
@@ -230,6 +251,7 @@ def main():
         "categories_top": report["categories_top"],
         "affiliate_link_status": report["affiliate_default_link"],
         "product_deeplinks": "NOT_VERIFIED",
+        "availability_source_field_coverage": availability_field_coverage(offers),
         "published_to_site": False,
     }
     summary_path = out.parent / "affiliate-feed-summary.json"
