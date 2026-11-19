@@ -40,11 +40,13 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
+          from scripts.xfit_feed_ingest import availability_field_coverage
           from scripts.xfit_select import select_offers
           data = json.loads(Path("reports/private-greenmedical-catalog.json").read_text(encoding="utf-8"))
           for kind in ("creatine", "whey", "plant_protein"):
               ranked = select_offers(data, kind, max_price=1500)
               print(json.dumps({"kind": kind, "candidates_under_1500_czk": len(ranked),
+                  "availability_source_field_coverage": availability_field_coverage(ranked),
                   "affiliate_deeplinks_verified": False, "public_site_modified": False},
                   ensure_ascii=False))
           PY
