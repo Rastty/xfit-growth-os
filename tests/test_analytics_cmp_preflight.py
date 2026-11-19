@@ -1,11 +1,80 @@
 """Offline privacy and ownership tests for XFIT live analytics preflight."""
 import unittest
 from unittest.mock import patch
+from urllib.error import HTTPError, URLError
 
 from scripts import xfit_analytics_cmp_preflight as probe
 
 
 class ReadOnlyPreflightTests(unittest.TestCase):
+    def test_public_read_retries_only_transient_failures(self):
+        url = probe.public_url("xfit-os-kreatin-poradce")
+
+        class Page:
+            status = 200
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                return False
+
+            def geturl(self):
+                return url
+
+            def read(self, maximum):
+                return b"<html>verified</html>"[:maximum]
+
+        temporary = HTTPError(url, 503, "temporary PRIVATE TOKEN", {}, None)
+        with patch.object(probe.urllib.request, "urlopen",
+                          side_effect=[temporary, Page()]) as fetch, \
+                patch.object(probe.time, "sleep") as pause:
+            self.assertEqual(probe.get_public_html(url), "<html>verified</html>")
+            self.assertEqual(fetch.call_count, 2)
+            pause.assert_called_once_with(1)
+
+        denied = HTTPError(url, 403, "no permission PRIVATE TOKEN", {}, None)
+        with patch.object(probe.urllib.request, "urlopen", side_effect=denied) as fetch, \
+                patch.object(probe.time, "sleep") as pause:
+            with self.assertRaises(HTTPError):
+                probe.get_public_html(url)
+            fetch.assert_called_once()
+            pause.assert_not_called()
+
+        class WrongDestination(Page):
+            def geturl(self):
+                return "https://xfit.cz/unrelated-page/"
+
+        with patch.object(probe.urllib.request, "urlopen",
+                          return_value=WrongDestination()) as fetch, \
+                patch.object(probe.time, "sleep") as pause:
+            with self.assertRaises(ValueError):
+                probe.get_public_html(url)
+            fetch.assert_called_once()
+            pause.assert_not_called()
+
+        with patch.object(probe.urllib.request, "urlopen",
+                          side_effect=URLError("PRIVATE TOKEN")) as fetch, \
+                patch.object(probe.time, "sleep") as pause:
+            with self.assertRaises(URLError):
+                probe.get_public_html(url)
+            self.assertEqual(fetch.call_count, 3)
+            self.assertEqual(pause.call_count, 2)
+
+    def test_failure_categories_are_useful_but_never_expose_private_errors(self):
+        url = probe.public_url("xfit-os-kreatin-poradce")
+        for error, expected in (
+            (HTTPError(url, 403, "private", {}, None), "HTTP_ACCESS_DENIED"),
+            (HTTPError(url, 429, "private", {}, None), "HTTP_TRANSIENT_EXHAUSTED"),
+            (HTTPError(url, 404, "private", {}, None), "HTTP_OTHER_FAILURE"),
+            (URLError("private"), "NETWORK_UNAVAILABLE"),
+            (ValueError("private"), "UNEXPECTED_RESPONSE"),
+        ):
+            with self.subTest(error=type(error).__name__):
+                category = probe.public_failure_category(error)
+                self.assertEqual(category, expected)
+                self.assertNotIn("private", category)
+
     def test_sanitized_provider_detection_and_no_identity_leak(self):
         snippet = (
             '<script src="https://www.googletagmanager.com/gtag/js?id=G-PRIVATE"></script>'
@@ -120,6 +189,7 @@ class ReadOnlyPreflightTests(unittest.TestCase):
                                    "recognized_active_providers":[]},
         )
         self.assertEqual(result["pages"][0]["read_status"], "PUBLIC_READ_UNAVAILABLE")
+        self.assertEqual(result["pages"][0]["read_failure_category"], "NETWORK_UNAVAILABLE")
         self.assertNotIn("secret", str(result))
         self.assertEqual(result["pages"][1]["read_status"], "PUBLIC_HTTP_VERIFIED")
 
