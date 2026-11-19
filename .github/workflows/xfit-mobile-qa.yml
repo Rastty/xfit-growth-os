@@ -8,7 +8,9 @@ on:
       - 'tests/live_page_qa.cjs'
       - 'tests/adviser_hero_mobile_qa.cjs'
       - 'scripts/xfit_mobile_navigation.cjs'
+      - 'scripts/xfit_first_screen_qa.cjs'
       - 'tests/test_mobile_navigation.cjs'
+      - 'tests/test_first_screen_qa.cjs'
       # Recheck public pages after every change that can refresh either adviser.
       - '.github/workflows/xfit-creatine-live.yml'
       - '.github/workflows/xfit-whey-live.yml'
@@ -55,6 +57,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Verify first-screen geometry diagnostics
+        run: node --test tests/test_first_screen_qa.cjs
       - name: Wait for same-commit WordPress adviser releases
         if: github.event_name == 'push'
         env:
