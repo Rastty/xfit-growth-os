@@ -8,10 +8,12 @@ no consent clicks, no WP writes, no raw HTML, links, IDs or secrets in output.
 import json
 import re
 import sys
+import time
 import urllib.parse
 import urllib.request
 from html.parser import HTMLParser
 from pathlib import Path
+from urllib.error import HTTPError, URLError
 
 from scripts.wp_publish import PublishError, normalized_base, wp_request
 
@@ -51,6 +53,8 @@ PLUGIN_SIGNATURES = {
 }
 
 SAFE_HOSTS = frozenset(("xfit.cz", "www.xfit.cz"))
+PUBLIC_READ_ATTEMPTS = 3
+TRANSIENT_HTTP_STATUS = frozenset((429, 500, 502, 503, 504))
 
 
 def public_url(slug):
@@ -118,13 +122,38 @@ def get_public_html(url):
         "Cache-Control": "no-cache",
         "Pragma": "no-cache",
     })
-    with urllib.request.urlopen(req, timeout=25) as response:
-        final = urllib.parse.urlsplit(response.geturl())
-        if (response.status != 200 or final.scheme != "https"
-                or final.hostname not in SAFE_HOSTS or final.path != wanted.path
-                or final.query or final.fragment):
-            raise ValueError("Unexpected public redirect")
-        return response.read(2500000).decode("utf-8", errors="replace")
+    for attempt in range(PUBLIC_READ_ATTEMPTS):
+        try:
+            with urllib.request.urlopen(req, timeout=25) as response:
+                final = urllib.parse.urlsplit(response.geturl())
+                if (response.status != 200 or final.scheme != "https"
+                        or final.hostname not in SAFE_HOSTS
+                        or final.path != wanted.path
+                        or final.query or final.fragment):
+                    raise ValueError("Unexpected public redirect")
+                return response.read(2500000).decode("utf-8", errors="replace")
+        except HTTPError as exc:
+            # A genuine 403/404 must stay a failure; do not work around a
+            # permission barrier or accept a different public page.
+            if exc.code not in TRANSIENT_HTTP_STATUS or attempt == PUBLIC_READ_ATTEMPTS - 1:
+                raise
+        except (URLError, TimeoutError):
+            if attempt == PUBLIC_READ_ATTEMPTS - 1:
+                raise
+        time.sleep(attempt + 1)
+
+
+def public_failure_category(exc):
+    """Only fixed categories, never exception messages or requested URLs."""
+    if isinstance(exc, HTTPError):
+        if exc.code in (401, 403):
+            return "HTTP_ACCESS_DENIED"
+        if exc.code in TRANSIENT_HTTP_STATUS:
+            return "HTTP_TRANSIENT_EXHAUSTED"
+        return "HTTP_OTHER_FAILURE"
+    if isinstance(exc, (URLError, TimeoutError, OSError)):
+        return "NETWORK_UNAVAILABLE"
+    return "UNEXPECTED_RESPONSE"
 
 
 def inspect_plugins(*, wp_fetch=wp_request):
@@ -197,8 +226,9 @@ def run(*, public_reader=get_public_html, plugin_reader=inspect_plugins):
             html = public_reader(public_url(slug))
             pages.append({"page": slug, "read_status": "PUBLIC_HTTP_VERIFIED",
                           **scan_public_html(html)})
-        except (OSError, ValueError, PublishError):
+        except (OSError, ValueError, PublishError) as exc:
             pages.append({"page": slug, "read_status": "PUBLIC_READ_UNAVAILABLE",
+                          "read_failure_category": public_failure_category(exc),
                           "catalog_cta_metadata_count": None,
                           "cmp_html_fingerprints": [],
                           "analytics_html_fingerprints": [],
