@@ -1,0 +1,40 @@
+name: XFIT Legacy Embedded Markup Readonly Audit
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-embedded-markup-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Regression tests for read-only and pagination integrity
+        run: |
+          python -m unittest discover -s tests -q
+          python -m unittest tests.test_embedded_markup_audit -v
+      - name: Read-only full public WordPress archive scan
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_embedded_markup_audit --pages 250 --size 100 | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Preserve evidence-based review queue
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-malformed-markup-review-${{ github.run_id }}
+          path: reports/xfit-embedded-markup-audit.json
+          if-no-files-found: error
+          retention-days: 30
