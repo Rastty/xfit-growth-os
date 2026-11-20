@@ -1,0 +1,64 @@
+name: XFIT Protein Early Choices Onepost Release
+on:
+  # Release once when the reviewed workflow enters main; later edits to the
+  # Python script alone never cause an unreviewed repeated WordPress write.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-protein-early-choices-live.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  onepost:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate full project and exact onepost release
+        run: |
+          python -m unittest discover -s tests -v
+          python -m unittest tests.test_protein_early_choices_release -v
+      - name: Snapshot current WordPress body before possible write
+        run: python -m scripts.xfit_protein_early_choices_release snapshot
+      - name: Preserve immutable original for rollback
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-protein-early-choices-25451-rollback-${{ github.run_id }}
+          path: reports/backups/xfit-protein-early-choices-25451.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: One guarded WordPress POST and independent public readback
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_protein_early_choices_release apply | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install real mobile Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Verify 320/375/768px action targets, routes and no overflow
+        run: node tests/protein_early_choices_live_qa.cjs
+      - name: Keep mobile evidence for owner inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-protein-early-choices-mobile-${{ github.run_id }}
+          path: reports/browser-qa/protein-early-choices-375.png
+          retention-days: 14
+          if-no-files-found: ignore
