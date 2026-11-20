@@ -12,6 +12,9 @@ concurrency:
   cancel-in-progress: false
 jobs:
   release:
+    # Quarantine after run 44801684483: one ambiguous POST, no blind retry.
+    # Re-enable only via a reviewed PR after investigating WP/WAF request logs.
+    if: ${{ false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
