@@ -35,7 +35,7 @@ jobs:
           path: reports/backups/xfit-expired-coupon-wave01.json
           retention-days: 90
           if-no-files-found: error
-      - name: Remove expired coupon blocks; preserve independently verified wins and flag uncertainty
+      - name: Remove old shortcode blocks and independently verify live public pages
         shell: bash
         run: |
           set -o pipefail
