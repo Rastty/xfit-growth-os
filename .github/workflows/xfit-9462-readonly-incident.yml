@@ -1,0 +1,29 @@
+name: XFIT 9462 Read Only Post Incident
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-9462-readonly-incident.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  read-only-incident:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Original and cache-busted authenticated read with revisions and public proof
+        run: python -m scripts.xfit_9462_readonly_incident
