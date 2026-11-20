@@ -81,6 +81,20 @@ class MarkupAuditTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 a.audit(pages=pages, size=size, reader=lambda p, s: ([], 1))
 
+    def test_canonical_queue_contains_cases_beyond_top_100(self):
+        # A very broken document may outrank a simple but real in-body
+        # canonical. Losing the latter would defeat this SEO repair queue.
+        many = [post(i, "<!DOCTYPE html><html><head><title>Bad</title></head></html>"*5)
+                for i in range(1, 101)]
+        canonical = post(101, '<link rel="canonical" href="https://www.example.com/bad">')
+        def reader(page, size):
+            return (many if page == 1 else [canonical], 2)
+        result = a.audit(pages=2, size=100, reader=reader)
+        self.assertTrue(result["complete"])
+        self.assertNotIn(101, [x["id"] for x in result["top_review_candidates"]])
+        self.assertEqual([x["id"] for x in result["all_body_canonical_candidates"]], [101])
+        self.assertEqual(result["affected_body_canonicals"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
