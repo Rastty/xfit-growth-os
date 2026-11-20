@@ -34,6 +34,8 @@ class ProteinOrCreatineChooserTests(unittest.TestCase):
         self.assertIn('/xfit-os-syrovatkovy-protein-porovnani/',first)
         self.assertIn('/xfit-os-kreatin-poradce/',first)
         self.assertIn('affiliate odkazy',first)
+        self.assertEqual(first.count('min-height:44px'),3)
+        self.assertEqual(first.count('display:block;min-height:44px'),3)
         self.assertIn('hmotnost balení × údaj z etikety / 100',body)
         self.assertIn('cenu za 100 g bílkovin',body)
         self.assertIn('gramy, které skutečně využijete',body)
