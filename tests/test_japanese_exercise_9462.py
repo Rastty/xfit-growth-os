@@ -28,6 +28,11 @@ def post(body=None, *, post_id=r.POST_ID, slug=r.SLUG, title=r.TITLE_RAW,
 
 
 class JapaneseExerciseTests(unittest.TestCase):
+    def test_ambiguous_post_release_is_quarantined(self):
+        workflow = Path(".github/workflows/xfit-japanese-exercise-9462-live.yml").read_text()
+        self.assertIn("    if: ${{ false }}", workflow)
+        self.assertIn("44801684483", workflow)
+
     def test_readonly_diagnostic_never_mutates(self):
         import contextlib
         from io import StringIO
