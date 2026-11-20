@@ -27,6 +27,21 @@ def post(body=None, *, post_id=r.POST_ID, slug=r.SLUG, title=r.TITLE,
 
 
 class JapaneseExerciseTests(unittest.TestCase):
+    def test_readonly_diagnostic_never_mutates(self):
+        import contextlib
+        from io import StringIO
+        output = StringIO()
+        with patch.object(r, "remote", return_value=post()), \
+                patch.object(r, "wp_request") as write, \
+                contextlib.redirect_stdout(output):
+            r.diagnose()
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["state"], "READ_ONLY_AUTH_IDENTITY")
+        self.assertTrue(result["old_source_matches"])
+        self.assertTrue(result["title_matches"])
+        self.assertEqual(result["remote_writes"], 0)
+        write.assert_not_called()
+
     def test_revision_is_substantial_sourced_and_no_pseudo_science(self):
         body = r.revision()
         self.assertEqual(body.count(r.MARK), 1)
