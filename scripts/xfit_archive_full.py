@@ -235,6 +235,15 @@ def inventory(posts):
          "mentions":p["stale_2022_promo_mentions"],"shortcodes":p["stale_2022_promo_shortcode_count"]}
         for p in rows if p["stale_2022_promo_mentions"]>0
       ][:500],
+      # Keep the reader-text shortlist independent of the raw markup cap.
+      "visible_stale_promo_candidates":[
+        {"id":p["id"],"slug":p["slug"],"url":p["url"],
+         "mentions":p["visible_stale_2022_promo_mentions"]}
+        for p in rows if p["visible_stale_2022_promo_mentions"]>0
+      ][:500],
+      "visible_stale_2022_promo_posts":sum(
+          p["visible_stale_2022_promo_mentions"]>0 for p in rows
+      ),
       # This measures sources from post bodies, not all internal links or SEO
       # orphans. Build from deduplicated posts already downloaded by the audit.
       "guide_inlink_coverage": build_coverage(seen.values()),

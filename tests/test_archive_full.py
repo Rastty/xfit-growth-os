@@ -21,10 +21,30 @@ class ArchiveAuditTests(unittest.TestCase):
             post(3, "kreatin-jiny-kod", "Kreatin a jiný kód", "5NM20220"),
         ])
         self.assertEqual([p["id"] for p in report["stale_promo_candidates"]], [1, 3])
+        self.assertEqual(report["visible_stale_2022_promo_posts"], 1)
+        self.assertEqual(report["visible_stale_promo_candidates"], [{
+            "id": 2, "slug": "kreatin-slevovy-kod",
+            "url": "https://xfit.cz/kreatin-slevovy-kod/", "mentions": 1,
+        }])
         queue = report["content_quality_review_queue"]
         self.assertEqual(queue["expired_promo_eligible"], 1)
         scored = {p["id"]: p["stale_2022_promo_mentions"] for p in queue["candidates"]}
         self.assertEqual(scored, {1: 0, 2: 1, 3: 0})
+
+    def test_reader_text_coupon_shortlist_has_its_own_cap(self):
+        hidden = [
+            post(i, f"kreatin-{i}", "Kreatin", "<!-- 5NM2022 -->")
+            for i in range(1, 501)
+        ]
+        visible = [
+            post(i, f"protein-{i}", "Protein", "Slevový kód: 5NM2022")
+            for i in range(501, 1002)
+        ]
+        report = inventory(hidden + visible)
+        self.assertEqual(report["stale_promo_candidates"][-1]["id"], 500)
+        candidates = report["visible_stale_promo_candidates"]
+        self.assertEqual([p["id"] for p in candidates], list(range(501, 1001)))
+        self.assertEqual(report["visible_stale_2022_promo_posts"], 501)
 
     def test_template_links_are_not_reader_navigation_or_spam_evidence(self):
         body=('''<template><a href="/skryty/">Skryté</a>
