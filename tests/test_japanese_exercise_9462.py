@@ -18,11 +18,12 @@ def legacy():
             + "".join("<p>" + sentence + "</p>" for sentence in r.OLD_SENTENCES))
 
 
-def post(body=None, *, post_id=r.POST_ID, slug=r.SLUG, title=r.TITLE,
+def post(body=None, *, post_id=r.POST_ID, slug=r.SLUG, title=r.TITLE_RAW,
          status="publish", link=r.URL, modified=r.REVIEWED_MODIFIED_GMT,
-         rendered=False):
+         rendered=False, rendered_title="&#8211; Japonské cvičení na hubnutí: Objasňujeme základní principy"):
     return {"id": post_id, "slug": slug, "status": status, "link": link,
-            "modified_gmt": modified, "title": {"raw": title},
+            "modified_gmt": modified, "title": ({"rendered": rendered_title} if rendered
+                                                      else {"raw": title, "rendered": rendered_title}),
             "content": {"rendered" if rendered else "raw": legacy() if body is None else body}}
 
 
@@ -59,6 +60,7 @@ class JapaneseExerciseTests(unittest.TestCase):
     def test_strict_identity_timestamp_and_source_drift(self):
         changes = (
             {"post_id": 9463}, {"slug": "changed"}, {"title": "New headline"},
+            {"rendered_title": "Changed visible title"},
             {"status": "draft"}, {"link": "https://example.org/" + r.SLUG + "/"},
             {"link": r.URL + "?from=bad"}, {"modified": "2026-11-20T20:00:00"},
             {"body": legacy().replace(r.BAD_LINK, "https://changed.test", 1)},
@@ -68,6 +70,12 @@ class JapaneseExerciseTests(unittest.TestCase):
         for change in changes:
             with self.subTest(change=change), self.assertRaises(PublishError):
                 r.classify(post(**change))
+
+    def test_public_rendered_and_auth_raw_title_both_pinned(self):
+        self.assertTrue(r.title_matches(post(), authenticated=True))
+        self.assertTrue(r.title_matches(post(rendered=True), authenticated=False))
+        self.assertFalse(r.title_matches(post(rendered_title="New"), authenticated=True))
+        self.assertFalse(r.title_matches(post(title="New"), authenticated=True))
 
     def test_reviewed_body_missing_fails_before_mutation(self):
         with patch.object(r, "SOURCE", Path("/nonexistent")):

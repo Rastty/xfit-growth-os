@@ -21,6 +21,7 @@ POST_ID = 9462
 SLUG = "japonske-cviceni-na-hubnuti-objasnujeme-zakladni-principy"
 URL = "https://xfit.cz/" + SLUG + "/"
 TITLE = "– Japonské cvičení na hubnutí: Objasňujeme základní principy"
+TITLE_RAW = "- Japonské cvičení na hubnutí: Objasňujeme základní principy"
 REVIEWED_MODIFIED_GMT = "2023-10-22T02:51:47"
 SOURCE = Path("content/revisions/japanese-exercise-9462.html")
 BACKUP = Path("reports/backups/xfit-japanese-exercise-9462-original.json")
@@ -58,12 +59,22 @@ def title_of(post):
     return html.unescape(re.sub(r"<[^>]+>", "", field.get("raw") or field.get("rendered") or "")).strip()
 
 
+def title_matches(post, *, authenticated):
+    """Pin the real WP raw ASCII hyphen AND its publicly rendered en dash."""
+    field = post.get("title") or {}
+    if not isinstance(field, dict):
+        return False
+    rendered = html.unescape(re.sub(r"<[^>]+>", "", field.get("rendered") or "")).strip()
+    return rendered == TITLE and (not authenticated or field.get("raw") == TITLE_RAW)
+
+
 def identity(post, *, authenticated=True):
     if (not isinstance(post, dict) or type(post.get("id")) is not int
             or post["id"] != POST_ID or post.get("slug") != SLUG
             or post.get("status") != "publish"
             or not exact_article_url(post.get("link"), SLUG)
-            or title_of(post) != TITLE or not isinstance(post.get("modified_gmt"), str)
+            or not title_matches(post, authenticated=authenticated)
+            or not isinstance(post.get("modified_gmt"), str)
             or not post["modified_gmt"]):
         raise PublishError("Unexpected WordPress article identity or title")
     content = post.get("content") or {}
@@ -131,7 +142,7 @@ def diagnose():
         "slug_matches": post.get("slug") == SLUG,
         "published": post.get("status") == "publish",
         "link_matches": exact_article_url(post.get("link"), SLUG),
-        "title_matches": title_of(post) == TITLE,
+        "title_matches": title_matches(post, authenticated=True),
         "title_raw": field.get("raw"), "title_rendered": field.get("rendered"),
         "expected_title": TITLE,
         "modified_gmt": post.get("modified_gmt"),
