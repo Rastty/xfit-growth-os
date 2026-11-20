@@ -280,6 +280,13 @@ def main():
         except (HTTPError,URLError,TimeoutError,ValueError) as exc:
             failed={"page":page,"error_type":type(exc).__name__}
             break
+        if count and declared_total is not None and count != declared_total:
+            failed={
+                "page":page,
+                "error_type":"PaginationTotalChanged",
+                "observed_total_pages":count,
+            }
+            break
         pages_fetched += 1
         rows.extend(batch)
         if count:declared_total=count
