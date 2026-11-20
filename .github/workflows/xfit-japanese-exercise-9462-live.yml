@@ -29,7 +29,7 @@ jobs:
         run: |
           python -m unittest discover -s tests -q
           python -m unittest tests.test_japanese_exercise_9462 -v
-      - name: Read-only authenticated identity diagnostic
+      - name: Read-only authenticated identity diagnostic (pinned raw and rendered title)
         run: python -m scripts.xfit_japanese_exercise_9462 diagnose
       - name: Snapshot exact reviewed authenticated and public article
         run: python -m scripts.xfit_japanese_exercise_9462 snapshot
