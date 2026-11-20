@@ -43,6 +43,10 @@ class BcaaWheyLegacyTests(unittest.TestCase):
         state = r.classify(post())
         self.assertEqual(state["mode"], "update")
         self.assertNotEqual(state["raw_sha"], state["after_sha"])
+        # Actual public source includes the extra word "také".
+        self.assertEqual(r.classify(post(legacy().replace(
+            "BCAA zvyšují anabolické hormony", "BCAA také zvyšují anabolické hormony")))[
+                "mode"], "update")
 
     def test_only_exact_post_permitted(self):
         for invalid in (
