@@ -4,6 +4,8 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/xfit-embedded-markup-audit.yml'
+      - 'scripts/xfit_embedded_markup_audit.py'
+      - 'tests/test_embedded_markup_audit.py'
   workflow_dispatch:
 permissions:
   contents: read

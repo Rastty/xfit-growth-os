@@ -88,6 +88,13 @@ def audit(*, pages, size, reader=fetch):
     found = [value[1] for value in seen.values() if value[1] is not None]
     found.sort(key=lambda item: (-item["review_score"], item["id"]))
     high = [item for item in found if item["confidence"] == "HIGH"]
+    # A top-N severity queue can hide rare, directly actionable canonical
+    # conflicts when thousands of articles contain many embedded documents.
+    # Preserve EVERY canonical case independently of the top-100 cutoff.
+    canonical_cases = [item for item in found if item["body_canonical_count"] > 0]
+    canonical_cases.sort(key=lambda item: (-item["bogus_canonical_count"],
+                                               -item["body_canonical_count"],
+                                               -item["review_score"], item["id"]))
     complete = interruption is None and fetched == declared
     return {"generated_at_utc": datetime.now(timezone.utc).isoformat(),
             "complete": complete, "declared_total_pages": declared,
@@ -96,6 +103,8 @@ def audit(*, pages, size, reader=fetch):
             "high_confidence_posts": len(high), "low_confidence_snippets": len(found) - len(high),
             "affected_body_canonicals": sum(x["body_canonical_count"] for x in high),
             "bogus_example_canonicals": sum(x["bogus_canonical_count"] for x in high),
+            "all_body_canonical_candidates": canonical_cases,
+            "doctype_article_count": sum(x["doctype_count"] > 0 for x in found),
             "top_review_candidates": found[:100],
             "warning": "READ_ONLY_TRIAGE. Counts are not SEO impact, ranking or rewrite approvals. Inspect exact post and current source before any onepost action.",
             "wordpress_writes": 0}
@@ -111,7 +120,8 @@ def main():
     path = Path(args.output)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({k: v for k, v in result.items() if k not in ("top_review_candidates", "warning")},
+    print(json.dumps({k: v for k, v in result.items() if k not in (
+        "top_review_candidates", "all_body_canonical_candidates", "warning")},
                      ensure_ascii=False))
     return 0 if result["complete"] else 2
 
