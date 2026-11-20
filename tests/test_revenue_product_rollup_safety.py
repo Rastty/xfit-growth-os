@@ -113,10 +113,18 @@ class ProductRollupSafetyTests(unittest.TestCase):
     def test_invalid_later_click_aborts_entire_aggregate(self):
         # A valid first row must not justify reporting a partly processed
         # dataset after the second row fails the catalog membership check.
-        with self.assertRaises(ValueError):
-            summarize_funnel(iter([click(392), click(999)]),
-                             analytics_consent=True,
-                             verified_product_ids_by_page={PAGE: {392}})
+        for invalid, message in (
+            (click(999), "product is not in the verified advisor catalog"),
+            (dict(click(392), extra="private-answer"), "unsupported event record"),
+        ):
+            with self.subTest(message=message):
+                with self.assertRaises(ValueError) as caught:
+                    summarize_funnel(iter([click(392), invalid]),
+                                     analytics_consent=True,
+                                     verified_product_ids_by_page={PAGE: {392}})
+                self.assertEqual(str(caught.exception), message)
+                self.assertEqual(caught.exception.__notes__,
+                                 ["Funnel input record 2 (one-based)"])
 
     def test_catalog_refresh_cannot_admit_unverified_click_mid_report(self):
         for replace_page in (False, True):
