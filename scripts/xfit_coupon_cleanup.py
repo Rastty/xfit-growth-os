@@ -14,7 +14,11 @@ MAX_COUNT=8
 # WP 11264 was the sole unchanged item in run 43630700797 (14 Nov):
 # seven neighboring posts were verified, but its write_request did not persist.
 # Keep it out of the recurring batch while one-post recovery investigates it.
-QUARANTINE_IDS={11945,11595,11264}
+# WP 10995 remained byte-for-byte unchanged after its one guarded POST in
+# 44793630877; seven neighboring posts were independently public-verified.
+# Never attempt 10995 again in the recurring wave. It requires its own pinned
+# diagnostic/recovery, just like the earlier isolated failures above.
+QUARANTINE_IDS={11945,11595,11264,10995}
 BACKUP=Path("reports/backups/xfit-expired-coupon-wave01.json")
 PROMO=re.compile(r"\[su_button\b[^\]]{0,1200}\][^\[]*?5NM2022\[/su_button\]",re.I|re.S)
 def sha(s):return hashlib.sha256(s.encode("utf-8")).hexdigest()

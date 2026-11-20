@@ -26,7 +26,7 @@ jobs:
           python-version: '3.12'
       - name: Repository tests
         run: python -m unittest discover -s tests -v
-      - name: Read-only preview and backup of up to eight obsolete coupon posts
+      - name: Read-only preview of up to eight coupon posts excluding quarantined 10995
         run: python -m scripts.xfit_coupon_cleanup snapshot
       - name: Backup artifact is mandatory before any WordPress writes
         uses: actions/upload-artifact@v4

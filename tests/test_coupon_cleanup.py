@@ -13,6 +13,7 @@ class CouponCleanupTests(unittest.TestCase):
         self.assertIn(11595,QUARANTINE_IDS)
         self.assertIn(11945,QUARANTINE_IDS)
         self.assertIn(11264,QUARANTINE_IDS)
+        self.assertIn(10995,QUARANTINE_IDS)
 
     def test_only_explicit_2022_promo_shortcode_removed(self):
         s=(('Užitečný odstavec. '*40)+
