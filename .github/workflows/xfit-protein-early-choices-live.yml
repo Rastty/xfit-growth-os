@@ -2,10 +2,12 @@ name: XFIT Protein Early Choices Onepost Release
 on:
   # Release once when the reviewed workflow enters main; later edits to the
   # Python script alone never cause an unreviewed repeated WordPress write.
+  # QA corrections may rerun the idempotent, no-write readback and live browser.
   push:
     branches: [main]
     paths:
       - '.github/workflows/xfit-protein-early-choices-live.yml'
+      - 'tests/protein_early_choices_live_qa.cjs'
   workflow_dispatch:
 permissions:
   contents: read
