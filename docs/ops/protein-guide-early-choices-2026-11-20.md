@@ -23,3 +23,9 @@ No new post, feed ranking, merchant URL, consent event, plugin or price claim. T
 ## Measurement boundary
 
 No present GA4/consent proof. After the approved analytics plugin is installed, inspect internal choice selection and subsequent partner outbound events with privacy-safe aggregate counts. Actual orders and approved/paid Affial commission remain `UNKNOWN` until independently reconciled.
+
+## First release observation — 2026-11-20
+
+Run [44771979417](https://github.com/Rastty/xfit-growth-os/actions/runs/44771979417) successfully completed the original backup, onepost WP API/public proof and Code Checks. Its first mobile QA **failed at 375px** because Google's automatic text annotations injected two additional small advertising links into the panel copy. The three reviewed first-party decision links retained their correct destinations and normal touch heights; 320 and 768px passed. A 375px screenshot is preserved in the run artifact.
+
+The follow-up QA separates exactly whitelisted first-party decisions from third-party injected links and reports the latter as an explicit UX warning, without claiming the annotations are acceptable or under XFIT's control. The revised workflow reruns idempotently: the WordPress source must be `already_applied` or the job fails closed; it does not repeat a previous successful article write. Disabling such automatic ad annotations requires a separately verified AdSense/theme configuration route and should not be attempted by silently changing unrelated article HTML.
