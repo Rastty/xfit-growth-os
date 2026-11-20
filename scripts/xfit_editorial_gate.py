@@ -29,8 +29,19 @@ class Inspector(HTMLParser):
         self.headers=[];self.paragraphs=[];self.links=[];self.images=[];self.tables=0;self.product_cards=0
         self._capture=None;self._buf=[]
         self.visible=[]
+        # A WordPress article content field is an HTML fragment, never a full
+        # document. An in-body canonical can override/conflict with the real
+        # theme canonical (verified XFIT legacy incident #10953).
+        self.document_scope_errors=[]
+    def handle_decl(self, decl):
+        if re.match(r"\s*doctype\s+html\b", decl, re.I):
+            self.document_scope_errors.append("doctype")
     def handle_starttag(self, tag, attrs):
         a=dict(attrs)
+        if tag in ("html", "head", "body", "base", "title", "meta"):
+            self.document_scope_errors.append(tag)
+        if tag=="link" and "canonical" in (a.get("rel") or "").lower().split():
+            self.document_scope_errors.append("body_canonical")
         if tag in ("h2","h3","p"):
             self._capture=tag;self._buf=[]
         if tag=="a":self.links.append((a.get("href",""),a.get("rel","")))
@@ -52,6 +63,9 @@ def check_document(doc, commercial=None):
     if not isinstance(body,str):
         raise EditorialError("Missing editorial body")
     p=Inspector();p.feed(body)
+    if p.document_scope_errors:
+        raise EditorialError("Document-root HTML or in-body canonical in WordPress fragment: "
+                             + ",".join(sorted(set(p.document_scope_errors))))
     text=" ".join(p.visible)
     words=len(re.findall(r"\b[\wÀ-ž]+\b",text,re.U))
     if words<MIN_WORDS:

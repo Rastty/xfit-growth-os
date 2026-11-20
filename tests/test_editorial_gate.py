@@ -39,3 +39,32 @@ class GateTests(unittest.TestCase):
         d["content"]=d["content"].replace("ods.od.nih.gov", "www.nice.org.uk.invalid.example")
         with self.assertRaises(EditorialError):
             check_document(d)
+
+    def test_rejects_full_document_embedded_in_article_content(self):
+        for markup in ("<!DOCTYPE html>", "<html lang='cs'>", "<head>",
+                       "<body>", "<title>Falešné SEO</title>",
+                       "<meta name='description' content='wrong'>", "<base href='https://xfit.cz/'>"):
+            with self.subTest(markup=markup):
+                d=fixture();d["content"]+=markup
+                with self.assertRaisesRegex(EditorialError,"Document-root"):
+                    check_document(d)
+
+    def test_rejects_body_canonical_even_with_valid_target(self):
+        for link in ("<link rel='canonical' href='https://xfit.cz/'>",
+                     '<link href="https://www.example.com/wrong" rel="alternate CANONICAL"/>'):
+            with self.subTest(link=link):
+                d=fixture();d["content"]+=link
+                with self.assertRaisesRegex(EditorialError,"body_canonical"):
+                    check_document(d)
+
+    def test_accepts_escaped_html_tutorial_without_raw_document_tags(self):
+        d=fixture()
+        d["content"]+="<p>Ukázka kódu: &lt;html&gt; &lt;head&gt; &lt;link rel='canonical'&gt;.</p>"
+        self.assertTrue(check_document(d)["passed"])
+
+    def test_normal_link_and_article_semantics_remain_allowed(self):
+        d=fixture();d["content"]+='''<article><header>Průvodce</header>
+          <section><p>Odkaz na další web o SEO není kanonický.</p>
+          <a href="https://ods.od.nih.gov/factsheets/ExerciseAndAthleticPerformance-HealthProfessional/">Další čtení</a>
+          </section><footer>Redakce</footer></article>'''
+        self.assertTrue(check_document(d)["passed"])
