@@ -150,6 +150,14 @@ def classify(post):
     elif old_source(before) and MARK not in before:
         mode = "update"
     else:
+        visible = html.unescape(re.sub(r"<[^>]+>", " ", before))
+        print(json.dumps({"state": "LEGACY_AUTH_SOURCE_MISMATCH",
+                          "post_id": POST_ID, "bytes": len(before.encode("utf-8")),
+                          "coupon_mentions": before.upper().count("5NM2022"),
+                          "old_reviewed_fingerprints_present":
+                          [fingerprint in visible for fingerprint in OLD_FINGERPRINTS],
+                          "revision_marker_present": MARK in before,
+                          "remote_writes": 0}))
         raise PublishError("Unreviewed legacy source; refusal to overwrite")
     return {"mode": mode, "raw": before, "raw_sha": sha(before),
             "after_sha": sha(after), "modified_gmt": post["modified_gmt"]}
@@ -190,7 +198,11 @@ def snapshot():
         raise PublishError("Backup archive already exists; no overwrite")
     post = remote()
     state = classify(post)
+    print(json.dumps({"state": "LEGACY_AUTH_SOURCE_ACCEPTED", "post_id": POST_ID,
+                      "mode": state["mode"], "remote_writes": 0}))
     previous = public_old_fingerprint() if state["mode"] == "update" else None
+    print(json.dumps({"state": "LEGACY_PUBLIC_SOURCE_ACCEPTED", "post_id": POST_ID,
+                      "mode": state["mode"], "remote_writes": 0}))
     if state["mode"] == "already_applied" and not verify_public():
         raise PublishError("Already-applied article cannot be verified publicly")
     BACKUP.parent.mkdir(parents=True, exist_ok=True)
@@ -262,5 +274,8 @@ if __name__ == "__main__":
             raise PublishError("Usage: snapshot|apply")
         (snapshot if sys.argv[1] == "snapshot" else apply)()
     except (PublishError, OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
-        print("XFIT_BCAA_2502_RELEASE_ERROR: " + type(exc).__name__, file=sys.stderr)
+        # PublishError messages are authored here or in wp_publish and do not
+        # include URLs with affiliate query params, article bodies or tokens.
+        reason = str(exc) if isinstance(exc, PublishError) else type(exc).__name__
+        print("XFIT_BCAA_2502_RELEASE_ERROR: " + reason, file=sys.stderr)
         raise SystemExit(2)

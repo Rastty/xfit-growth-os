@@ -31,7 +31,7 @@ jobs:
         run: |
           python -m unittest discover -s tests -q
           python -m unittest tests.test_bcaa_whey_legacy_rescue_2502 -v
-      - name: Snapshot immutable article and verify unchanged public footprint
+      - name: Snapshot immutable article with safe guard diagnostics, then verify public footprint
         run: python -m scripts.xfit_bcaa_whey_legacy_rescue_2502 snapshot
       - name: Store original for exact reversal before any POST
         uses: actions/upload-artifact@v4
