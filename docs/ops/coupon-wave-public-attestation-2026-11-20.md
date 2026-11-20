@@ -32,6 +32,18 @@ affiliate conversions or a sitewide cache purge.
 
 No new WP credentials, plugin, redirects, deletion, broadened edit pattern,
 or higher batch limit. The same eight-post cap and original quarantine IDs
-remain. The existing scheduled cadence is retained. Repeated independent
+remain, with #10995 newly added following the verified partial failure.
+The existing scheduled cadence is retained. Repeated independent
 release runs must be evaluated by their own IDs and artifacts; no bulk
 deletion or inference from the full archive's 3,132 heuristic matches.
+
+## First live result and isolated failure
+
+[Run 44793630877](https://github.com/Rastty/xfit-growth-os/actions/runs/44793630877)
+saved a mandatory rollback artifact and attempted a maximum of eight posts:
+**7 authenticated and public-verified articles**, **21 obsolete promotional
+buttons removed**, and **one post #10995 unchanged after its POST**. The
+report correctly failed as a partial wave, without ambiguous outcomes or
+blind retries. Add #10995 to the quarantine list so later scheduled waves
+continue with different candidates; diagnose that one post separately before
+any targeted recovery. Do not classify the previous failed run as SUCCESS.
