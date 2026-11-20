@@ -119,6 +119,28 @@ def remote():
                       + "?context=edit&_fields=id,slug,status,title,link,modified_gmt,content")
 
 
+def diagnose():
+    """Read-only identity audit, with no article content or credentials in logs."""
+    post = remote()
+    field = post.get("title") or {}
+    content = post.get("content") or {}
+    raw = content.get("raw") or ""
+    print(json.dumps({
+        "state": "READ_ONLY_AUTH_IDENTITY", "post_id": POST_ID,
+        "id_matches": type(post.get("id")) is int and post["id"] == POST_ID,
+        "slug_matches": post.get("slug") == SLUG,
+        "published": post.get("status") == "publish",
+        "link_matches": exact_article_url(post.get("link"), SLUG),
+        "title_matches": title_of(post) == TITLE,
+        "title_raw": field.get("raw"), "title_rendered": field.get("rendered"),
+        "expected_title": TITLE,
+        "modified_gmt": post.get("modified_gmt"),
+        "body_raw_bytes": len(raw.encode()) if isinstance(raw, str) else -1,
+        "old_source_matches": isinstance(raw, str) and old_source(raw),
+        "remote_writes": 0,
+    }, ensure_ascii=False))
+
+
 def public_rest():
     endpoint = "https://xfit.cz/wp-json/wp/v2/posts/9462?_fields=id,slug,status,title,link,modified_gmt,content"
     request = Request(endpoint, headers={"User-Agent": "XFITOnepost9462/1.0",
@@ -250,9 +272,9 @@ def apply():
 
 if __name__ == "__main__":
     try:
-        if len(sys.argv) != 2 or sys.argv[1] not in ("snapshot", "apply"):
-            raise PublishError("Usage: snapshot|apply")
-        (snapshot if sys.argv[1] == "snapshot" else apply)()
+        if len(sys.argv) != 2 or sys.argv[1] not in ("diagnose", "snapshot", "apply"):
+            raise PublishError("Usage: diagnose|snapshot|apply")
+        {"diagnose": diagnose, "snapshot": snapshot, "apply": apply}[sys.argv[1]]()
     except (PublishError, OSError, ValueError, TypeError, KeyError, AttributeError) as error:
         print(json.dumps({"state": "FAIL_CLOSED", "post_id": POST_ID,
                           "reason": str(error), "retry_post": False}))
