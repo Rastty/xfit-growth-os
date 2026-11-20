@@ -1,0 +1,63 @@
+name: XFIT Creatine Metabolism 10953 Onepost Release
+on:
+  # Only a reviewed workflow entry to main triggers WordPress mutation.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-creatine-metabolism-10953-live.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Full regression and source-specific editorial tests
+        run: |
+          python -m unittest discover -s tests -q
+          python -m unittest tests.test_creatine_metabolism_10953 -v
+      - name: Snapshot reviewed 10953 authenticated and public source
+        run: python -m scripts.xfit_creatine_metabolism_10953 snapshot
+      - name: Persist immutable pre-POST rollback artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-creatine-10953-rollback-${{ github.run_id }}
+          path: reports/backups/xfit-creatine-10953-original.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Guarded onepost write and independent public proof
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_creatine_metabolism_10953 apply | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium for public real-browser QA
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Validate canonical, sources and accessible decision at 320/375/768
+        run: node tests/creatine_metabolism_10953_live_qa.cjs
+      - name: Preserve read-only browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-creatine-10953-mobile-${{ github.run_id }}
+          path: reports/browser-qa/creatine-10953-375.png
+          if-no-files-found: ignore
+          retention-days: 14
