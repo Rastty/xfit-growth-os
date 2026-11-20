@@ -36,7 +36,9 @@ SOURCE_LINKS = (
 )
 OLD_FINGERPRINTS = (
     "What are BCAAs and whey protein?",
-    "BCAA zvyšují anabolické hormony",
+    # Public 2026-11-20 text says "BCAA také zvyšují ..."; don't pin an
+    # inaccurate omission of "také" from the authenticated legacy source.
+    "zvyšují anabolické hormony",
     "ketleiové aminokyseliny",
 )
 MAX_BYTES = 350_000
