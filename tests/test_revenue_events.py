@@ -52,6 +52,26 @@ class RevenueEventTests(unittest.TestCase):
         self.assertEqual(result["params"], fields)
         self.assertNotIn("verified_product_ids_by_page", result["params"])
 
+    def test_click_catalog_errors_distinguish_recovery_steps(self):
+        page = self.fields["page"]
+        fields = dict(self.fields, partner="namaximum", product_id=392)
+        event = {"name": "affiliate_outbound_click", "params": fields}
+        for catalogs, error in (
+            (None, "verified advisor catalog is missing"),
+            ({}, "verified advisor catalog is missing"),
+            ({page: set()}, "verified advisor catalog is empty"),
+            ({page: {393}}, "product is not in the verified advisor catalog"),
+        ):
+            with self.subTest(catalogs=catalogs):
+                options = {
+                    "analytics_consent": True,
+                    "verified_product_ids_by_page": catalogs,
+                }
+                with self.assertRaisesRegex(ValueError, f"^{error}$"):
+                    build_event(event["name"], fields, **options)
+                with self.assertRaisesRegex(ValueError, f"^{error}$"):
+                    summarize_funnel([event], **options)
+
     def test_click_requires_catalog_for_its_own_advisor(self):
         catalogs = {"xfit-os-kreatin-poradce": {392},
                     "xfit-os-syrovatkovy-protein-porovnani": {393}}

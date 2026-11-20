@@ -38,7 +38,7 @@ def build_event(event_name, fields, *, analytics_consent=False,
         return None
     catalogs = verified_product_ids_by_page
     if type(event_name) is str and event_name == "affiliate_outbound_click":
-        catalogs = _snapshot_catalogs(catalogs)
+        catalogs = _snapshot_catalogs(catalogs) if catalogs is not None else None
     return _build_event(event_name, fields, catalogs)
 
 
@@ -74,7 +74,11 @@ def _build_event(event_name, fields, catalogs):
         # Only catalog item numbers, never free text or tracking URLs.
         if type(product_id) is not int or not 1 <= product_id <= 2**31 - 1:
             raise ValueError("product_id must be a positive catalog integer")
-        if product_id not in (catalogs or {}).get(page, frozenset()):
+        if catalogs is None or page not in catalogs:
+            raise ValueError("verified advisor catalog is missing")
+        if not catalogs[page]:
+            raise ValueError("verified advisor catalog is empty")
+        if product_id not in catalogs[page]:
             raise ValueError("product is not in the verified advisor catalog")
         params.update(partner=partner, product_id=product_id)
     return {"name": event_name, "params": params}

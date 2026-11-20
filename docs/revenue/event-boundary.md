@@ -145,3 +145,11 @@ výslovně dodanou prázdnou sadu. Když zároveň chybí prokliky, lze při kon
 nejdřív rozlišit chybějící katalogový podklad od prázdného výběru. Počet
 popisuje vstup do souhrnu. Zobrazení nabídek, dostupnost na webu a funkčnost
 měření je potřeba ověřit samostatně.
+
+Při odmítnutí prokliku rozlišují obě offline funkce tři situace.
+Chybějící katalog poradce vyžaduje doplnit ověřený podklad. U dodané
+prázdné sady zkontrolujte filtr nabídek. Pokud v neprázdné sadě chybí
+produkt, porovnejte označení tlačítka se stejnou verzí ověřeného katalogu,
+aby tlačítko vedlo ke správné variantě. Chyby neobsahují hodnoty ze vstupu
+a souhrn při chybě nevrací částečné počty. Rozdíl v chybách nedokládá
+dostupnost zboží ani funkčnost měření.
