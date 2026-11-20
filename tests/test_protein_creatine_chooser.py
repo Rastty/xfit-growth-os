@@ -26,6 +26,21 @@ class ProteinOrCreatineChooserTests(unittest.TestCase):
                        "/xfit-os-syrovatkovy-protein-porovnani/",
                        "/xfit-os-doplnky-pro-zacatecniky/"):
             self.assertIn(target,s)
+    def test_first_screen_handoff_and_checkout_arithmetic(self):
+        body=self.doc["content"]
+        first=body.split('<h2 id="xfit-rozhodnuti"',1)[0]
+        self.assertIn('<nav aria-label="Rychlé další kroky">',first)
+        self.assertIn('Nejsem si jistý – nejdřív ověřit potřebu',first)
+        self.assertIn('/xfit-os-syrovatkovy-protein-porovnani/',first)
+        self.assertIn('/xfit-os-kreatin-poradce/',first)
+        self.assertIn('affiliate odkazy',first)
+        self.assertIn('hmotnost balení × údaj z etikety / 100',body)
+        self.assertIn('cenu za 100 g bílkovin',body)
+        self.assertIn('gramy, které skutečně využijete',body)
+        self.assertNotIn('Modelový příklad proteinu:',body)
+        self.assertNotIn('Modelový příklad kreatinu:',body)
+        self.assertEqual(self.doc["wp_post_id"],25504)
+
     def test_safety_and_evidence(self):
         s=self.doc["content"]
         self.assertIn("ods.od.nih.gov",s)
