@@ -1,0 +1,64 @@
+name: XFIT BCAA Whey Legacy 2502 Onepost Release
+on:
+  # Entering main is the explicit reviewed release event. Later source-only
+  # changes do not silently trigger another WordPress write.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-bcaa-whey-legacy-2502-live.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run full regression and pinned release checks
+        run: |
+          python -m unittest discover -s tests -q
+          python -m unittest tests.test_bcaa_whey_legacy_rescue_2502 -v
+      - name: Snapshot immutable article and verify unchanged public footprint
+        run: python -m scripts.xfit_bcaa_whey_legacy_rescue_2502 snapshot
+      - name: Store original for exact reversal before any POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-bcaa-whey-2502-rollback-${{ github.run_id }}
+          path: reports/backups/xfit-bcaa-whey-2502-original.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Guarded single-post rewrite and independent public verification
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_bcaa_whey_legacy_rescue_2502 apply | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install real Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Verify decision handoff, source links, touch targets at 320/375/768
+        run: node tests/bcaa_whey_legacy_2502_live_qa.cjs
+      - name: Preserve mobile evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-bcaa-whey-2502-mobile-${{ github.run_id }}
+          path: reports/browser-qa/bcaa-whey-2502-375.png
+          if-no-files-found: ignore
+          retention-days: 14
