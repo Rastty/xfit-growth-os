@@ -156,6 +156,25 @@ class StickyGuideOnepostTests(unittest.TestCase):
                     m.apply()
             writer.assert_called_once()
 
+    def test_get_only_diagnostic_observes_source_and_public_without_post(self):
+        import contextlib
+        from io import StringIO
+        out = StringIO()
+        with patch.object(m, "source_get", return_value=post()), \
+             patch.object(m, "sticky_list", return_value=[]), \
+             patch.object(m, "homepage_get", return_value=home()), \
+             patch.object(m, "wp_request") as writer, \
+             contextlib.redirect_stdout(out):
+            report = m.diagnose_readonly()
+        self.assertEqual(report["wordpress_writes"], 0)
+        self.assertEqual(report["post_attempts"], 0)
+        self.assertEqual(report["homepage"]["guide_rank"], 9)
+        self.assertFalse(report["source"]["sticky_is_true"])
+        self.assertTrue(report["source"]["title_matches"])
+        self.assertEqual(report["sticky_inventory"]["count"], 0)
+        writer.assert_not_called()
+        self.assertNotIn("Začátečník nekupuje", out.getvalue())
+
     def test_workflow_immutable_backup_and_no_auto_repeat(self):
         text = Path(".github/workflows/xfit-home-sticky-guide-onepost.yml").read_text(encoding="utf-8")
         self.assertIn("xfit_home_sticky_guide_onepost snapshot", text)
