@@ -1,0 +1,46 @@
+name: XFIT Pilates 3394 Onepost Legacy HTML Shell Rescue
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-pilates-3394-onepost.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-pilates-3394-onepost
+  cancel-in-progress: false
+jobs:
+  release:
+    if: ${{ github.run_attempt == 1 }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 17
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Full safety regression and exact single-post source-contract tests
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -q
+      - name: Exact source SHA and markup preflight, no WordPress write
+        run: python -m scripts.xfit_pilates_3394_shell_release snapshot
+      - name: Save original post before any content write
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-pilates-3394-source-before-${{ github.run_id }}
+          path: reports/backups/xfit-pilates-3394-shell-original.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: One content-only POST and authenticated/public verification
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_pilates_3394_shell_release apply | tee -a "$GITHUB_STEP_SUMMARY"
