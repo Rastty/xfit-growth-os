@@ -1,6 +1,9 @@
 name: XFIT Beginner Hub Reader-First Choices Onepost
 # Only first-party reader navigation on existing WP #25458.
 # Never add direct affiliate merchant links, change category/sticky or new URL.
+# Original #44899530581 failed safely before backup/POST. GET-only #44899695268
+# proved original Git-ready body differs from newer live editorial source.
+# Release ONLY if exact reviewed live source SHA unchanged; preserve rest bytewise.
 on:
   push:
     branches: [main]
