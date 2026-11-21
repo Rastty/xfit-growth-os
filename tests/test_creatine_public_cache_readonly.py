@@ -46,7 +46,7 @@ class CreatineCacheReadOnlyTests(unittest.TestCase):
     def test_old_h1_and_partial_new_page_are_not_fresh(self):
         for page in (
             public_page(title=content.OLD_TITLE),
-            public_page(body="<p>Stručná odpověď: Kreatin.</p>"),
+            public_page(body="<p>Stručná odpověď: Kreatin.</p>" * 20),
             public_page(include_canonical=False),
             public_page(extra='<meta name="robots" content="noindex,follow">'),
             public_page(body=content.reviewed_document().replace(
@@ -63,7 +63,7 @@ class CreatineCacheReadOnlyTests(unittest.TestCase):
         def reader(*, bypass_cache=False):
             calls.append(bypass_cache)
             return public_page(), {"age": "0"}
-        with patch.object(audit, "wp_request") as writer:
+        with patch.object(content, "wp_request") as writer:
             result = audit.audit(source_reader=lambda: [updated_post()],
                                  public_reader=reader)
             writer.assert_not_called()
@@ -99,7 +99,7 @@ class CreatineCacheReadOnlyTests(unittest.TestCase):
     def test_wp_drift_blocks_both_public_reads_and_all_writes(self):
         bad = updated_post()
         bad["content"]["raw"] = bad["content"]["raw"] + "<p>Another editor.</p>"
-        with patch.object(audit, "wp_request") as writer:
+        with patch.object(content, "wp_request") as writer:
             with self.assertRaises(PublishError):
                 audit.audit(source_reader=lambda: [bad],
                             public_reader=lambda **kwargs:
