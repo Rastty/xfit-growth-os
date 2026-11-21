@@ -108,7 +108,7 @@ def classify_wp_write_failure(error):
         status = re.fullmatch(r"WordPress REST API returned HTTP ([1-5][0-9]{2})", value)
         if status:
             return "HTTP_" + status.group(1)
-        transport = re.fullmatch(r"WordPress REST request failed \\(([A-Za-z]+)\\)", value)
+        transport = re.fullmatch(r"WordPress REST request failed \(([A-Za-z]+)\)", value)
         # Known stdlib exception names are allowlisted rather than reflected.
         if transport:
             kind = transport.group(1)
