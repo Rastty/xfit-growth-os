@@ -34,6 +34,14 @@ def updated_post():
 
 
 class BeginnerHubChoiceTests(unittest.TestCase):
+    def setUp(self):
+        # Isolate synthetic old WordPress fixtures from the authentic,
+        # reviewer-verified production source hash. Production pin is unchanged.
+        original_sha=m.sha(old_post()["content"]["raw"])
+        self.mock_source=patch.object(m,"REVIEWED_CURRENT_SOURCE_SHA256",original_sha)
+        self.mock_source.start()
+        self.addCleanup(self.mock_source.stop)
+
     def test_existing_source_matches_ready_and_only_one_navigation_block_replaced(self):
         old=old_post()
         new=m.revised_from_original(old,m.ready())
@@ -53,6 +61,28 @@ class BeginnerHubChoiceTests(unittest.TestCase):
         self.assertIn("Ještě nevím",new)
         self.assertNotIn("<script",new)
         self.assertNotIn("<form",new)
+
+    def test_existing_later_editorial_updates_are_preserved_byte_for_byte(self):
+        old=old_post()
+        original=old["content"]["raw"]
+        extra=(
+            "<p>Redakce doplnila nové nezávislé informace a odkazy "
+            "a ostatní části rozhodovacího průvodce mají zůstat.</p>"
+        )
+        old["content"]["raw"]=original+extra
+        with patch.object(m,"REVIEWED_CURRENT_SOURCE_SHA256",
+                          m.sha(old["content"]["raw"])):
+            revised=m.revised_from_original(old,m.ready())
+        self.assertTrue(revised.endswith(extra))
+        self.assertEqual(revised.count(extra),1)
+        self.assertEqual(revised.count(m.REVISION_MARKER),1)
+        self.assertNotEqual(m.sha(old["content"]["raw"]),m.sha(original))
+
+    def test_live_source_pin_prevents_any_unreviewed_article_mutation(self):
+        original=old_post()
+        original["content"]["raw"] += "<p>Another editor update.</p>"
+        with self.assertRaisesRegex(PublishError,"reviewed GET source"):
+            m.revised_from_original(original,m.ready())
 
     def test_refuse_unowned_edited_source_sticky_or_category_drift(self):
         for change in (
