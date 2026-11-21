@@ -24,6 +24,13 @@ DOC = Path("content/revisions/creatine-disadvantages-20261121.json")
 BACKUP = Path("reports/backups/xfit-creatine-disadvantages-onepost.json")
 SLUG = ("kreatin-a-jeho-nevyhody-co-byste-meli-vedet-"
         "nez-ho-zacnete-uzivat-v-fitness")
+# Owner-authorized onepost only. 2026-11-21 authenticated read-only source
+# evidence: GitHub Actions 44892975143, exactly this post, 5,760 raw chars.
+# The original has THREE <!doctype> shells plus an iframe. Full cleanup is
+# intentional for THIS exact editorial revision; another source must fail.
+PINNED_POST_ID = 11304
+PINNED_ORIGINAL_LENGTH = 5760
+PINNED_SOURCE_SHA256 = "435798dbf0e51b909e9f5736be9f5a6651179b3a398653002f9306661d84e62a"
 URL = "https://xfit.cz/" + SLUG + "/"
 OLD_TITLE = "Kreatin a jeho nevýhody – co byste měli vědět, než ho začnete užívat v fitness"
 NEW_TITLE = "Kreatin a jeho nevýhody: vedlejší účinky podle studií"
@@ -94,7 +101,7 @@ def classify(rows, *, new_body=None):
         raise PublishError("Legacy post missing or duplicate slug")
     item = rows[0]
     if (not isinstance(item, dict) or type(item.get("id")) is not int
-            or item["id"] < 1 or item.get("slug") != SLUG
+            or item["id"] != PINNED_POST_ID or item.get("slug") != SLUG
             or item.get("status") != "publish" or item.get("link") != URL):
         raise PublishError("Live article identity/status/canonical mismatch")
     title = (item.get("title") or {}).get("raw")
@@ -112,11 +119,13 @@ def classify(rows, *, new_body=None):
                 normalize_visible(excerpt) != normalize_visible(EXCERPT)):
             raise PublishError("Partial or externally modified new article")
         return item, "already_applied"
-    if (unescape(title) != OLD_TITLE or UNSAFE_SOURCE.search(raw)
+    if (unescape(title) != OLD_TITLE
+            or sha(raw) != PINNED_SOURCE_SHA256
+            or len(raw) != PINNED_ORIGINAL_LENGTH
             or not all(phrase.casefold() in unescape(raw).casefold()
                        for phrase in LEGACY_CLAIMS)
-            or MARKER in raw or len(raw) > 30000):
-        raise PublishError("Source does not match unique reviewed outdated article")
+            or MARKER in raw):
+        raise PublishError("Original raw source hash or reviewed claims changed; no write")
     return item, "update"
 
 
