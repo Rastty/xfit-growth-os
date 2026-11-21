@@ -30,7 +30,7 @@ class VerifiedInlinkTests(unittest.TestCase):
             "creatine_safety_2139", "creatine_price_10835",
             "creatine_buyer_10854", "creatine_buyer_10738",
             "whey_training_7363", "creatine_selection_9772",
-            "whey_snacks_7195",
+            "whey_snacks_7195", "protein_lactose_25451",
         })
         self.assertEqual(CFG.post_id,2139)
         self.assertEqual(CFG.target,
