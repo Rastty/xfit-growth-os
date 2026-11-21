@@ -1,4 +1,6 @@
 name: XFIT Public Decision Funnel Freshness
+# One-time post-incident GET reconciliation: creatine prebackup fail, whey unknown POST on 2026-11-21.
+# This existing scheduled probe remains READ-ONLY; no release/retry is authorized.
 on:
   workflow_dispatch:
   push:
