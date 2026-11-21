@@ -39,6 +39,15 @@ def post(raw):
 
 
 class Pilates3394OnepostTests(unittest.TestCase):
+    def test_live_release_job_is_quarantined_before_checkout(self):
+        workflow = (Path(__file__).resolve().parents[1]
+                    / ".github/workflows/xfit-pilates-3394-onepost.yml"
+                    ).read_text(encoding="utf-8")
+        self.assertIn("jobs:\n  release:\n", workflow)
+        self.assertIn("    if: false\n    runs-on:", workflow)
+        self.assertNotIn("workflow_dispatch:", workflow)
+        self.assertIn("source validation before backup or POST", workflow)
+
     def setUp(self):
         # Synthetic fixture is a standalone document. Production hard pins
         # 1,202 prefix + 4,590 suffix characters independently verified on WP.
