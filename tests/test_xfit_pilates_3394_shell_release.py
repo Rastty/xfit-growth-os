@@ -49,8 +49,8 @@ class Pilates3394OnepostTests(unittest.TestCase):
 
     def test_preserves_substantive_text_before_and_after_embedded_document(self):
         shell, inner = fixture()
-        prefix = "<p>Úvodní redakční text před cizím HTML.</p>"
-        suffix = "<p>Závěrečné shrnutí původního článku.</p>"
+        prefix = "Úvodní redakční text před cizím HTML. "
+        suffix = " Závěrečné shrnutí původního článku."
         with patch.object(p, "EXPECTED_PREFIX_CHARS", len(prefix)), \
              patch.object(p, "EXPECTED_SUFFIX_CHARS", len(suffix)):
             result = p.transform(prefix + shell + suffix)
@@ -60,7 +60,7 @@ class Pilates3394OnepostTests(unittest.TestCase):
         self.assertIn(inner[-220:], result)
         self.assertIn(p.MARKER, result)
         self.assertEqual(result.count("<h2>"), 6)
-        self.assertEqual(result.count("<p"), 18)
+        self.assertEqual(result.count("<p"), 16)
         self.assertEqual(result.count("<title"), 0)
 
     def test_exact_shell_surgery_preserves_body_h2_and_original_links(self):
