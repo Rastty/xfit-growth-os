@@ -60,16 +60,29 @@ jobs:
             file="content/ready/${XFIT_SLUG}.json"
             test -f "$file" || { echo "::error::Missing ready content"; exit 2; }
             python scripts/wp_publish.py --file "$file" --dry-run
-            if [[ "$XFIT_MODE" == "publish" ]]; then
-              python scripts/wp_publish.py --file "$file" --publish
+            previous="$(mktemp)"
+            if git show "HEAD^:${file}" > "$previous" 2>/dev/null; then
+              guard=(--previous-file "$previous")
             else
-              python scripts/wp_publish.py --file "$file"
+              guard=(--new-only)
             fi
+            if [[ "$XFIT_MODE" == "publish" ]]; then
+              python scripts/wp_publish.py --file "$file" --publish "${guard[@]}"
+            else
+              python scripts/wp_publish.py --file "$file" "${guard[@]}"
+            fi
+            rm -f "$previous"
           else
             # On push, publish ONLY changed ready files, never the whole directory.
             while IFS= read -r file; do
               [[ -z "$file" || ! -f "$file" ]] && continue
               python scripts/wp_publish.py --file "$file" --dry-run
-              python scripts/wp_publish.py --file "$file" --publish
+              previous="$(mktemp)"
+              if git show "HEAD^:${file}" > "$previous" 2>/dev/null; then
+                python scripts/wp_publish.py --file "$file" --publish --previous-file "$previous"
+              else
+                python scripts/wp_publish.py --file "$file" --publish --new-only
+              fi
+              rm -f "$previous"
             done < <(git diff --name-only HEAD^ HEAD -- 'content/ready/*.json')
           fi
