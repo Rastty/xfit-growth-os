@@ -29,7 +29,7 @@ def exact_site_url(value):
         return False
     p = urlsplit(value)
     return (p.scheme == "https" and p.hostname in {"xfit.cz", "www.xfit.cz"}
-            and p.port is None and bool(p.path) and not p.username and not p.password
+            and p.port is None and p.path not in ('', '/') and not p.username and not p.password
             and not p.query and not p.fragment)
 
 
