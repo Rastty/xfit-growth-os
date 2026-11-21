@@ -70,6 +70,20 @@ class SupportingPilatesSourceTests(unittest.TestCase):
         self.assertEqual(result["source_structure"]["paragraph_start"], 30)
         self.assertNotIn("Stará SEO hlavička", json.dumps(result))
 
+    def test_optional_source_shell_wrapper_has_only_noneditorial_comments(self):
+        wrapped = "<!-- wp:html -->\n" + (
+            "<!DOCTYPE html><html><head><title>T</title></head>"
+            "<body>" + "<p>Pilates a běžné cvičení.</p>"*30 +
+            "</body></html>"
+        ) + "\n<!-- /wp:html -->"
+        evidence = audit.source_assess(source(wrapped))
+        self.assertTrue(evidence["shell_boundaries"][
+            "prefix_only_whitespace_or_html_comments"])
+        self.assertTrue(evidence["shell_boundaries"][
+            "suffix_only_whitespace_or_html_comments"])
+        self.assertFalse(evidence["shell_boundaries"]["starts_immediately_with_doctype"])
+        self.assertNotIn("wp:html", json.dumps(evidence))
+
     def test_source_embedded_document_hold(self):
         html = "<!DOCTYPE html><html><head><title>Old copy</title></head></html>"
         report = audit.evidence(
