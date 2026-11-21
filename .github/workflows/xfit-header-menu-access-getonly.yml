@@ -1,0 +1,30 @@
+name: XFIT WordPress Menu Access Diagnose GET Only
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-header-menu-access-getonly.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-header-menu-getonly-20261121
+  cancel-in-progress: false
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test redaction and exact one-menu identity
+        run: python -m unittest tests.test_primary_menu_access_diagnose -v
+      - name: Inspect menu access with one bounded read-only workflow
+        run: python -m scripts.xfit_primary_menu_access_diagnose
