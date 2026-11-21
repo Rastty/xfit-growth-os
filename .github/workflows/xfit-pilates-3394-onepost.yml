@@ -11,7 +11,10 @@ concurrency:
   cancel-in-progress: false
 jobs:
   release:
-    if: ${{ github.run_attempt == 1 }}
+    # QUARANTINED 2026-11-21: runs 44888012058 and 44888477463
+    # failed source validation before backup or POST. No release until
+    # independently reviewed legacy HTML grammar and new source proof.
+    if: false
     runs-on: ubuntu-24.04
     timeout-minutes: 17
     env:
