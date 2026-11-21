@@ -1,6 +1,13 @@
 # XFIT — PROJECT_STATE
 
-Updated: **2026-11-20** (Europe/Prague). Source of truth: GitHub `main` + authenticated/public WordPress readback, not a previous chat.
+Updated: **2026-11-21** (Europe/Prague). Source of truth: GitHub `main` + authenticated/public WordPress readback, not a previous chat.
+
+## Latest verified cycle — 2026-11-21 (no WordPress mutation)
+- **GET-only diagnostic shipped as code:** PR [#290](https://github.com/Rastty/xfit-growth-os/pull/290), merge `2920f0f`, [Code Checks 44878945219](https://github.com/Rastty/xfit-growth-os/actions/runs/44878945219) SUCCESS. Strict 13-ID canonical preflight; no POST.
+- **Independent live proof:** PR [#291](https://github.com/Rastty/xfit-growth-os/pull/291), merge `05c932d`, [read-only run 44879171710](https://github.com/Rastty/xfit-growth-os/actions/runs/44879171710) SUCCESS, sanitized [issue #282 receipt](https://github.com/Rastty/xfit-growth-os/issues/282#issuecomment-7059107956): WP #9371 current `modified_gmt=2023-10-21T07:44:55`, raw SHA `e6deec0b5bba9c52457d3cb3dbd141f4ef8eeb3b2d531408054084e8a2e8de20`, **3 nested doctypes, 1 incorrect `www.example.com` body canonical and 3 old `5NM2022` codes**, 2 canonicals on public HTML, zero writes.
+- **Editorial prepared, NOT DEPLOYED:** PR [#292](https://github.com/Rastty/xfit-growth-os/pull/292), merge `bd2d4de`, [Code Checks 44879408813](https://github.com/Rastty/xfit-growth-os/actions/runs/44879408813) SUCCESS. Existing #9371 replacement is 1,103-word NIH/ISSN-backed Czech content (9 sections, 3 accessible links); `content/revisions/bcaa-recovery-9371.manifest.json` pins source and `wordpress_write_permitted=false`. Original WP post and its metadata remain unchanged.
+- **Blocker / exact owner action:** investigate 2026-11-20 20:23:47–20:24:18 Prague WEDOS/WP REST/WAF logs for POST `/wp-json/wp/v2/posts/9462`; share status/rule/timeout only, not credentials. The #9462 onepost workflow remains quarantined. No blind retry or #9371 publication before transport root cause is resolved.
+- **Next by effect/effort:** after transport fix, guarded single-post #9371 release (immutable backup before one POST, authenticated/public canonical and coupon readback, Chromium 320/375/768); then #9462. Continue bounded coupon cleanup independently. No verified affiliate clicks, rankings or commissions attributable to this cycle.
 
 ## Current incident — WP #9462 (20 Nov 2026, 20:27 Prague)
 - **Code ready, NOT deployed:** editorial rewrite [PR #284](https://github.com/Rastty/xfit-growth-os/pull/284); read-only title diagnosis [#285](https://github.com/Rastty/xfit-growth-os/pull/285) proved authenticated raw title `-` vs rendered `–`; exact paired title safety fix [#286](https://github.com/Rastty/xfit-growth-os/pull/286) merged with green CI.
