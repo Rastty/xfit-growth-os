@@ -13,7 +13,8 @@ import time
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
-from scripts.wp_publish import PublishError, normalized_base, wp_request
+from scripts.wp_publish import (PublishError, normalized_base, wp_request,
+                                classify_wp_write_failure)
 from scripts.xfit_editorial_gate import check_document
 from scripts.xfit_public_coupon_watch import classify_html, exact_article_url
 
@@ -259,22 +260,28 @@ def apply():
         raise PublishError("Independent public source changed; no POST")
 
     uncertain = False
+    post_error_category = "NONE"
     try:
         response = wp_request(normalized_base(), "posts/9462", payload={"content": candidate})
         uncertain = not isinstance(response, dict) or response.get("id") != POST_ID
-    except (PublishError, OSError, TypeError, ValueError):
+        if uncertain:
+            post_error_category = "INVALID_POST_RESPONSE"
+    except (PublishError, OSError, TypeError, ValueError) as error:
         uncertain = True
+        post_error_category = classify_wp_write_failure(error)
     try:
         saved = identity(remote())
         if saved != candidate:
             raise PublishError("Authenticated content readback mismatch")
     except (PublishError, OSError, TypeError, ValueError) as error:
         print(json.dumps({"state": "UNRESOLVED_NO_RETRY", "post_id": POST_ID,
-                          "post_attempts": 1, "response_uncertain": uncertain}))
+                          "post_attempts": 1, "response_uncertain": uncertain,
+                          "post_error_category": post_error_category}))
         raise PublishError("Ambiguous WordPress result; manual review required") from error
     if not verify_public():
         print(json.dumps({"state": "AUTH_VERIFIED_PUBLIC_UNVERIFIED", "post_id": POST_ID,
-                          "post_attempts": 1, "response_uncertain": uncertain}))
+                          "post_attempts": 1, "response_uncertain": uncertain,
+                          "post_error_category": post_error_category}))
         raise PublishError("Authenticated saved, public not independently proved")
     print(json.dumps({"state": "PUBLIC_VERIFIED", "post_id": POST_ID, "url": URL,
                       "post_attempts": 1, "posts_changed": 1, "public_site_modified": True,
