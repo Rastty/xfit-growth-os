@@ -18,6 +18,14 @@ def page(slug, *, canonical=True, meta="", links=()):
 
 
 class TechnicalReadOnlyTests(unittest.TestCase):
+    def test_seventh_live_guide_is_in_exact_allowed_scope(self):
+        self.assertEqual(len(probe.OWNED), 7)
+        self.assertEqual(len(set(probe.OWNED)), 7)
+        self.assertIn("xfit-os-protein-bez-laktozy", probe.OWNED)
+        self.assertTrue(probe.exact_owned_url(
+            "https://xfit.cz/xfit-os-protein-bez-laktozy/",
+            "xfit-os-protein-bez-laktozy"))
+
     def test_normal_self_canonical_and_no_noindex(self):
         row = probe.assess_html(
             probe.OWNED[0], page(probe.OWNED[0],
@@ -80,12 +88,13 @@ class TechnicalReadOnlyTests(unittest.TestCase):
             calls.append(path)
             return expected[path.lstrip("/").rstrip("/")], {"Content-Type": "text/html"}
         result = probe.run(reader=reader)
-        self.assertEqual(result["page_count"], 6)
-        self.assertEqual(len(calls), 12)
+        self.assertEqual(result["page_count"], 7)
+        self.assertEqual(result["reviewed_article_sample_size"], 8)
+        self.assertEqual(len(calls), 13)
         self.assertEqual(result["wordpress_writes"], 0)
         self.assertEqual(result["plugins_installed"], 0)
         self.assertEqual(result["seo_mutations"], 0)
-        self.assertEqual(result["pages"][0]["observed_internal_inlinks_from_seven_reviewed_articles"], 7)
+        self.assertEqual(result["pages"][0]["observed_internal_inlinks_from_reviewed_articles"], 8)
         self.assertEqual(result["infrastructure"]["wordpress_sitemap"], "ACCESSIBLE_XML")
         self.assertEqual(result["post_sitemap_inclusion"]["post_maps_checked"], 1)
         self.assertEqual(result["post_sitemap_inclusion"]["per_slug"][probe.OWNED[0]],
@@ -135,7 +144,7 @@ class TechnicalReadOnlyTests(unittest.TestCase):
         self.assertNotIn("evil.example", str(report))
         self.assertNotIn("token=secret", str(report))
         self.assertEqual(report["wordpress_writes"], 0)
-        self.assertEqual(len(seen), 12)
+        self.assertEqual(len(seen), 13)
 
     def test_failed_public_fetch_is_unknown_not_unindexed(self):
         def reader(path, **kwargs):
