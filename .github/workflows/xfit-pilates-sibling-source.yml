@@ -1,0 +1,54 @@
+name: XFIT Pilates Sibling Source and HTML Safety Read Only
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-pilates-sibling-source.yml'
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline strict identity and malformed markup tests
+        run: python -m unittest tests.test_xfit_pilates_sibling_source -v
+      - name: Exactly one authenticated WordPress source GET and one public GET
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p reports
+          python -m scripts.xfit_pilates_sibling_source | tee reports/xfit-pilates-sibling-source.json
+      - name: Append redacted evidence to existing project state
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo '### XFIT Pilates sibling source — no WordPress writes'
+            echo
+            echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo 'Source: verified XFIT GSC 2026-10-21..11-17: 41 impressions, 0 clicks.'
+            echo 'This diagnostic does not approve link publication or infer rankings.'
+            if test -s reports/xfit-pilates-sibling-source.json; then
+              cat reports/xfit-pilates-sibling-source.json
+            else
+              echo '{"state":"READ_ONLY_SOURCE_NO_REPORT","wordpress_post_attempts":0,"release_permitted":false}'
+            fi
+          } > /tmp/xfit-pilates-sibling.txt
+          gh issue comment 1 --repo "$GITHUB_REPOSITORY" --body-file /tmp/xfit-pilates-sibling.txt
