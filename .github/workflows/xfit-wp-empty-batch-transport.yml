@@ -1,0 +1,56 @@
+name: XFIT Empty Batch POST Transport Diagnostic
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-wp-empty-batch-transport.yml'
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  batch_noop:
+    if: ${{ github.run_attempt == 1 }} # No manual/re-run repeat of diagnostic POST
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline exact empty-batch and source-identity regression tests
+        run: python -m unittest tests.test_xfit_wp_empty_batch_transport -v
+      - name: One empty-batch transport attempt; zero child WordPress requests
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p reports
+          python -m scripts.xfit_wp_empty_batch_transport | tee reports/xfit-empty-batch-proof.json
+      - name: Durable sanitized proof in canonical triage
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo '### XFIT empty-batch POST diagnostic (zero child requests)'
+            echo
+            echo 'Never updates #9371 or #9462; neither release guard is lifted.'
+            echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo 'Core payload is fixed to an empty requests array; no repeat on uncertain POST.'
+            echo
+            if test -s reports/xfit-empty-batch-proof.json; then
+              cat reports/xfit-empty-batch-proof.json
+            else
+              echo '{"state":"NO_BATCH_REPORT","http_post_attempts":0,"wordpress_child_requests":0,"release_allowed":false}'
+            fi
+          } > /tmp/xfit-empty-batch-issue.txt
+          gh issue comment 282 --repo "$GITHUB_REPOSITORY" --body-file /tmp/xfit-empty-batch-issue.txt
