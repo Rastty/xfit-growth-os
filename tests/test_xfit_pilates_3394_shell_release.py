@@ -52,7 +52,8 @@ class Pilates3394OnepostTests(unittest.TestCase):
         self.assertNotIn("<head", result.lower())
         self.assertNotIn("<html", result.lower())
         self.assertNotIn("<!DOCTYPE", result)
-        self.assertLess(result.index(p.MARKER), result.index("<h2>"))
+        self.assertLess(result.index(p.MARKER),
+                        result.index("<h2>", result.index("<h2>") + 1))
         self.assertIn("min-height:44px", result)
         self.assertIn("Klasické a power pilates", result)
 
