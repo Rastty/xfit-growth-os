@@ -1,0 +1,44 @@
+name: XFIT Sitewide Reader-First Guide Sticky Onepost
+# WordPress-native homepage promotion, no theme/menu/WEDOS writes.
+# Only this exact workflow-file merge triggers ONE opportunity to set sticky.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-home-sticky-guide-onepost.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-sitewide-firstparty-guide-sticky-20261121
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test safe edit, no other sticky posts and public-home proof
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -q
+      - name: Prewrite source, sticky inventory and public card position
+        run: python -m scripts.xfit_home_sticky_guide_onepost snapshot
+      - name: Preserve whole original post, sticky state and public position before possible POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-home-sticky-original-${{ github.run_id }}
+          path: reports/backups/xfit-home-guide-sticky-20261121.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: At most one sticky-only POST and source plus public homepage readback
+        run: python -m scripts.xfit_home_sticky_guide_onepost apply
