@@ -1,0 +1,30 @@
+name: XFIT Creatine Disadvantages Raw Source Diagnose Only
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-creatine-disadvantages-getonly.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-creatine-disadvantages-getonly-20261121
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run existing strict onepost regression tests
+        run: python -m unittest tests.test_creatine_disadvantages_onepost -v
+      - name: Identify source format or other identity mismatch with one authenticated GET
+        run: python -m scripts.xfit_creatine_disadvantages_onepost diagnose
