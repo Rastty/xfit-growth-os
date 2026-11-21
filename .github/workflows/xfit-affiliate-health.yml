@@ -10,6 +10,8 @@ on:
       - 'scripts/xfit_merchant_destination_probe.py'
       - 'tests/test_affiliate_public_audit.py'
       - 'tests/test_merchant_destination_probe.py'
+      - 'scripts/xfit_public_feed_parity.py'
+      - 'tests/test_public_feed_parity.py'
   schedule:
     - cron: '43 6 * * *'
 permissions:
@@ -20,6 +22,7 @@ jobs:
     timeout-minutes: 12
     env:
       XFIT_AFFIL_DEFAULT_LINK: ${{ secrets.XFIT_AFFIL_DEFAULT_LINK }}
+      XFIT_NAMAXIMUM_FEED_URL: ${{ secrets.XFIT_NAMAXIMUM_FEED_URL || secrets.XFIT_GREENMEDICAL_FEED_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -33,3 +36,14 @@ jobs:
         run: python -m scripts.xfit_affiliate_public_audit
       - name: Inspect untracked product destinations (diagnostic only)
         run: python -m scripts.xfit_merchant_destination_probe
+      - name: Compare live advertised cards against latest private XML (read-only)
+        if: ${{ vars.XFIT_AFFIL_FEED_ENABLED == 'true' }}
+        run: python -m scripts.xfit_public_feed_parity
+      - name: Keep redacted public offer/feed parity evidence, no raw catalog
+        if: ${{ vars.XFIT_AFFIL_FEED_ENABLED == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-current-offer-feed-parity-${{ github.run_id }}
+          path: reports/xfit-feed-public-offer-parity.json
+          retention-days: 14
+          if-no-files-found: error
