@@ -46,6 +46,19 @@ class PilatesMatBridgeTests(unittest.TestCase):
         prefix, suffix = raw.split("<p>" + bridge.OLD + "</p>")
         self.assertEqual(new, prefix + "<p>" + bridge.NEW + "</p>" + suffix)
 
+    def test_safe_one_pair_editorial_emphasis_does_not_block_reviewed_copy(self):
+        raw = sample_body()
+        title, remainder = bridge.OLD.split(": ", 1)
+        for tag in ("strong", "b", "em", "i", "span"):
+            with self.subTest(tag=tag):
+                formatted = "<" + tag + ">" + title + ":</" + tag + "> " + remainder
+                source = raw.replace(bridge.OLD, formatted)
+                revised, mode = bridge.change_one_paragraph(source)
+                self.assertEqual(mode, "update")
+                self.assertNotIn(bridge.OLD, revised)
+                self.assertEqual(revised.count(bridge.TARGET), 1)
+                self.assertIn("<p>" + bridge.NEW + "</p>", revised)
+
     def test_exact_replay_is_noop(self):
         new, _ = bridge.change_one_paragraph(sample_body())
         result, mode = bridge.change_one_paragraph(new)
@@ -56,7 +69,7 @@ class PilatesMatBridgeTests(unittest.TestCase):
         raw = sample_body()
         cases = (
             raw.replace("produktové feedy", "nabídkové feedy"),
-            raw.replace(bridge.OLD, "<strong>" + bridge.OLD + "</strong>"),
+            raw.replace(bridge.OLD, '<a href="https://xfit.cz/other/">' + bridge.OLD + "</a>"),
             raw.replace("<p>" + bridge.OLD + "</p>", "<p>Text o výběru.</p>"),
             raw + "<p>" + bridge.OLD + "</p>",
             raw + '<p><a href="' + bridge.TARGET + '">Další odkaz</a></p>',

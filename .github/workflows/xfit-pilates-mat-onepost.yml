@@ -1,5 +1,6 @@
 name: XFIT Pilates 3660 Existing Mat Guide Handoff
 # One already-indexed source to one existing first-party mat decision guide.
+# Source-bound inline markup: exact visible text with one safe formatting pair only.
 on:
   workflow_dispatch:
   push:

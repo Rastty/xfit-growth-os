@@ -102,7 +102,17 @@ def change_one_paragraph(raw):
     match = selected[0]
     # Reject unexpected embedded links, inline tags or shifted editorial claims.
     old_body = match.group("body")
-    if ("<" in old_body or visible(old_body) != OLD or OLD not in visible(raw)):
+    # Live source diagnostic 44890993949: exact visible text, exactly one
+    # opening/closing markup pair. Accept only harmless, attribute-free emphasis.
+    # Links, scripts, comments, nested HTML, other markup and text drift fail.
+    tokens = re.findall(r"<[^>]*>", old_body)
+    allowed_pair = (
+        not tokens or
+        any(tokens == ["<" + tag + ">", "</" + tag + ">"]
+            for tag in ("strong", "b", "em", "i", "span"))
+    )
+    if (not allowed_pair or visible(old_body) != OLD
+            or OLD not in visible(raw) or old_body.count("<") != len(tokens)):
         raise PublishError("Legacy paragraph differs from reviewed exact public text")
     after = (raw[:match.start("body")] + NEW +
              raw[match.end("body"):])
