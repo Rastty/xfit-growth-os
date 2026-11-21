@@ -28,6 +28,12 @@ def fake_guide():
 
 
 class DecisionNavigationTests(unittest.TestCase):
+    def setUp(self):
+        self.mock_base = patch.object(nav, "normalized_base",
+                                      return_value="https://xfit.cz")
+        self.mock_base.start()
+        self.addCleanup(self.mock_base.stop)
+
     def test_choose_exact_primary_menu_by_location_and_four_current_titles(self):
         with patch.object(nav, "fetch_menu_items", return_value=original_items()):
             ident, items = nav.choose_header_menu(fetch=lambda *args: menu())
