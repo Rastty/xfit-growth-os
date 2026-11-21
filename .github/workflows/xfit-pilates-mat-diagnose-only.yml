@@ -1,0 +1,31 @@
+name: XFIT Pilates 3660 Mat Paragraph Source Diagnose Only
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-pilates-mat-diagnose-only.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-pilates-3660-getonly-diagnose
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline tests (no WP mutations)
+        run: python -m unittest tests.test_pilates_mat_handoff_3660 -v
+      - name: Classify source paragraph structure from one authenticated GET
+        run: python -m scripts.xfit_pilates_mat_handoff_3660 diagnose
