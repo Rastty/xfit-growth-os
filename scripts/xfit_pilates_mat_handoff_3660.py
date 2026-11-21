@@ -30,7 +30,7 @@ OLD = (
 )
 MARKER = "xfit-pilates-mat-bridge-20261121"
 NEW = (
-    '<strong>Cvičíte pilates doma a řešíte podložku?</strong> '
+    '<strong data-xfit-handoff="' + MARKER + '">Cvičíte pilates doma a řešíte podložku?</strong> '
     'Nejdřív se zeptejte, zda vám ji poskytne studio nebo zda vyhovuje '
     'ta, kterou už máte. Pokud si vybíráte vlastní, přečtěte si '
     '<a href="' + TARGET + '">praktického průvodce výběrem podložky '
@@ -39,7 +39,7 @@ NEW = (
     'Novou podložku nemusíte kupovat.'
 )
 PARAGRAPHS = re.compile(
-    r"(?P<open><p\\b[^>]*>)(?P<body>.*?)(?P<close></p\\s*>)",
+    r"(?P<open><p\b[^>]*>)(?P<body>.*?)(?P<close></p\s*>)",
     re.IGNORECASE | re.DOTALL,
 )
 BACKUP = Path("reports/backups/xfit-pilates-mat-3660.json")
