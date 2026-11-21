@@ -1,0 +1,44 @@
+name: XFIT Two Product Advisers Supplement Category Onepost
+# One approved pair of existing WP posts; no new content, offers or redirects.
+# Full prewrite rollback uploaded before any category-only POST.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-supplements-two-advisors-onepost.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-two-supplement-advisors-category-20261121
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Source, privacy, reader journey, and single-attempt regression tests
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -q
+      - name: Pin exact two original WP posts, supplement category and live archive
+        run: python -m scripts.xfit_supplements_two_advisors_category snapshot
+      - name: Preserve full source and categories for BOTH posts before any POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-two-supplement-advisors-original-${{ github.run_id }}
+          path: reports/backups/xfit-supplements-two-advisors-20261121.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Add category once to each post, prove exact original source and public top-three
+        run: python -m scripts.xfit_supplements_two_advisors_category apply
