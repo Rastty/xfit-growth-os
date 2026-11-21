@@ -259,10 +259,47 @@ def apply():
     }))
 
 
+# Closed list of our own fixed messages; do not echo upstream HTTP/WAF text.
+SAFE_REASONS = frozenset((
+    "Legacy shell structure differs from reviewed source",
+    "Cannot isolate one complete embedded document",
+    "Original surrounding editorial content drifted",
+    "Embedded head contains unreviewed substantive text",
+    "Embedded article body failed source safety",
+    "Preserved editorial content structure drifted",
+    "No reviewed introduction paragraph",
+    "Unexpected revised article markup",
+    "Non-target editorial headings, media or links drifted",
+))
+
+
+def inspect():
+    """One authenticated GET and pure candidate check; no artifact or POST."""
+    original = identify(source())
+    try:
+        candidate = transform(original)
+    except PublishError as exc:
+        reason = str(exc)
+        print(json.dumps({
+            "state": "SOURCE_GUARD_REJECTED_NO_WRITE",
+            "guard_reason": reason if reason in SAFE_REASONS else "UNCLASSIFIED",
+            "original_sha256": sha(original),
+            "post_attempts": 0, "release_permitted": False,
+        }))
+        return
+    print(json.dumps({
+        "state": "CANDIDATE_SHAPE_VALID_NO_WRITE",
+        "original_sha256": sha(original),
+        "candidate_sha256": sha(candidate),
+        "candidate_has_one_reviewed_inlink": candidate.count(TARGET) == 1,
+        "post_attempts": 0, "release_permitted": False,
+    }))
+
+
 def main():
-    if len(sys.argv) != 2 or sys.argv[1] not in ("snapshot", "apply"):
-        raise PublishError("Usage snapshot|apply")
-    (snapshot if sys.argv[1] == "snapshot" else apply)()
+    if len(sys.argv) != 2 or sys.argv[1] not in ("inspect", "snapshot", "apply"):
+        raise PublishError("Usage inspect|snapshot|apply")
+    {"inspect": inspect, "snapshot": snapshot, "apply": apply}[sys.argv[1]]()
 
 
 if __name__ == "__main__":
