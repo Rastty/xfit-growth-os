@@ -247,7 +247,53 @@ def verify_public(url, title, expected_content):
     raise PublishError("Public page still shows old/incomplete article body; cache or renderer stale")
 
 
-def publish(doc, *, live=False):
+class SourceLinks(HTMLParser):
+    """Compare navigation destinations, not just rendered link text."""
+
+    def __init__(self):
+        super().__init__()
+        self.hrefs = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "a":
+            self.hrefs.append(dict(attrs).get("href", ""))
+
+
+def editorial_links(content):
+    parser = SourceLinks()
+    parser.feed(content)
+    return parser.hrefs
+
+
+def assert_prewrite_source(existing, previous, *, new_only=False):
+    """Fail closed before POST if a different editor has changed this post.
+
+    Previous is the *previous Git revision* of the owned ready JSON, not the
+    proposed replacement. Only a full edit-context raw body is acceptable.
+    """
+    if new_only:
+        if existing is not None:
+            raise PublishError("New-only ready file collides with existing post; no write")
+        return
+    if previous is None:
+        raise PublishError("Existing-post write requires pinned previous Git source")
+    if existing is None:
+        raise PublishError("Previous version exists in Git but WP post is missing; no create")
+    if existing.get("slug") != previous["slug"]:
+        raise PublishError("Previous Git source does not match live post slug")
+    content = existing.get("content", {})
+    raw = content.get("raw") if isinstance(content, dict) else None
+    title = existing.get("title", {})
+    raw_title = title.get("raw") if isinstance(title, dict) else None
+    if not isinstance(raw, str) or MARKER not in raw or not isinstance(raw_title, str):
+        raise PublishError("Missing owned raw content/title needed for source drift guard")
+    if (article_visible(raw)[0] != article_visible(previous["content"])[0]
+            or editorial_links(raw) != editorial_links(previous["content"])
+            or normalize_visible(raw_title) != normalize_visible(previous["title"])):
+        raise PublishError("Live post changed outside previous Git revision; no write")
+
+
+def publish(doc, *, live=False, expected_previous=None, new_only=False):
     # Hard gate: a successful WP API call must never substitute for quality.
     try:
         try:
@@ -269,7 +315,7 @@ def publish(doc, *, live=False):
     else:
         posts = wp_request(base, "posts?" + urllib.parse.urlencode({
             "slug": slug, "context": "edit", "status": "any", "per_page": 10,
-            "_fields": "id,slug,status,content,link",
+            "_fields": "id,slug,status,content,link,title",
         }))
         if not isinstance(posts, list):
             raise PublishError("Unexpected WordPress API listing")
@@ -279,6 +325,8 @@ def publish(doc, *, live=False):
         existing = matched[0] if matched else None
     if existing and MARKER not in existing_content(existing):
         raise PublishError("Collision with an existing post not owned by Xfit Growth OS; refusing overwrite")
+    if expected_previous is not None or new_only:
+        assert_prewrite_source(existing, expected_previous, new_only=new_only)
     status = "publish" if live else "draft"
     body = {k: v for k, v in doc.items() if k != "wp_post_id"}
     body["status"] = status
@@ -312,16 +360,30 @@ def main():
     parser.add_argument("--file", required=True)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--publish", action="store_true", help="Explicitly publish instead of draft")
+    parser.add_argument("--previous-file", help="Previous Git revision of this owned JSON")
+    parser.add_argument("--new-only", action="store_true", help="Fail if slug already exists")
     args = parser.parse_args()
     if args.dry_run and args.publish:
         parser.error("Choose dry-run or --publish, not both")
+    if args.previous_file and args.new_only:
+        parser.error("Choose --previous-file or --new-only")
     try:
         source = Path(args.file)
         doc = validate_document(json.loads(source.read_text(encoding="utf-8")))
         if args.dry_run:
             print(json.dumps({"state": "validated_only", "slug": doc["slug"], "no_remote_writes": True}))
             return 0
-        result = publish(doc, live=args.publish)
+        if not args.previous_file and not args.new_only:
+            raise PublishError("Publication requires --previous-file or --new-only")
+        previous = None
+        if args.previous_file:
+            previous = validate_document(json.loads(
+                Path(args.previous_file).read_text(encoding="utf-8")))
+            if previous["slug"] != doc["slug"] or (previous.get("wp_post_id")
+                    and previous.get("wp_post_id") != doc.get("wp_post_id")):
+                raise PublishError("Pinned previous source identity mismatch")
+        result = publish(doc, live=args.publish, expected_previous=previous,
+                         new_only=args.new_only)
         print(json.dumps(result, ensure_ascii=False))
         return 0
     except (PublishError, OSError, json.JSONDecodeError) as ex:
