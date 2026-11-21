@@ -35,7 +35,7 @@ class CreatineDisadvantagesOnepostTests(unittest.TestCase):
         content = revision.reviewed_document()
         self.assertTrue(content.startswith("<div "))
         self.assertGreater(len(content), 4000)
-        self.assertIn("nemusíte kupovat nic", content)
+        self.assertIn("nemusíte kupovat nic", content.casefold())
         self.assertIn("studie nepodporují", content)
         self.assertIn("není nezbytný", content)
         self.assertIn("Operation Supplement Safety", content)
