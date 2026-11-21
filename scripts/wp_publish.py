@@ -327,6 +327,9 @@ def publish(doc, *, live=False, expected_previous=None, new_only=False):
         raise PublishError("Collision with an existing post not owned by Xfit Growth OS; refusing overwrite")
     if expected_previous is not None or new_only:
         assert_prewrite_source(existing, expected_previous, new_only=new_only)
+    # A manual draft smoke-test must not unpublish a working live article.
+    if existing and existing.get("status") == "publish" and not live:
+        raise PublishError("Refusing to downgrade an existing published article to draft")
     status = "publish" if live else "draft"
     body = {k: v for k, v in doc.items() if k != "wp_post_id"}
     body["status"] = status
