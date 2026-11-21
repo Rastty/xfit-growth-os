@@ -1,0 +1,40 @@
+name: XFIT Beginner Hub Choice Prewrite GET Only
+# Diagnose one existing WP document after 44899530581 refused safely.
+# No WordPress write, no retry of previous production workflow.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-beginner-choice-prewrite-getonly.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-beginner-choice-prewrite-getonly-20261121
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Unit test source failure isolation without content leakage
+        run: python -m unittest tests.test_beginner_choice_prewrite_getonly -v
+      - name: Authenticated WP GET and direct public homepage/category readback only
+        run: python -m scripts.xfit_beginner_hub_choice_prewrite_getonly
+      - name: Store sanitized prewrite status for safe subsequent decision
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-beginner-choice-prewrite-getonly-${{ github.run_id }}
+          path: reports/xfit-beginner-choice-prewrite-readonly.json
+          if-no-files-found: warn
+          retention-days: 14
