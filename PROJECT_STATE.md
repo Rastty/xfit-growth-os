@@ -2,6 +2,13 @@
 
 Updated 2026-11-21 (Europe/Prague). **Source of truth:** GitHub `main` + concluded Actions + authenticated WordPress and direct public HTML. Detailed older releases remain in [Git history](https://github.com/Rastty/xfit-growth-os/blob/cfc9b4b54cf0b3126af851092703f00a29423228/PROJECT_STATE.md). Prepared code ≠ merged ≠ deployed ≠ measured business results.
 
+## TURBO 2026-11-21 — nový komerční vstup (stav: MERGED, produkce NEOVĚŘENA)
+- [PR #339](https://github.com/Rastty/xfit-growth-os/pull/339) vytvořil samostatný, medicínsky opatrný výběr **proteinu při intoleranci laktózy** (odlišit alergii na mléčnou bílkovinu, žádný nákup jako legitimní možnost, kontrola etikety a skutečných bílkovin), přechod do existujícího whey poradce pouze při vhodnosti mléčných bílkovin. Nejsou přidány žádné nové produkty ani neověřené ceny. Šest H2, 926 slov, oficiální zdroje EK/NHS a ISSN, tři interní odkazy, transparentní provize ve srovnávači.
+- **GitHub:** squash merged do `main` jako [`63b32b5`](https://github.com/Rastty/xfit-growth-os/commit/63b32b5a5fd6b86de8c25a0857cc8aebbbe9f029); nově přidaný `content/ready/xfit-os-protein-bez-laktozy.json`. Lokální strukturální předkontrola prošla (926 slov, 6 H2, validní formát odkazů a zákaz aktivního HTML). **GitHub Actions CI a post-merge `XFIT Direct Publish` nebyly dostupným konektorem potvrzeny**; merge nemá automaticky status `live_verified`.
+- **Public:** pokus o otevření `https://xfit.cz/xfit-os-protein-bez-laktozy/` přes externí web retrieval v tomto běhu nebyl úspěšný; neinterpretovat jako jistý 404 ani jako publikaci. Před dalším podobným vydáním ověřit přesný `XFIT Direct Publish` push run, stav `live_verified`, WordPress post ID a aktuální veřejné HTML. Při chybě workflow **neopakovat nekontrolovaně POST**, vyšetřit nejprve read-only.
+- Obchodní přínos nového vstupu je **hypotéza, nikoliv prokázané kliknutí/ranking/provize**. Nedělat další obdobné long-tail články bez GSC vstupních dotazů.
+- **Tři cykly:** (1) nový rozdílný komerční vstup — kód MERGED, veřejné ověření otevřené; (2) kontrola aktuálnosti a dostupnosti merchant variant v existujících dvou poradnách; (3) správný XFIT GA4 stream + GSC a Affial paid/approved evidence, bez instalace duplikátního měření. Nezasahovat do otevřených cizích PR #248/#263/#270/#271 ani do pozastavené taxonomy #333/#335.
+
 ## Goal and baseline
 Build a trustworthy Czech training/supplement decision service that recommends **nothing to buy when appropriate**, then verified product offers when useful. Optimize **qualified Google visits, user decisions, approved and paid affiliate commissions**, not article counts or synthetic clicks.
 
