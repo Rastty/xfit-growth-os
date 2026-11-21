@@ -71,12 +71,11 @@ class SupportingPilatesSourceTests(unittest.TestCase):
         self.assertNotIn("Stará SEO hlavička", json.dumps(result))
 
     def test_optional_source_shell_wrapper_has_only_noneditorial_comments(self):
-        wrapped = "<!-- wp:html -->\\n" + (
+        wrapped = "<!-- wp:html -->\n" + (
             "<!DOCTYPE html><html><head><title>T</title></head>"
             "<body>" + "<p>Pilates a běžné cvičení.</p>"*30 +
             "</body></html>"
-        ) + "\\n<!-- /wp:html -->"
-        wrapped = wrapped.replace("\\\\n", "\\n")
+        ) + "\n<!-- /wp:html -->"
         evidence = audit.source_assess(source(wrapped))
         self.assertTrue(evidence["shell_boundaries"][
             "prefix_only_whitespace_or_html_comments"])
