@@ -1,6 +1,8 @@
 name: XFIT Two Product Advisers Supplement Category Onepost
 # One approved pair of existing WP posts; no new content, offers or redirects.
 # Full prewrite rollback uploaded before any category-only POST.
+# 44897339584 failed before POST marker; GET-only 44897698415 confirmed both unassigned.
+# This release pins both observed original source hashes; no blind retry after a POST.
 on:
   push:
     branches: [main]
