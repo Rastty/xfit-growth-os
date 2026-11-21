@@ -44,11 +44,11 @@ LEGACY_CLAIMS = (
     "krční křeče",
 )
 UNSAFE_SOURCE = re.compile(
-    r"<!\\s*doctype\\b|<\\s*(?:html|head|body|title|script|iframe|form)\\b",
+    r"<!\s*doctype\b|<\s*(?:html|head|body|title|script|iframe|form)\b",
     re.IGNORECASE,
 )
 UNSAFE_NEW = re.compile(
-    r"<\\s*(?:script|iframe|form|style)\\b|on[a-z]+\\s*=",
+    r"<\s*(?:script|iframe|form|style)\b|on[a-z]+\s*=",
     re.IGNORECASE,
 )
 
