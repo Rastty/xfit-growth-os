@@ -13,6 +13,7 @@ const URL_OK = "https://www.namaximum.cz/p/creatine?variant=392&utm_medium=affil
 
 function harness({consent = true, bridge = true, page = "/xfit-os-kreatin-poradce/"} = {}) {
   const calls = [];
+  const funnel = [];
   const listeners = {};
   const root = {
     location: {
@@ -22,13 +23,32 @@ function harness({consent = true, bridge = true, page = "/xfit-os-kreatin-poradc
     document: {
       addEventListener: (type, handler) => { listeners[type] = handler; },
     },
-    gtag: (...args) => calls.push(args),
+    gtag: (...args) => {
+      if (args[1] === "affiliate_outbound_click") calls.push(args);
+      else funnel.push(args);
+    },
   };
   if (bridge) root.xfitGetAnalyticsConsent = () => consent;
   root.getWccConsent = () => ({categories:{analytics:consent}});
   vm.runInNewContext(SCRIPT, { window: root, URL });
   return {
-    calls, root,
+    calls, funnel, root,
+    decide({type = "nav", href = "#xfit-need", trusted = true,
+            googleAnnotation = false} = {}) {
+      const anchor = {
+        classList: {contains: name => name === "google-anno" && googleAnnotation},
+        getAttribute: name => name === "href" ? href : null,
+        hasAttribute: () => false,
+        closest: selector =>
+          selector === 'nav[aria-label="Rychlá navigace poradcem"]' && type === "nav" ||
+          selector === '[data-xfit-quick-pick="no-buy"]' && type === "no_buy" ||
+          selector === "section#xfit-rychly-vyber" && type === "no_buy" ? {} : null,
+      };
+      listeners.click({
+        isTrusted: trusted,
+        target: {closest: selector => selector === "a" ? anchor : null},
+      });
+    },
     click({href = URL_OK, id = "392", engine = "creatine",
            rel = "sponsored nofollow", trusted = true, card = true,
            hero = false} = {}) {
@@ -49,6 +69,84 @@ function harness({consent = true, bridge = true, page = "/xfit-os-kreatin-poradc
     },
   };
 }
+
+test("real choice start and no-buy completion are distinct, consented and deduped", () => {
+  const h = harness();
+  h.decide({type:"nav"});
+  assert.deepEqual(JSON.parse(JSON.stringify(h.funnel)), [
+    ["event", "advisor_start", {
+      page:"xfit-os-kreatin-poradce", selection_engine:"creatine"
+    }]
+  ]);
+  h.decide({type:"nav", href:"#xfit-offers"});
+  assert.equal(h.funnel.length, 1, "navigation is not a completion");
+  h.decide({type:"no_buy"});
+  assert.equal(h.funnel.length, 2);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.funnel[1])), [
+    "event", "advisor_complete", {
+      page:"xfit-os-kreatin-poradce", selection_engine:"creatine"
+    }
+  ]);
+  h.decide({type:"no_buy"});
+  assert.equal(h.funnel.length, 2, "one completion per viewed page");
+  assert.equal(h.calls.length, 0, "no-buy never becomes a merchant click");
+  for (const event of h.funnel) {
+    const fields = Object.keys(event[2]).sort();
+    assert.deepEqual(fields, ["page", "selection_engine"]);
+    const payload = JSON.stringify(event);
+    for (const forbidden of ["result", "health", "email", "url", "query", "no_buy", "answer"]) {
+      assert.equal(payload.includes(forbidden), false);
+    }
+  }
+});
+
+test("first direct real merchant click starts and completes before outbound; repeat only click", () => {
+  const h = harness();
+  h.click();
+  h.click();
+  assert.equal(h.calls.length, 2);
+  assert.deepEqual(h.funnel.map(x => x[1]), ["advisor_start", "advisor_complete"]);
+  assert.equal(h.funnel[0][2].selection_engine, "creatine");
+});
+
+test("denied consent and fake or injected decisions create no funnel observations", () => {
+  for (const opts of [{consent:false}, {bridge:false}, {page:"/not-an-advisor/"}]) {
+    const h = harness(opts);
+    h.decide({type:"nav"});
+    h.decide({type:"no_buy"});
+    h.click();
+    assert.equal(h.funnel.length, 0);
+  }
+  const h = harness();
+  h.decide({trusted:false});
+  h.decide({type:"nav", href:"#unapproved"});
+  h.decide({type:"no_buy", href:"#xfit-offers"});
+  h.decide({type:"no_buy", googleAnnotation:true});
+  assert.equal(h.funnel.length, 0);
+  // The next actual permitted choice is counted exactly once.
+  h.decide({type:"no_buy"});
+  assert.deepEqual(h.funnel.map(x => x[1]), ["advisor_start", "advisor_complete"]);
+});
+
+test("consent withdrawal is checked for each action and never replays denied actions", () => {
+  const h = harness();
+  h.root.getWccConsent = () => ({categories:{analytics:false}});
+  h.decide({type:"no_buy"});
+  assert.equal(h.funnel.length, 0);
+  h.root.getWccConsent = () => ({categories:{analytics:true}});
+  h.decide({type:"nav"});
+  assert.deepEqual(h.funnel.map(x => x[1]), ["advisor_start"]);
+  h.root.getWccConsent = () => ({categories:{analytics:false}});
+  h.decide({type:"no_buy"});
+  assert.deepEqual(h.funnel.map(x => x[1]), ["advisor_start"]);
+  h.root.getWccConsent = () => ({categories:{analytics:true}});
+  h.decide({type:"no_buy"});
+  assert.deepEqual(h.funnel.map(x => x[1]), ["advisor_start", "advisor_complete"]);
+  h.root.getWccConsent = () => ({categories:{analytics:false}});
+  h.click();
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.funnel.length, 2);
+});
 
 test("valid real click after explicit consent emits only four whitelisted fields", () => {
   const h = harness();
