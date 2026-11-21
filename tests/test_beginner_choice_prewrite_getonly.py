@@ -22,6 +22,15 @@ def post():
 
 
 class HubPrewriteDiagnosisTests(unittest.TestCase):
+    def setUp(self):
+        # Synthetic offline WordPress source is not the authenticated live
+        # production source. Never alter the real SHA pin to suit tests.
+        self.pin=patch.object(
+            b, "REVIEWED_CURRENT_SOURCE_SHA256",
+            b.sha(post()["content"]["raw"]))
+        self.pin.start()
+        self.addCleanup(self.pin.stop)
+
     def test_normal_published_git_source_and_public_rank(self):
         with patch.object(d,"card_rank",return_value=1), \
              patch.object(d,"archive_rank",return_value=1), \
