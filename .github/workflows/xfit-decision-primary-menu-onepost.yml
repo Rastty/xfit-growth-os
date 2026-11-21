@@ -1,0 +1,44 @@
+name: XFIT Primary Header Reader-First Menu Onepost
+# One exact existing primary nav -> existing indexed first-party decision guide.
+# No theme code, no new posts, no reorder, no POST retries after uncertain response.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-decision-primary-menu-onepost.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-primary-header-onepost-20261121
+  cancel-in-progress: false
+jobs:
+  guarded-menu-item:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Full regression gate before any WordPress access
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -q
+      - name: Identify existing public main nav and approved destination without changes
+        run: python -m scripts.xfit_primary_decision_menu_onepost snapshot
+      - name: Preserve original menu and every item before any possible POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-primary-header-original-${{ github.run_id }}
+          path: reports/backups/xfit-main-nav-decision-20261121.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Create at most one menu item then verify old menu and public header
+        run: python -m scripts.xfit_primary_decision_menu_onepost apply
