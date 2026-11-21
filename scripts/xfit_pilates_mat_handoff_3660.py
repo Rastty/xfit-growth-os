@@ -168,6 +168,39 @@ def checked_public(url, *, require_article=False, reader=None):
             and "Výběr vybavení připravujeme" not in all_text)
 
 
+def source_diagnosis():
+    """Non-content diagnostics for the mismatched legacy source; zero writes."""
+    raw, _title, _excerpt, _modified = identity(post_get())
+    selected = [match for match in PARAGRAPHS.finditer(raw)
+                if "Výběr vybavení připravujeme" in visible(match.group("body"))]
+    metrics = {
+        "state": "GET_ONLY_SOURCE_STRUCTURE",
+        "post_id": POST_ID,
+        "post_attempts": 0,
+        "matching_paragraphs": len(selected),
+        "exact_legacy_phrase_in_full_raw": OLD in visible(raw),
+        "target_link_already_in_raw": TARGET in links(raw),
+    }
+    if len(selected) == 1:
+        fragment = selected[0].group("body")
+        actual = visible(fragment)
+        first = next((i for i in range(min(len(actual), len(OLD)))
+                      if actual[i] != OLD[i]), min(len(actual), len(OLD)))
+        metrics.update({
+            "body_exact_matches": actual == OLD,
+            "has_inline_markup": "<" in fragment,
+            "tag_names": sorted(set(re.findall(r"</?([a-zA-Z][a-zA-Z0-9-]*)\\b",
+                                                  fragment)))[:12],
+            "actual_visible_length": len(actual),
+            "reviewed_visible_length": len(OLD),
+            "first_difference_index": first if actual != OLD else None,
+            "actual_diff_codepoint": ord(actual[first]) if first < len(actual) and actual != OLD else None,
+            "reviewed_diff_codepoint": ord(OLD[first]) if first < len(OLD) and actual != OLD else None,
+            "body_source_sha256": digest(fragment),
+        })
+    print(json.dumps(metrics, ensure_ascii=False))
+
+
 def snapshot():
     post = post_get()
     raw, title, excerpt, modified = identity(post)
@@ -235,9 +268,10 @@ def apply():
 
 if __name__ == "__main__":
     try:
-        if len(sys.argv) != 2 or sys.argv[1] not in ("snapshot", "apply"):
-            raise PublishError("Usage: snapshot|apply")
-        (snapshot if sys.argv[1] == "snapshot" else apply)()
+        if len(sys.argv) != 2 or sys.argv[1] not in ("snapshot", "apply", "diagnose"):
+            raise PublishError("Usage: snapshot|apply|diagnose")
+        (snapshot if sys.argv[1] == "snapshot" else
+         source_diagnosis if sys.argv[1] == "diagnose" else apply)()
     except (PublishError, OSError, ValueError, TypeError, KeyError) as exc:
         print("XFIT_PILATES_MAT_ERROR: " + str(exc), file=sys.stderr)
         sys.exit(2)
