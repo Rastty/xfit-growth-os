@@ -1,0 +1,29 @@
+{
+  "schema": "xfit_source_pinned_editorial_candidate_v1",
+  "state": "PREPARED_NOT_DEPLOYED",
+  "post_id": 9371,
+  "slug": "jak-spravne-pouzivat-bcaa-pro-lepsi-regeneraci-a-svalovy-rust",
+  "url": "https://xfit.cz/jak-spravne-pouzivat-bcaa-pro-lepsi-regeneraci-a-svalovy-rust/",
+  "reviewed_source": {
+    "modified_gmt": "2023-10-21T07:44:55",
+    "authenticated_raw_sha256": "e6deec0b5bba9c52457d3cb3dbd141f4ef8eeb3b2d531408054084e8a2e8de20",
+    "public_rendered_sha256": "95a60911bfc1cd5dd1b5716bc3385e03611178d228def6a002ee35e68038b412",
+    "nested_doctype_count": 3,
+    "body_canonical_count": 1,
+    "body_canonical_host": "www.example.com",
+    "stale_coupon_count": 3,
+    "proof": "https://github.com/Rastty/xfit-growth-os/issues/282#issuecomment-7059107956"
+  },
+  "content_path": "content/revisions/bcaa-recovery-9371.html",
+  "release_policy": {
+    "wordpress_write_permitted": false,
+    "reason": "Ambiguous WP #9462 POST remains quarantined; owner/server transport investigation required before independent single-post release",
+    "requirements": [
+      "Check authenticated current raw SHA, modified, identity, permalink and source drift",
+      "Resolve WordPress/WAF POST transport incident; do not bypass quarantined #9462 workflow",
+      "Upload immutable 90-day rollback artifact before a maximum one-post content-only update",
+      "Require authenticated and public REST/permalink verification; one correct canonical, zero example.com body canonical and zero 5NM2022",
+      "Run actual Chromium at 320, 375 and 768 pixels, and report separately from code merge"
+    ]
+  }
+}
