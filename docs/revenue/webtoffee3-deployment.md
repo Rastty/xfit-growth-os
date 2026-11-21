@@ -17,16 +17,16 @@ Dokumentované oficiální WebToffee 3 rozhraní:
 
 `wordpress-plugin/xfit-analytics/xfit-analytics.php` je samostatný minimalistický WP plugin. Načítá **jen na dvou schválených sluzích** a jen z vlastního hostingu `assets/xfit-webtoffee-bridge.js` a `assets/xfit-outbound.js`, přes `wp_enqueue_script`, ne přes editor článku nebo inline onclick.
 
-Bridge používá při každém prokliku živé `window.getWccConsent()` WebToffee 3. Uznává jen přesnou hodnotu `categories.analytics === true`. Od verze 0.1.3 stejnou aktuální hodnotu WebToffee ověřuje samostatně i outbound adaptér, takže jej nesmí obejít jiný již existující globální souhlasový callback vracející `true`. Při zamítnutí, odvolání souhlasu, chybě nebo chybějícím API se událost neodesílá. Neukládá žádné cookies ani odpovědi poradce.
+Bridge používá při každém prokliku živé `window.getWccConsent()` WebToffee 3. Uznává jen přesnou hodnotu `categories.analytics === true`. Od verze 0.1.4 stejnou aktuální hodnotu WebToffee ověřuje samostatně i outbound adaptér, takže jej nesmí obejít jiný již existující globální souhlasový callback vracející `true`. Při zamítnutí, odvolání souhlasu, chybě nebo chybějícím API se událost neodesílá. Neukládá žádné cookies ani odpovědi poradce.
 
 Samotný outbound adaptér při **skutečném uživatelském kliknutí** ověřuje aktuální slug, kartu, kladné katalogové ID, oficiální HTTPS doménu, affiliate parametry, `rel=sponsored` a **přesnou shodu katalogového ID s jediným parametrem `variant`**. Read-only audit skutečných veřejných karet v GitHub Actions běhu 42865679992 ověřil 6/6 shod u kreatinu a 6/6 u whey. U odkazu bez varianty nebo s nesouladem adaptér událost neodešle, ale nákupní navigaci neblokuje. Tato kontrola nepotvrzuje GA4 ingest, skutečnou objednávku ani provizi. Do Google tagu odesílá `affiliate_outbound_click` pouze se čtyřmi parametry: `page`, `selection_engine`, `partner`, `product_id`. Neposílá odchozí URL, UTM na vstupní stránce, email, zdravotní odpovědi, affiliate ID ani jakýkoliv údaj o nákupu. Nepřerušuje navigaci. Klik není nákup ani provize.
 
-## Nové consent-gated fáze rozhodování (verze 0.1.3, KÓD PŘIPRAVEN)
+## Nové consent-gated fáze rozhodování (verze 0.1.4, KÓD PŘIPRAVEN)
 
 Stejný adapter `assets/analytics/xfit-outbound.js` nově odesílá také `advisor_start` a `advisor_complete`. Obě události mají **pouze** `page` a `selection_engine`, stejně jako offline validační kontrakt. Neposílá konkrétní volbu, odpověď na otázku, zdravotní údaje, UTM, affiliate parametry, URL ani uživatelský identifikátor.
 
 - **Start:** až po skutečném, důvěryhodném kliknutí uživatele na vlastní navigaci poradcem, jasnou volbu v prvním bloku nebo ověřený partnerský produkt. Samotná návštěva nebo automatické zobrazení stránky není start.
-- **Dokončení:** jednou za otevřenou stránku po konkrétní volbě cesty „nic nekoupit“ nebo po ověřeném partnerském prokliku. Start a dokončení mohou nastat při témže přímém prokliku produktové nabídky. Výsledek volby se neodesílá.
+- **Dokončení:** jednou za otevřenou stránku pouze po **výslovně označené volbě** „Dnes nekupuji žádný doplněk“ (`data-xfit-funnel-complete="no-buy"`) nebo po ověřeném partnerském prokliku. Starý informační odkaz „zjistit, zda…“ znamená jen zahájení, nikoli dokončení. Start a dokončení mohou nastat při témže přímém prokliku produktové nabídky. Výsledek volby se neodesílá.
 - **Odchozí klik:** původní samostatná `affiliate_outbound_click` se čtyřmi schválenými parametry zůstává pro každé skutečné ověřené kliknutí. Není to objednávka, unikátní člověk ani schválená provize.
 - Všechny události jsou závislé na **aktuálním explicitním souhlasu** ve WebToffee 3 a stejném nezávislém mostu; po odmítnutí nebo odvolání se nic neodesílá. Žádné události se zpětně nedohánějí a na stránku se nepřidává žádná cookie ani persistentní ID.
 - Hodnoty `advisor_start` a `advisor_complete` reprezentují **zaznamenané UI akce s uděleným souhlasem**, nikoli všechny návštěvy nebo dokončené nákupy. Mohou být podhodnocené kvůli souhlasu, blokování analytiky a dalším nákupním cestám.
@@ -39,7 +39,7 @@ Tato verze je zatím **pouze připravená v GitHubu**. Instalace balíčku, ově
 
 Jednorázové bezpečné zprovoznění po úspěšném CI:
 
-1. Stáhnout ZIP artefakt z úspěšného workflow `XFIT Consent-Gated Analytics Plugin Package` (rozbalit artefakt pokud jej GitHub automaticky zabalí; samotný soubor pro WP je `xfit-analytics-0.1.3.zip`).
+1. Stáhnout ZIP artefakt z úspěšného workflow `XFIT Consent-Gated Analytics Plugin Package` (rozbalit artefakt pokud jej GitHub automaticky zabalí; samotný soubor pro WP je `xfit-analytics-0.1.4.zip`).
 2. Ve WordPressu **Pluginy → Instalace pluginů → Nahrát plugin**, vybrat ZIP a aktivovat; ideálně nejprve staging a ověřit kompatibilitu WebToffee 3.
 3. Potvrdit v produkčním preflightu zdroje skriptů a ověřit browserem jejich HTTP 200 a pořadí. Ověřit skutečnou konfiguraci WebToffee GCM, konzoli a Tag Assistant. Po odmítnutí analytického souhlasu nesmí být odeslána žádná naše custom `affiliate_outbound_click` událost; po souhlasu ji odeslat kontrolovaným skutečným kliknutím.
 4. GA4 DebugView potvrzuje událost se čtyřmi schválenými parametry. Prověřit, že GA4 / jiné analytické requesty respektují souhlas, včetně jeho odvolání, a nespouštějí předčasně nezakázané měření. Zajistit, že consent manager a GA4 jsou nakonfigurované právně vhodným způsobem.

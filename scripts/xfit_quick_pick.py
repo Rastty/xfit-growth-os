@@ -115,8 +115,10 @@ def quick_pick(selected, *, product_kind):
            'seřadit nabídky podle ceny za čisté bílkoviny. '
            'Když protein nepotřebujete, nemusíte kupovat nic.</p>']
           if product_kind == 'whey' else []),
-        '<p data-xfit-quick-pick="no-buy">Nákup není nutný: '
-        '<a href="#xfit-need">zjistit, zda nepotřebuji doplněk</a>.</p>',
+        '<p data-xfit-quick-pick="no-buy">Bez nákupu je to také v pořádku: '
+        '<a data-xfit-funnel-complete="no-buy" href="#xfit-need" '
+        'style="display:inline-block;min-height:44px;box-sizing:border-box;'
+        'padding:10px 0;">Dnes nekupuji žádný doplněk – přečíst důvody</a>.</p>',
         '<div style="display:flex;flex-wrap:wrap;gap:12px;">',
     ]
     if cheap[0] == unit[0]:
