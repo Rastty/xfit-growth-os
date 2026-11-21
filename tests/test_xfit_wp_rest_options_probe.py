@@ -107,8 +107,8 @@ class OptionsProbeTests(unittest.TestCase):
     def test_missing_credentials_fails_before_network(self):
         with patch.dict(os.environ, {"WP_USERNAME": "", "WP_APP_PASSWORD": ""}), \
              patch.object(p, "urlopen") as network:
-            result = p.probe(9371, base=self.base)
-        self.assertEqual(result["state"], "READ_ONLY_OPTIONS_BLOCKED")
+            with self.assertRaises(PublishError):
+                p.probe(9371, base=self.base)
         network.assert_not_called()
 
     def test_run_records_both_ids_without_authorizing_publish(self):
