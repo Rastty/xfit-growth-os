@@ -36,6 +36,11 @@ Trustworthy Czech fitness and supplement decision service. Solve reader need fir
 - **Actual WP release receipt:** [run 44891136451](https://github.com/Rastty/xfit-growth-os/actions/runs/44891136451) SUCCESS, original full body rollback artifact 14701778216 saved **before POST**, then **PUBLIC_VERIFIED** WP #3660, **1 POST, 1 existing post changed, 0 new posts, 0 redirects**. The run verified authenticated readback and public content/anchor. No measured search, behavior or affiliate lift claimed. Main CI from [PR #318](https://github.com/Rastty/xfit-growth-os/actions/runs/44891091817) SUCCESS.
 - This is a subject-relevant organic handoff, **not** a direct monetized offer. Do not revisit unless fresh GSC or user data provides a reason; do not touch quarantined WP #3394.
 
+## Post-incident live adviser reconciliation — 2026-11-21
+- [PR #319](https://github.com/Rastty/xfit-growth-os/pull/319) safely triggered the **existing** GET-only public source-freshness job, no duplicate workflow and no POST. [Run 44891338281](https://github.com/Rastty/xfit-growth-os/actions/runs/44891338281) **SUCCESS**, `wordpress_writes: 0`.
+- All four controlled decision pages `PUBLIC_FRESH` against authenticated raw and public HTML. Creatine #25455 and whey #25456 each have **6 source/public product cards, matching verified affiliate link destinations, stable commercial facts/decision paragraphs, complete CTA metadata**. Crucially the **ordinary cache view matched WordPress source** on both advisers (no observed divergence). The old whey 44889874843 POST itself is still historically **unconfirmed**, but the **current** customer-facing page is source-consistent, so do not blind retry.
+- No GA4 funnel ingestion, merchant stock/checkout, approved/paid Affial commission or traffic lift established by this check. These remain unknown. Preserve owner decision to defer WEDOS unless a future scheduled release cannot maintain freshness.
+
 ## Next priorities
 1. Evidence-backed organic acquisition: improve qualified entry pages and true topical internal paths; no filler and no repeat #3394.
 2. End-to-end verified measurement: approve/install analytics package on first-party WordPress, test WebToffee 3 consent states and GA4 DebugView, reconcile Affial approved vs paid.
