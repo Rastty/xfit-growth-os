@@ -20,7 +20,7 @@ def original_body():
 
 def post(*, raw=None, title=None, excerpt="Původní odstavec o kreatinu.",
          modified="2023-11-07T12:00:00", slug=revision.SLUG,
-         status="publish", post_id=10903, link=revision.URL):
+         status="publish", post_id=11304, link=revision.URL):
     return {
         "id": post_id, "slug": slug, "status": status, "link": link,
         "title": {"raw": revision.OLD_TITLE if title is None else title},
@@ -31,6 +31,24 @@ def post(*, raw=None, title=None, excerpt="Původní odstavec o kreatinu.",
 
 
 class CreatineDisadvantagesOnepostTests(unittest.TestCase):
+    def setUp(self):
+        # Production pin remains immutable. Synthetic fixtures must pin their
+        # own exact raw source to exercise logic without remote access.
+        self.sha_guard = patch.object(revision, "PINNED_SOURCE_SHA256",
+                                      revision.sha(original_body()))
+        self.len_guard = patch.object(revision, "PINNED_ORIGINAL_LENGTH",
+                                      len(original_body()))
+        self.sha_guard.start()
+        self.len_guard.start()
+        self.addCleanup(self.len_guard.stop)
+        self.addCleanup(self.sha_guard.stop)
+
+    def test_production_source_pin_is_exact_and_single_post(self):
+        # This test uses literal pin independently of the fixture overrides.
+        self.assertEqual(revision.PINNED_POST_ID, 11304)
+        self.assertEqual(len(revision.PINNED_SOURCE_SHA256), 64)
+        self.assertEqual(revision.PINNED_ORIGINAL_LENGTH, len(original_body()))
+
     def test_replacement_is_evidence_backed_not_product_pitch(self):
         content = revision.reviewed_document()
         self.assertTrue(content.startswith("<div "))
@@ -48,14 +66,14 @@ class CreatineDisadvantagesOnepostTests(unittest.TestCase):
     def test_old_post_strict_identity_and_outdated_content(self):
         post_ok, mode = revision.classify([post()])
         self.assertEqual(mode, "update")
-        self.assertEqual(post_ok["id"], 10903)
+        self.assertEqual(post_ok["id"], 11304)
         new = revision.reviewed_document()
         new_doc, mode = revision.classify([post(raw=new,
                                                 title=revision.NEW_TITLE,
                                                 excerpt=revision.EXCERPT)],
                                           new_body=new)
         self.assertEqual(mode, "already_applied")
-        self.assertEqual(new_doc["id"], 10903)
+        self.assertEqual(new_doc["id"], 11304)
 
     def test_no_update_when_source_ambiguous_or_editor_changed(self):
         cases = (
@@ -108,7 +126,7 @@ class CreatineDisadvantagesOnepostTests(unittest.TestCase):
             with patch.object(revision, "source_get",
                               side_effect=[[original],[updated]]), \
                  patch.object(revision, "normalized_base", return_value="https://xfit.cz"), \
-                 patch.object(revision, "wp_request", return_value={"id": 10903}) as writer, \
+                 patch.object(revision, "wp_request", return_value={"id": 11304}) as writer, \
                  patch.object(revision, "validate_public_release", return_value=True) as public:
                 revision.apply()
             writer.assert_called_once()
