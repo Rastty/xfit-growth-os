@@ -9,6 +9,12 @@ Updated 2026-11-21 (Europe/Prague). **Source of truth:** GitHub `main` + conclud
 - Obchodní přínos nového vstupu je **hypotéza, nikoliv prokázané kliknutí/ranking/provize**. Nedělat další obdobné long-tail články bez GSC vstupních dotazů.
 - **Tři cykly:** (1) nový rozdílný komerční vstup — kód MERGED, veřejné ověření otevřené; (2) kontrola aktuálnosti a dostupnosti merchant variant v existujících dvou poradnách; (3) správný XFIT GA4 stream + GSC a Affial paid/approved evidence, bez instalace duplikátního měření. Nezasahovat do otevřených cizích PR #248/#263/#270/#271 ani do pozastavené taxonomy #333/#335.
 
+## Independent post-merge verification — 2026-11-21 13:13 CET
+- GitHub `main` includes merged PR #339, commit `63b32b5a5fd6b86de8c25a0857cc8aebbbe9f029`. The PR-head `XFIT Code Checks` run [#44901377765](https://github.com/Rastty/xfit-growth-os/actions/runs/44901377765) was completed/success; it is **not a WordPress publishing receipt**.
+- Connector `fetch_commit_workflow_runs` returned **zero associated runs** for both the merge commit `63b32b5` and following state commit `0335053`. This is an API observation, **not proof no publishing job exists or that it failed**; direct-publish job may have a different trigger/HEAD or workflow scope. No exact post-merge XFIT Direct Publish run ID, conclusion, `live_verified` marker, or authenticated WP post ID was retrievable.
+- External retrieval of `https://xfit.cz/xfit-os-protein-bez-laktozy/` failed with an inaccessible-tool result; container DNS access to the host and GitHub API also failed. Therefore no current public HTML was obtained, and **production remains UNKNOWN / NOT VERIFIED** (not classified as 404, failure, or success). No WordPress POST or workflow rerun was attempted.
+- **Next safe check:** inspect the actual XFIT Direct Publish workflow runs on GitHub Actions by date and SHA, then authenticated WP GET `/wp-json/wp/v2/posts?slug=xfit-os-protein-bez-laktozy&context=edit` and direct public HTML with matching canonical, title, content. Record post ID and source/readback evidence only after confirmed. Do not repeat POST unless absence is independently proven and publisher is idempotent.
+
 ## Goal and baseline
 Build a trustworthy Czech training/supplement decision service that recommends **nothing to buy when appropriate**, then verified product offers when useful. Optimize **qualified Google visits, user decisions, approved and paid affiliate commissions**, not article counts or synthetic clicks.
 
