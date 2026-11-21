@@ -1,5 +1,7 @@
 name: XFIT Creatine Disadvantages Evidence Onepost
 # One source-pinned in-place correction of outdated claims; NEVER a bulk SEO sweep.
+# 2026-11-21 GET-only receipt pinned WP #11304 raw SHA before full nested-HTML cleanup.
+# Exactly one release attempt on this workflow edit; no retries if POST uncertain.
 on:
   workflow_dispatch:
   push:
