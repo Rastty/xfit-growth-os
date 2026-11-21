@@ -78,26 +78,41 @@ class StickyGuideOnepostTests(unittest.TestCase):
             with self.assertRaisesRegex(PublishError, "overwrite"):
                 m.snapshot()
 
-    def test_existing_other_sticky_blocks_before_backup(self):
+    def test_one_other_sticky_is_backed_up_not_deleted(self):
+        other = {"id": 99, "sticky": True}
         with tempfile.TemporaryDirectory() as tmp, \
              patch.object(m, "BACKUP", Path(tmp)/"original.json"), \
              patch.object(m, "source_get", return_value=post()), \
-             patch.object(m, "sticky_list", return_value=[{"id":99,"sticky":True}]):
-            with self.assertRaisesRegex(PublishError, "Other sticky"):
+             patch.object(m, "sticky_list", return_value=[other]), \
+             patch.object(m, "homepage_get", return_value=home()):
+            m.snapshot()
+            saved = json.loads(m.BACKUP.read_text(encoding="utf-8"))
+            self.assertEqual(saved["previous_sticky_ids"], [99])
+            self.assertEqual(saved["before_home_card_rank"], 9)
+            self.assertEqual(saved["wordpress_writes"], 0)
+
+    def test_four_existing_stickies_block_before_backup(self):
+        other = [{"id": i, "sticky": True} for i in (1, 2, 3, 4)]
+        with tempfile.TemporaryDirectory() as tmp, \
+             patch.object(m, "BACKUP", Path(tmp)/"original.json"), \
+             patch.object(m, "source_get", return_value=post()), \
+             patch.object(m, "sticky_list", return_value=other):
+            with self.assertRaisesRegex(PublishError, "Too many"):
                 m.snapshot()
             self.assertFalse(m.BACKUP.exists())
 
     def test_one_post_changes_only_sticky_and_home_rank(self):
         before = post()
+        other = {"id": 928, "sticky": True}
         after = post(sticky=True, modified="2026-11-21T11:00:00")
         with tempfile.TemporaryDirectory() as tmp, \
              patch.object(m, "BACKUP", Path(tmp)/"original.json"):
             with patch.object(m, "source_get", return_value=before), \
-                 patch.object(m, "sticky_list", return_value=[]), \
+                 patch.object(m, "sticky_list", return_value=[other]), \
                  patch.object(m, "homepage_get", return_value=home(guide_rank=9)):
                 m.snapshot()
             with patch.object(m, "source_get", side_effect=[before, after]), \
-                 patch.object(m, "sticky_list", side_effect=[[],[{"id":m.POST_ID,"sticky":True}]]), \
+                 patch.object(m, "sticky_list", side_effect=[[other],[other,{"id":m.POST_ID,"sticky":True}]]), \
                  patch.object(m, "homepage_get",
                               side_effect=[home(guide_rank=9),home(guide_rank=1)]), \
                  patch.object(m, "normalized_base", return_value="https://xfit.cz"), \
