@@ -1,6 +1,8 @@
 name: XFIT Sitewide Reader-First Guide Sticky Onepost
 # WordPress-native homepage promotion, no theme/menu/WEDOS writes.
 # Only this exact workflow-file merge triggers ONE opportunity to set sticky.
+# Source GET 44895681593: one other sticky post; preserve it unchanged.
+# Prior release 44895523935 failed before backup and POST; safe single attempt only.
 on:
   push:
     branches: [main]
