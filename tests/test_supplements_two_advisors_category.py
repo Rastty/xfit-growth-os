@@ -56,6 +56,14 @@ def home_html():
 
 
 class TwoAdvisorsCategoryTests(unittest.TestCase):
+    def setUp(self):
+        # Synthetic regression fixtures are individually source-pinned.
+        # Production constants remain the exact observed live WP content SHA.
+        pins = {row[0]: m.sha(source(row)["content"]["raw"]) for row in m.PAGES}
+        self.mock_pins = patch.dict(m.CURRENT_ORIGINAL_SHA256, pins)
+        self.mock_pins.start()
+        self.addCleanup(self.mock_pins.stop)
+
     def test_authorized_ids_and_strict_article_structure(self):
         for approved in m.PAGES:
             self.assertEqual(m.page_identity(source(approved), approved)["id"],
@@ -107,9 +115,14 @@ class TwoAdvisorsCategoryTests(unittest.TestCase):
         after=[source(p,categories=[3,44],modified="2026-11-21T11:10:00")
                for p in m.PAGES]
         def remote_get(post_id):
-            remote_get.count[post_id]=remote_get.count.get(post_id,0)+1
-            return before[[x[0] for x in m.PAGES].index(post_id)] if remote_get.count[post_id]==1 \
-                else after[[x[0] for x in m.PAGES].index(post_id)]
+            remote_get.count[post_id] = remote_get.count.get(post_id,0) + 1
+            idx = 0 if post_id == m.PAGES[0][0] else 1
+            # First post: the initial duplicate prewrite GET was removed,
+            # so the only direct GET is the authenticated postwrite readback.
+            if idx == 0:
+                return after[idx]
+            # Second post rechecks prewrite source after first WP mutation.
+            return before[idx] if remote_get.count[post_id] == 1 else after[idx]
         remote_get.count={}
         with tempfile.TemporaryDirectory() as temp, \
              patch.object(m,"BACKUP",Path(temp)/"original.json"):
@@ -156,9 +169,11 @@ class TwoAdvisorsCategoryTests(unittest.TestCase):
                for p in m.PAGES]
         get_counts={}
         def get(post_id):
-            get_counts[post_id]=get_counts.get(post_id,0)+1
-            idx=0 if post_id==m.PAGES[0][0] else 1
-            return before[idx] if get_counts[post_id]==1 else after[idx]
+            get_counts[post_id] = get_counts.get(post_id, 0) + 1
+            idx = 0 if post_id == m.PAGES[0][0] else 1
+            if idx == 0:
+                return after[idx]
+            return before[idx] if get_counts[post_id] == 1 else after[idx]
         with tempfile.TemporaryDirectory() as temp, \
              patch.object(m,"BACKUP",Path(temp)/"original.json"):
             with patch.object(m,"read_all",return_value=(44,before)), \
