@@ -1,0 +1,44 @@
+name: XFIT Beginner Hub Reader-First Choices Onepost
+# Only first-party reader navigation on existing WP #25458.
+# Never add direct affiliate merchant links, change category/sticky or new URL.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-beginner-hub-choice-onepost.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-beginner-hub-choice-onepost-20261121
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Full code, WP one-post guard, privacy and other agent compatibility
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -q
+      - name: Prove original Git-owned article, sticky and first-card discovery; save complete rollback
+        run: python -m scripts.xfit_beginner_hub_choice_onepost snapshot
+      - name: Upload full edit-context original BEFORE any possible WordPress POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-beginner-hub-choice-original-${{ github.run_id }}
+          path: reports/backups/xfit-beginner-hub-choice-strip-20261121.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: One content-only POST; source, actual public choice anchors and homepage/category readback
+        run: python -m scripts.xfit_beginner_hub_choice_onepost apply
