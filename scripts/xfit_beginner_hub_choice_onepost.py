@@ -18,7 +18,7 @@ from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
 from scripts.wp_publish import (
-    MARKER, PublishError, validate_document, assert_prewrite_source,
+    MARKER, PublishError, validate_document,
     normalized_base, wp_request, normalize_visible, article_visible,
     editorial_links, verify_public,
 )
@@ -30,6 +30,10 @@ from scripts.xfit_supplements_category_hub_onepost import (
 )
 
 POST_ID = 25458
+# Authenticated GET-only run 44899695268 confirmed this exact live raw source.
+# Existing post has newer material than the original Git ready file; preserve
+# it ALL. Only the two independently reviewed original nav paragraphs may move.
+REVIEWED_CURRENT_SOURCE_SHA256 = "350302c77aee33867b3a841aa8e85e92fc8be8ee3c0eabb6ef6e0bb23d53dabe"
 SLUG = "xfit-os-doplnky-pro-zacatecniky"
 URL = "https://xfit.cz/" + SLUG + "/"
 CATEGORY_ID = 44
@@ -104,14 +108,20 @@ def identity(post):
 
 def revised_from_original(post, old_doc):
     post = identity(post)
-    assert_prewrite_source(post, old_doc)
     raw = post["content"]["raw"]
+    if (sha(raw) != REVIEWED_CURRENT_SOURCE_SHA256
+            or normalize_visible(post["title"]["raw"])
+               != normalize_visible(old_doc["title"])):
+        raise PublishError("Current original post or title differs from reviewed GET source")
     if REVISION_MARKER in raw or raw.count(OLD_START) != 1 or raw.count(END_NEXT_SECTION) != 1:
         raise PublishError("Navigation already revised or changed by another editor")
     a = raw.index(OLD_START)
     b = raw.index(END_NEXT_SECTION)
     if not 200 < a < b < 6500:
         raise PublishError("Original navigation not in expected early content")
+    # Do not trust the older Git document for the whole article: another editor
+    # added legitimate material. Require ONLY the edited local source block to
+    # match its previously reviewed exact visible text and all its original links.
     original_block = raw[a:b]
     expected = old_doc["content"]
     x = expected.index(OLD_START)
