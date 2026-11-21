@@ -4,22 +4,18 @@ on:
   push:
     branches: [main]
     paths:
-      - '.github/workflows/xfit-mobile-qa.yml'
       - 'tests/live_page_qa.cjs'
       - 'tests/adviser_hero_mobile_qa.cjs'
       - 'scripts/xfit_mobile_navigation.cjs'
       - 'scripts/xfit_first_screen_qa.cjs'
       - 'tests/test_mobile_navigation.cjs'
       - 'tests/test_first_screen_qa.cjs'
-      # Recheck public pages after every change that can refresh either adviser.
-      - '.github/workflows/xfit-creatine-live.yml'
-      - '.github/workflows/xfit-whey-live.yml'
+      # Recheck pages only after actual adviser release inputs change.
+      # Maintenance-only publisher or workflow changes run CI, not WP release.
       - 'scripts/xfit_creatine_guide.py'
       - 'scripts/xfit_whey_guide.py'
       - 'scripts/xfit_quick_pick.py'
       - 'tests/test_quick_pick.py'
-      - 'scripts/wp_publish.py'
-      - 'tests/test_publisher.py'
       - 'scripts/xfit_affil_deeplink.py'
       - 'scripts/xfit_click_metadata.py'
       - 'scripts/xfit_budget_choices.py'
