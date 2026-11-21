@@ -1,0 +1,56 @@
+name: XFIT Pilates GSC Existing Page Preflight Read Only
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-pilates-gsc-current-readback.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline page identity and no-write regression tests
+        run: python -m unittest tests.test_xfit_pilates_gsc_preflight tests.test_pilates_gsc_title_release -v
+      - name: One authenticated GET and three public GETs only
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p reports
+          python -m scripts.xfit_pilates_gsc_preflight | tee reports/xfit-pilates-gsc-live-readback.json
+      - name: Record redacted source status to existing project state issue
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo '### XFIT Pilates GSC exact-page preflight — GET only'
+            echo
+            echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo 'GSC source: Prometheus 44764745930, period 2026-10-21..2026-11-17. This is public page/source evidence, not CTR change.'
+            echo 'No WordPress writes, no affiliate clicks, no release permission.'
+            echo
+            if test -s reports/xfit-pilates-gsc-live-readback.json; then
+              cat reports/xfit-pilates-gsc-live-readback.json
+            else
+              echo '{"state":"READ_ONLY_PILATES_PREFLIGHT_NO_REPORT","wp_post_attempts":0,"release_approved":false}'
+            fi
+          } > /tmp/xfit-pilates-gsc-readback.txt
+          gh issue comment 1 --repo "$GITHUB_REPOSITORY" --body-file /tmp/xfit-pilates-gsc-readback.txt
