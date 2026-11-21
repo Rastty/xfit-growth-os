@@ -54,6 +54,12 @@ def canonical_links(source):
     return parser.hrefs
 
 
+def canonical_destinations(links):
+    """Only destinations' hosts and hashes, never query strings/tokens."""
+    return [{"host": urlsplit(href).hostname or "relative", "sha256": digest(href)}
+            for href in links[:15]]
+
+
 def source(post, field, expected_id):
     if not isinstance(post, dict) or type(post.get("id")) is not int:
         raise ValueError("Unrecognized WordPress response")
@@ -94,10 +100,10 @@ def summarize(auth, fresh, public, permalink_html, expected_id):
         "raw_bytes": len(raw.encode("utf-8")),
         "nested_doctype_count": len(re.findall(r"<!doctype\b", raw, re.I)),
         "raw_body_canonical_count": len(body_links),
-        "raw_body_canonical_hrefs": body_links[:15],
+        "raw_body_canonical_destinations": canonical_destinations(body_links),
         "raw_coupon_5nm2022_count": raw.upper().count("5NM2022"),
         "public_page_canonical_count": len(public_links),
-        "public_page_canonical_hrefs": public_links[:15],
+        "public_page_canonical_destinations": canonical_destinations(public_links),
         "public_coupon_5nm2022_count": permalink_html.upper().count("5NM2022"),
         "remote_post_attempts": 0,
     }
@@ -140,7 +146,7 @@ def run():
 if __name__ == "__main__":
     try:
         run()
-    except (ValueError, OSError, KeyError, TypeError) as exc:
+    except Exception as exc:
         # Do not log exception bodies from WordPress; only the failure class.
         print(json.dumps({"state": "READ_ONLY_PREFLIGHT_FAILED",
                           "error_type": type(exc).__name__,
