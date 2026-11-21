@@ -65,7 +65,7 @@ def approved_document():
             "<h1" in raw.casefold() or raw.casefold().count("<h2") < 5 or
             editorial_links(raw) != EXPECTED_LINKS or
             not all(phrase in normalize_visible(raw) for phrase in (
-                "není podmínkou", "3–5 g denně", "vysoký úvodní příjem není nutný",
+                "není podmínkou", "3-5 g denně", "vysoký úvodní příjem není nutný",
                 "vhodnost doplňku řešte", "bez nákupu"))):
         raise PublishError("Editorial body/link/safety invariant failed")
     return raw, excerpt
