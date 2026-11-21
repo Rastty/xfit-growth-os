@@ -1,0 +1,44 @@
+name: XFIT Supplements Category Decision Hub Onepost
+# Reader-first, additive WordPress taxonomy update only.
+# Exactly one post ID; preserve content, other taxonomy, sticky and canonical.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-supplements-category-onepost.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-supplements-category-onepost-20261121
+  cancel-in-progress: false
+jobs:
+  promote:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate all source-lease and category/public-navigation regressions
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -q
+      - name: Guard exact category and existing post with public homepage/archive baseline
+        run: python -m scripts.xfit_supplements_category_hub_onepost snapshot
+      - name: Preserve complete original article and category assignments BEFORE ANY POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-supplements-category-original-${{ github.run_id }}
+          path: reports/backups/xfit-supplements-category-guide-20261121.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: At most one additive taxonomy POST then WP and public category/homepage readback
+        run: python -m scripts.xfit_supplements_category_hub_onepost apply
