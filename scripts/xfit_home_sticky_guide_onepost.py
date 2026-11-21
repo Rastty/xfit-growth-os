@@ -200,8 +200,8 @@ def diagnose_readonly():
 def snapshot():
     original = selected(source_get())
     sticky = sticky_ids(sticky_list())
-    if sticky not in ([], [POST_ID]):
-        raise PublishError("Other sticky posts exist; no homepage reordering")
+    if len(sticky) > 3:
+        raise PublishError("Too many existing sticky posts for safe homepage promotion")
     homepage_rank = card_rank(homepage_get())
     if homepage_rank is None:
         raise PublishError("Guide is not a visible homepage content card")
@@ -221,6 +221,7 @@ def snapshot():
     print(json.dumps({
         "state": "STICKY_BACKUP_READY_NO_POST",
         "post_id": POST_ID, "homepage_card_rank_before": homepage_rank,
+        "other_sticky_preserved": len([item for item in sticky if item != POST_ID]),
         "mode": "already_sticky" if original["sticky"] else "enable_sticky",
         "wordpress_writes": 0,
     }))
@@ -266,7 +267,7 @@ def apply():
     before_no_sticky.pop("modified_gmt")
     after_no_sticky.pop("modified_gmt")
     if (after["sticky"] is not True or before_no_sticky != after_no_sticky
-            or ids != [POST_ID]):
+            or ids != sorted(set(saved["previous_sticky_ids"]) | {POST_ID})):
         raise PublishError("Sticky field or original content not verified; no retry")
     # This checks the REAL user-visible homepage, not merely a WordPress flag.
     current_rank = card_rank(homepage_get())
@@ -277,6 +278,7 @@ def apply():
         "state": state, "post_id": POST_ID,
         "before_home_card_rank": saved["before_home_card_rank"],
         "after_home_card_rank": current_rank,
+        "other_sticky_preserved": len([item for item in saved["previous_sticky_ids"] if item != POST_ID]),
         "posts_created": 0, "posts_deleted": 0, "post_content_changes": 0,
         "wordpress_sticky_post_attempts": 1,
         "url": URL,
