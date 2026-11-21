@@ -15,6 +15,12 @@ Trustworthy Czech fitness and supplement decision service. Solve reader need fir
 - Verified PR CI **SUCCESS** including Python/Node tests: https://github.com/Rastty/xfit-growth-os/actions/runs/44889736937 . No WordPress content POST in this cycle. Feature becomes active when merged on main; verify separate main CI.
 - Rollback: revert PR #313 if a proven false positive cannot be resolved through source reconciliation. Never silently overwrite a newer live edit.
 
+## Post-merge WordPress automation incident — 2026-11-21
+- Merge #313 triggered existing adviser release workflows because both depend on `scripts/wp_publish.py`. **Main code CI passed**: https://github.com/Rastty/xfit-growth-os/actions/runs/44889874886 . This is **not** evidence of a new WP content release.
+- Creatine https://github.com/Rastty/xfit-growth-os/actions/runs/44889874916 **FAILED** at authenticated one-post prewrite backup (`XFIT_ADVISER_BACKUP_ERROR: PublishError`); **no creatine publish step executed**.
+- Whey https://github.com/Rastty/xfit-growth-os/actions/runs/44889874843 **FAILED** after `ADVISER_PREWRITE_BACKUP_READY` at `XFIT_WHEY_ERROR: PublishError: Public verification failed (URLError)`; WP POST outcome is **UNKNOWN**, not safe to retry blindly. Backup artifact run 44889874843 retained for recovery. Code source/public page separately visible in web readback but not a same-run revision proof.
+- Follow-on mobile QA https://github.com/Rastty/xfit-growth-os/actions/runs/44889874842 **FAILED** while awaiting same-commit live releases. Previous verified public guides and 11/11 successful mobile QA remain historical evidence, not a new pass.
+- No automatic rerun; next permitted action is read-only WP/source and public reconciliation using existing source-freshness workflow before any new release. Owner-deferred WEDOS remains deferred; escalate only if this blocks ongoing monetization.
 ## Safety and concurrency
 - Legacy Pilates #3394 nested shell remains write-quarantined: previous onepost attempts failed before POST; the workflow was disabled in PR #312. Do not retry, weaken guard or discard surrounding content. Primary #3660 already has the correct title.
 - WEDOS/host troubleshooting deferred by owner; #9371 and #9462 onepost safety gates remain. Analytics plugin and static protein calculator assets cannot be described as installed until first-party hosting, consent testing and public readback are proven.
