@@ -153,3 +153,8 @@ produkt, porovnejte označení tlačítka se stejnou verzí ověřeného katalog
 aby tlačítko vedlo ke správné variantě. Chyby neobsahují hodnoty ze vstupu
 a souhrn při chybě nevrací částečné počty. Rozdíl v chybách nedokládá
 dostupnost zboží ani funkčnost měření.
+
+Při odmítnutí záznamu přidá souhrn k výjimce pořadí záznamu ve vstupu,
+počítané od jedné. Pozice pomůže dohledat chybné označení produktového
+tlačítka v lokálním podkladu. Poznámka obsahuje pouze pořadí a chybová
+zpráva zachovává původní důvod odmítnutí.

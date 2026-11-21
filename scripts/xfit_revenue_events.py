@@ -102,12 +102,16 @@ def summarize_funnel(events, *, analytics_consent=False,
             verified_product_ids_by_page)
     counts = {page: {name: 0 for name in sorted(EVENTS)} for page in PAGES}
     product_clicks = {page: {} for page in PAGES}
-    for event in events:
-        if not _has_exact_fields(event, {"name", "params"}):
-            raise ValueError("unsupported event record")
-        validated = _build_event(
-            event["name"], event["params"], verified_product_ids_by_page,
-        )
+    for position, event in enumerate(events, start=1):
+        try:
+            if not _has_exact_fields(event, {"name", "params"}):
+                raise ValueError("unsupported event record")
+            validated = _build_event(
+                event["name"], event["params"], verified_product_ids_by_page,
+            )
+        except ValueError as error:
+            error.add_note(f"Funnel input record {position} (one-based)")
+            raise
         page = validated["params"]["page"]
         counts[page][validated["name"]] += 1
         if validated["name"] == "affiliate_outbound_click":
