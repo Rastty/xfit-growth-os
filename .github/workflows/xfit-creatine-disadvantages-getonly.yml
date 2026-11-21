@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/xfit-creatine-disadvantages-getonly.yml'
+      - 'scripts/xfit_creatine_disadvantages_onepost.py'
 permissions:
   contents: read
 concurrency:
