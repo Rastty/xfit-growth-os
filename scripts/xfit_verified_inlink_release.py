@@ -208,7 +208,7 @@ _LACTOSE_INLINK_25451 = Handoff(
         'průvodce výběrem proteinu při intoleranci laktózy a mléčné alergii</a>. '
         'Vysvětluje rozdíl mezi oběma situacemi a co ověřit na konkrétní '
         'etiketě; pokud bílkoviny pokryjete jídlem, prášek nepotřebujete. '
-        'Tento odkaz není doporučení k nákupu.</p>'
+        'tento odkaz není doporučení k nákupu.</p>'
     ),
 )
 
