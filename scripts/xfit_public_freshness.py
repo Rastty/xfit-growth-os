@@ -18,9 +18,10 @@ from pathlib import Path
 from html.parser import HTMLParser
 
 from scripts.wp_publish import PublishError, normalized_base, wp_request
+from scripts.xfit_beginner_hub_choice_onepost import CHOICES, PublicChoiceLinks
 
 TARGETS = (
-    ("xfit-os-doplnky-pro-zacatecniky", 25458, "Nejste si jistí, zda potřebujete protein, kreatin"),
+    ("xfit-os-doplnky-pro-zacatecniky", 25458, "Co potřebujete právě teď?"),
     ("xfit-os-kreatin-nebo-protein", 25504, "Jak poznat, co je skutečně levnější?"),
     ("xfit-os-kreatin-poradce", 25455, "Dvě cesty k výběru podle ceny"),
     ("xfit-os-syrovatkovy-protein-porovnani", 25456, "Dvě cesty k výběru podle ceny"),
@@ -39,6 +40,35 @@ def owns_public_url(url, slug):
 def visible_has(html_source, phrase):
     text = html.unescape(re.sub(r"<[^>]+>", " ", html_source))
     return " ".join(phrase.casefold().split()) in " ".join(text.casefold().split())
+
+
+HUB_SLUG = "xfit-os-doplnky-pro-zacatecniky"
+
+
+def hub_choice_readiness(source, public):
+    """Assert the released four-link reader-first hero, not stale old copy.
+
+    Reuse the EXACT already-approved reader-first source contract. Neither
+    heading alone nor a matching theme-wide href is evidence that all four
+    user choices appear inside the reviewed section.
+    """
+    def inspect(document):
+        parser = PublicChoiceLinks()
+        parser.feed(document)
+        return (tuple(parser.hrefs) == tuple(CHOICES)
+                and visible_has(document, "Co potřebujete právě teď?")
+                and document.count('id="xfit-rychla-volba-20261121"') == 1), len(parser.hrefs)
+
+    source_valid, source_count = inspect(source)
+    public_valid, public_count = inspect(public)
+    stage = ("SOURCE_HUB_CHOICES_INCOMPLETE" if not source_valid
+             else "PUBLIC_HUB_CHOICES_VERIFIED" if public_valid
+             else "PUBLIC_HUB_CHOICES_MISSING_OR_DIFFERENT")
+    return {
+        "hub_choice_stage": stage,
+        "source_hub_choice_link_count": source_count,
+        "public_hub_choice_link_count": public_count,
+    }
 
 
 class ProductCards(HTMLParser):
@@ -511,6 +541,7 @@ def probe(target, *, read_post=None, read_public=None,
     product = slug in {
         "xfit-os-kreatin-poradce", "xfit-os-syrovatkovy-protein-porovnani"
     }
+    is_hub = slug == HUB_SLUG
     # Fetch the ordinary (potentially cached) public page FIRST. A later
     # no-cache verification must not hide a stale version customers may see.
     normal_page = None
@@ -527,6 +558,8 @@ def probe(target, *, read_post=None, read_public=None,
         return {"slug": slug, "post_id": post_id, "status": "PUBLIC_READ_ERROR",
                 "wp_source_has_target": source_has, "reason": type(exc).__name__}
     public_has = visible_has(page, marker)
+    hub = (hub_choice_readiness(raw, page) if is_hub else
+           {"hub_choice_stage": "NOT_APPLICABLE"})
     source_cards = product_card_texts(raw) if product else []
     public_cards = product_card_texts(page) if product else []
     source_identities = product_card_identities(raw) if product else []
@@ -578,6 +611,8 @@ def probe(target, *, read_post=None, read_public=None,
     else:
         metadata = {"cta_measurement_stage": "NOT_APPLICABLE"}
     status = ("SOURCE_NOT_UPDATED" if not source_has
+              else "WP_SOURCE_INCOMPLETE" if is_hub and hub["hub_choice_stage"] ==
+                  "SOURCE_HUB_CHOICES_INCOMPLETE"
               else "WP_SOURCE_INCOMPLETE" if product and (
                   len(source_cards) < 2 or
                   decision["price_decision_stage"] ==
@@ -586,6 +621,7 @@ def probe(target, *, read_post=None, read_public=None,
                       "SOURCE_DATE_MISSING_OR_INVALID",
                       "SOURCE_DATE_STALE_OR_IN_FUTURE"))
               else "PUBLIC_FRESH" if public_has and cards_match and (
+                  not is_hub or hub["hub_choice_stage"] == "PUBLIC_HUB_CHOICES_VERIFIED") and (
                   not product or (
                       retrieval["catalog_retrieval_stage"] == "PUBLIC_DATE_VERIFIED"
                       and decision["price_decision_stage"] ==
@@ -606,6 +642,7 @@ def probe(target, *, read_post=None, read_public=None,
             "public_product_title_integrity": title_integrity,
             "cache_headers": headers,
             **diagnostics,
+            **hub,
             **metadata,
             **retrieval,
             **decision}

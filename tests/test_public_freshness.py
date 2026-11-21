@@ -9,6 +9,8 @@ from scripts.xfit_public_freshness import (
     catalog_retrieval_readiness,
 )
 from scripts.wp_publish import PublishError
+from scripts.xfit_beginner_hub_choice_onepost import NEW_NAV, CHOICES
+from scripts.xfit_public_freshness import hub_choice_readiness
 
 
 def post(slug, post_id, marker):
@@ -42,6 +44,62 @@ def post(slug, post_id, marker):
 
 
 class PublicFreshnessTests(unittest.TestCase):
+    def test_released_beginner_hero_is_current_and_four_exact_choices(self):
+        slug, ident, _ = TARGETS[0]
+        original = {
+            "id":ident, "slug":slug, "status":"publish",
+            "link":"https://xfit.cz/"+slug+"/",
+            "content":{"raw":"<!-- xfit-growth-os:v1 -->\\n"+NEW_NAV+
+                "<p>Further valid original educational copy</p>"},
+        }
+        public = "<html><head><title>Začátečníci</title></head><body>" + (
+            original["content"]["raw"]) + "</body></html>"
+        result = probe(TARGETS[0], read_post=lambda _:original,
+                       read_public=lambda _: (public,{"Age":"0"}))
+        self.assertEqual(result["status"], "PUBLIC_FRESH")
+        self.assertEqual(result["hub_choice_stage"], "PUBLIC_HUB_CHOICES_VERIFIED")
+        self.assertEqual(result["source_hub_choice_link_count"], 4)
+        self.assertEqual(result["public_hub_choice_link_count"], 4)
+        self.assertEqual(tuple(CHOICES), (
+            "#zacatecnik-rozhodnuti",
+            "https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/",
+            "https://xfit.cz/xfit-os-kreatin-poradce/",
+            "https://xfit.cz/xfit-os-kreatin-nebo-protein/",
+        ))
+        self.assertNotIn("namaximum.cz", str(result))
+
+    def test_released_hero_missing_link_or_old_cdn_is_not_fresh(self):
+        slug, ident, _ = TARGETS[0]
+        source = "<!-- xfit-growth-os:v1 -->\\n" + NEW_NAV
+        original = {"id":ident,"slug":slug,"status":"publish",
+                    "link":"https://xfit.cz/"+slug+"/",
+                    "content":{"raw":source}}
+        # Missing a single real source link is a publish/source problem.
+        missing = dict(original)
+        missing["content"]={"raw":source.replace(
+            'href="https://xfit.cz/xfit-os-kreatin-poradce/"',
+            'href="https://xfit.cz/unreviewed/"', 1)}
+        no_source = probe(TARGETS[0],read_post=lambda _:missing,
+                          read_public=lambda _:("<html>"+source+"</html>",{}))
+        self.assertEqual(no_source["status"],"WP_SOURCE_INCOMPLETE")
+        self.assertEqual(no_source["hub_choice_stage"],"SOURCE_HUB_CHOICES_INCOMPLETE")
+        # Normal public response with old hero, or just the new heading,
+        # cannot hide absent links even though source is approved.
+        stale = source.replace(
+            'href="https://xfit.cz/xfit-os-kreatin-poradce/"',
+            'href="https://xfit.cz/unreviewed/"', 1)
+        report = probe(TARGETS[0],read_post=lambda _:original,
+                       read_public=lambda _:("<html>"+stale+"</html>",{}))
+        self.assertEqual(report["status"],"PUBLIC_STALE_OR_RENDERED_DIFFERENTLY")
+        self.assertEqual(report["hub_choice_stage"],"PUBLIC_HUB_CHOICES_MISSING_OR_DIFFERENT")
+        self.assertTrue(report["wp_source_has_target"])
+        self.assertTrue(report["public_has_target"])
+        self.assertNotIn("unreviewed",str(report))
+        only_heading = ("<h2>Co potřebujete právě teď?</h2>" +
+                        "".join('<a href="'+u+'">link</a>' for u in CHOICES))
+        self.assertEqual(hub_choice_readiness(source,only_heading)["hub_choice_stage"],
+                         "PUBLIC_HUB_CHOICES_MISSING_OR_DIFFERENT")
+
     def test_known_canonical_urls_only(self):
         self.assertTrue(owns_public_url("https://xfit.cz/xfit-os-kreatin-poradce/", "xfit-os-kreatin-poradce"))
         self.assertFalse(owns_public_url("https://external.example/xfit-os-kreatin-poradce/", "xfit-os-kreatin-poradce"))
