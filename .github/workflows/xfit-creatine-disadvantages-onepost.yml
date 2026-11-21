@@ -1,0 +1,44 @@
+name: XFIT Creatine Disadvantages Evidence Onepost
+# One source-pinned in-place correction of outdated claims; NEVER a bulk SEO sweep.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-creatine-disadvantages-onepost.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-creatine-disadvantages-onepost-20261121
+  cancel-in-progress: false
+jobs:
+  update-reviewed-article:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run all safe editorial and publisher regressions before remote access
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -q
+      - name: Exact existing WordPress post source guard and public preflight — no writes
+        run: python -m scripts.xfit_creatine_disadvantages_onepost snapshot
+      - name: Preserve complete existing body, title and excerpt before any POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-creatine-disadvantages-full-rollback-${{ github.run_id }}
+          path: reports/backups/xfit-creatine-disadvantages-onepost.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: One POST maximum; authenticated WordPress and public editorial readback
+        run: python -m scripts.xfit_creatine_disadvantages_onepost apply
