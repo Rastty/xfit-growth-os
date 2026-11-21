@@ -4,12 +4,9 @@ on:
   push:
     branches: [main]
     paths:
-      - '.github/workflows/xfit-creatine-live.yml'
       - 'scripts/xfit_creatine_guide.py'
       - 'scripts/xfit_quick_pick.py'
       - 'tests/test_quick_pick.py'
-      - 'scripts/wp_publish.py'
-      - 'tests/test_publisher.py'
       - 'scripts/xfit_affil_deeplink.py'
       - 'scripts/xfit_click_metadata.py'
       - 'scripts/xfit_budget_choices.py'
