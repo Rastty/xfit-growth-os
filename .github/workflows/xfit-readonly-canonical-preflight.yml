@@ -27,6 +27,7 @@ on:
           - '6558'
 permissions:
   contents: read
+  issues: write # Only for the sanitized read-only evidence comment in issue #282
 concurrency:
   group: xfit-wp-heavy-reads
   cancel-in-progress: false
@@ -49,4 +50,30 @@ jobs:
       - name: Source fingerprinting regression tests
         run: python -m unittest discover -s tests -p 'test_xfit_canonical_preflight.py' -v
       - name: Authenticated and independent public GET checks — no POST
-        run: python -m scripts.xfit_canonical_preflight
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p reports
+          python -m scripts.xfit_canonical_preflight | tee reports/xfit-canonical-preflight.json
+      - name: Record sanitized proof in existing canonical triage issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          {
+            echo '### XFIT canonical preflight (GET-only)'
+            echo
+            echo "Post ID: $XFIT_PREFLIGHT_POST_ID"
+            echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo 'WordPress write attempts: **0**'
+            echo
+            echo '```json'
+            if test -s reports/xfit-canonical-preflight.json; then
+              cat reports/xfit-canonical-preflight.json
+            else
+              echo '{"state":"PREFLIGHT_NO_REPORT","remote_post_attempts":0}'
+            fi
+            echo '```'
+          } > /tmp/xfit-canonical-preflight-comment.md
+          gh issue comment 282 --repo "$GITHUB_REPOSITORY" --body-file /tmp/xfit-canonical-preflight-comment.md
