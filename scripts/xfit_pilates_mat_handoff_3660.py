@@ -197,6 +197,15 @@ def source_diagnosis():
             "actual_diff_codepoint": ord(actual[first]) if first < len(actual) and actual != OLD else None,
             "reviewed_diff_codepoint": ord(OLD[first]) if first < len(OLD) and actual != OLD else None,
             "body_source_sha256": digest(fragment),
+            "html_comment_count": len(re.findall(r"<!--.*?-->", fragment, re.DOTALL)),
+            "markup_token_count": len(re.findall(r"<[^>]*>", fragment)),
+            "markup_token_kinds": sorted(set(
+                (("comment" if token.startswith("<!--")
+                  else "closing-tag" if token.startswith("</")
+                  else "tag" if token.startswith("<")
+                  else "other"))
+                for token in re.findall(r"<[^>]*>", fragment)
+            )),
         })
     print(json.dumps(metrics, ensure_ascii=False))
 
