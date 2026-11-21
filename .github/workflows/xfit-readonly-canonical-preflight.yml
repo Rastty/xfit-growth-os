@@ -1,0 +1,52 @@
+name: XFIT Read-only Canonical Preflight
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-readonly-canonical-preflight.yml'
+  workflow_dispatch:
+    inputs:
+      post_id:
+        description: 'Reviewed in-body canonical conflict post (GET only)'
+        type: choice
+        required: true
+        default: '9371'
+        options:
+          - '9371'
+          - '9462'
+          - '8713'
+          - '9008'
+          - '9544'
+          - '6959'
+          - '7268'
+          - '8531'
+          - '9923'
+          - '7305'
+          - '9765'
+          - '5804'
+          - '6558'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      XFIT_PREFLIGHT_POST_ID: ${{ inputs.post_id || '9371' }}
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Source fingerprinting regression tests
+        run: python -m unittest discover -s tests -p 'test_xfit_canonical_preflight.py' -v
+      - name: Authenticated and independent public GET checks — no POST
+        run: python -m scripts.xfit_canonical_preflight
