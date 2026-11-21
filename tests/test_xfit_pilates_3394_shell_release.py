@@ -39,6 +39,30 @@ def post(raw):
 
 
 class Pilates3394OnepostTests(unittest.TestCase):
+    def setUp(self):
+        # Synthetic fixture is a standalone document. Production hard pins
+        # 1,202 prefix + 4,590 suffix characters independently verified on WP.
+        for name in ("EXPECTED_PREFIX_CHARS", "EXPECTED_SUFFIX_CHARS"):
+            patcher = patch.object(p, name, 0)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def test_preserves_substantive_text_before_and_after_embedded_document(self):
+        shell, inner = fixture()
+        prefix = "Úvodní redakční text před cizím HTML. "
+        suffix = " Závěrečné shrnutí původního článku."
+        with patch.object(p, "EXPECTED_PREFIX_CHARS", len(prefix)), \
+             patch.object(p, "EXPECTED_SUFFIX_CHARS", len(suffix)):
+            result = p.transform(prefix + shell + suffix)
+        self.assertTrue(result.startswith(prefix))
+        self.assertTrue(result.endswith(suffix))
+        self.assertIn(inner[:220], result)
+        self.assertIn(inner[-220:], result)
+        self.assertIn(p.MARKER, result)
+        self.assertEqual(result.count("<h2>"), 6)
+        self.assertEqual(result.count("<p"), 16)
+        self.assertEqual(result.count("<title"), 0)
+
     def test_exact_shell_surgery_preserves_body_h2_and_original_links(self):
         old, body = fixture()
         result = p.transform(old)
