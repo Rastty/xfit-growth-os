@@ -24,6 +24,15 @@ from scripts.xfit_home_sticky_guide_onepost import (
     homepage_get, card_rank, POST_ID as GUIDE_ID, SLUG as GUIDE_SLUG,
 )
 
+# The failed 44897339584 release had no production POST attempt markers.
+# Independent authenticated GET-only 44897698415 subsequently proved BOTH
+# published advisers remain OUTSIDE category #44, with their current source
+# SHA-256 values captured here. These pins apply to this one revised release.
+CURRENT_ORIGINAL_SHA256 = {
+    25455: "c4bbe1182700516918b5797656af493bda0580e046a336982f2482be24e0b1dd",
+    25456: "7dc434d2ddc1a63e31dce1afd0fea0f04204e0d17ff7f03532b5c2e9bafc33e8",
+}
+
 PAGES = (
     (25455, "xfit-os-kreatin-poradce",
      "Jak vybrat kreatin: srovnání cen a balení monohydrátu"),
@@ -118,6 +127,13 @@ def fingerprint(post):
 
 def snapshot():
     category_id, posts = read_all()
+    if category_id != 44:
+        raise PublishError("Verified supplementary category ID no longer matches")
+    if any(sha(post["content"]["raw"]) != CURRENT_ORIGINAL_SHA256[row[0]]
+           or len(post["categories"]) != 1 or
+           category_id in post["categories"]
+           for row, post in zip(PAGES, posts)):
+        raise PublishError("One or both previously verified nonmember sources changed")
     order = positions(category_public_get())
     home = card_rank(homepage_get())
     if order[GUIDE_SLUG] != 1 or home is None or home > 3:
@@ -175,25 +191,33 @@ def apply():
                 original.get("categories") != entry.get("old_categories")):
             raise PublishError("Invalid rollback/source contract")
         prior.append(original)
+    print(json.dumps({"state": "PREWRITE_AUTH_SOURCE_RECHECK_START",
+                      "wordpress_post_attempts": 0}), flush=True)
     cat_id, now = read_all()
     if cat_id != saved["category_id"] or now != prior:
         raise PublishError("Concurrent editor/term source change before POST")
+    print(json.dumps({"state": "PREWRITE_AUTH_SOURCE_MATCHED",
+                      "wordpress_post_attempts": 0}), flush=True)
     if (positions(category_public_get()) != saved["archive_before"]
             or card_rank(homepage_get()) != saved["homepage_guide_rank"]):
         raise PublishError("Public category/homepage changed since backup")
+    print(json.dumps({"state": "PREWRITE_PUBLIC_BASELINE_MATCHED",
+                      "wordpress_post_attempts": 0}), flush=True)
     attempts = 0
     for approved, original in zip(PAGES, prior):
         post_id = approved[0]
         previous = original["categories"]
         if cat_id in previous:
             continue
-        # Recheck this post before each POST, because parallel publisher runs
-        # may have refreshed pricing/body after the batch baseline.
-        if source_get(post_id) != original:
-            raise PublishError("Advisor source drift during batch; no next POST")
+        # The first post was just validated in the complete authenticated
+        # source lease above. Avoid one redundant flaky WordPress GET before
+        # the first POST. The second post MUST be rechecked after the first
+        # remote mutation to detect intervening parallel publisher changes.
+        if attempts and source_get(post_id) != original:
+            raise PublishError("Second advisor source drift during batch; no next POST")
         expected = sorted(previous + [cat_id])
         print(json.dumps({"state": "ONE_CATEGORY_POST_ATTEMPT_START",
-                          "post_id": post_id, "attempt_number": attempts + 1}))
+                          "post_id": post_id, "attempt_number": attempts + 1}), flush=True)
         attempts += 1
         try:
             wp_request(normalized_base(), "posts/" + str(post_id),
@@ -207,6 +231,8 @@ def apply():
         if (no_category_or_timestamp(after) != no_category_or_timestamp(original)
                 or sorted(after["categories"]) != expected):
             raise PublishError("Post or category verification failed; no retry")
+        print(json.dumps({"state": "AUTH_CATEGORY_POST_VERIFIED",
+                          "post_id": post_id, "attempt_number": attempts}), flush=True)
     # Final GET proves all original categories and all editorial fields intact.
     _, final = read_all()
     for item, original in zip(final, prior):
