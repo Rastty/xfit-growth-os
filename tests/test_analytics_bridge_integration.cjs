@@ -16,6 +16,7 @@ const OFFER = "https://www.namaximum.cz/p/creatine?variant=392" +
 function mount(initialState, {existingBridge} = {}) {
   let state = initialState;
   const events = [];
+  const funnel = [];
   const callbacks = {};
   const root = {
     document: {addEventListener: (kind, fn) => { callbacks[kind] = fn; }},
@@ -24,13 +25,16 @@ function mount(initialState, {existingBridge} = {}) {
       href:"https://xfit.cz/xfit-os-kreatin-poradce/"
     },
     getWccConsent: () => state,
-    gtag: (...args) => events.push(args),
+    gtag: (...args) => {
+      if (args[1] === "affiliate_outbound_click") events.push(args);
+      else funnel.push(args);
+    },
   };
   if (existingBridge) root.xfitGetAnalyticsConsent = existingBridge;
   vm.runInNewContext(BRIDGE, {window:root});
   vm.runInNewContext(OUTBOUND, {window:root, URL});
   return {
-    root, events, setConsent: newState => { state = newState; },
+    root, events, funnel, setConsent: newState => { state = newState; },
     click({trusted = true, id = "392", href = OFFER} = {}) {
       const link = {
         dataset: {xfitProductId:id, xfitEngine:"creatine", xfitPartner:"namaximum"},
@@ -71,6 +75,26 @@ test("actual WebToffee bridge and outbound adapter follow denial, grant and revo
   for (const secret of ["SIMULATED_AID", "SIMULATED_BID", "https://", "health", "email"]) {
     assert.equal(JSON.stringify(h.events).includes(secret), false);
   }
+});
+
+test("integrated WebToffee funnel counts real clicks without outcome, query or visitor ID", () => {
+  const h = mount({categories:{analytics:false}});
+  h.click();
+  assert.equal(h.events.length, 0);
+  assert.equal(h.funnel.length, 0);
+  h.setConsent({categories:{analytics:true}});
+  h.click();
+  assert.deepEqual(h.funnel.map(x => x[1]), ["advisor_start", "advisor_complete"]);
+  for (const call of h.funnel) {
+    assert.deepEqual(Object.keys(call[2]).sort(), ["page", "selection_engine"]);
+    for (const bad of ["SIMULATED_AID", "SIMULATED_BID", "https://", "choice", "health", "answer"]) {
+      assert.equal(JSON.stringify(call).includes(bad), false);
+    }
+  }
+  h.setConsent({categories:{analytics:false}});
+  h.click();
+  assert.equal(h.events.length, 1);
+  assert.equal(h.funnel.length, 2);
 });
 
 test("permissive preexisting bridge does not bypass actual WebToffee denial", () => {
