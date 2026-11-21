@@ -204,6 +204,16 @@ def diagnose_source():
             ] if isinstance(raw, str) else None,
             "new_revision_marker_present": MARKER in raw if isinstance(raw, str) else None,
             "raw_sha256": sha(raw) if isinstance(raw, str) else None,
+            "unsafe_source_tag_counts": {
+                "doctype": raw.casefold().count("<!doctype"),
+                "html": raw.casefold().count("<html"),
+                "head": raw.casefold().count("<head"),
+                "body": raw.casefold().count("<body"),
+                "title": raw.casefold().count("<title"),
+                "script": raw.casefold().count("<script"),
+                "iframe": raw.casefold().count("<iframe"),
+                "form": raw.casefold().count("<form"),
+            } if isinstance(raw, str) else None,
             "source_heading_counts": {
                 "h1": len(re.findall(r"<h1\\b", raw, flags=re.I)),
                 "h2": len(re.findall(r"<h2\\b", raw, flags=re.I)),
