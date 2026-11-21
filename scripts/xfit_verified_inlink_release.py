@@ -31,6 +31,7 @@ class Handoff:
     marker: str
     sentence: str
     paragraph: str
+    before_heading: str | None = None
 
     @property
     def url(self):
@@ -188,7 +189,31 @@ _WHEY_SNACKS_7195 = Handoff(
         'tento odkaz není doporučení doplněk koupit.</p>'
     ),
 )
+_LACTOSE_INLINK_25451 = Handoff(
+    key="protein_lactose_25451",
+    post_id=25451,
+    slug="xfit-os-protein-guide",
+    title_term="protein",
+    target="https://xfit.cz/xfit-os-protein-bez-laktozy/",
+    marker="xfit-protein-lactose-25451-20261121",
+    sentence="Když řešíte protein a laktózu, nepleťte si intoleranci s alergií",
+    before_heading="<h3>Hydrolyzát</h3>",
+    paragraph=(
+        '<p data-xfit-handoff="xfit-protein-lactose-25451-20261121">'
+        '<strong>Když řešíte protein a laktózu, nepleťte si intoleranci s alergií.</strong> '
+        'Syrovátkový izolát sám o sobě nezaručuje nulový obsah laktózy '
+        'a při alergii na mléčnou bílkovinu není bezpečnou náhradou. '
+        'Před porovnáváním produktů proto doporučujeme '
+        '<a href="https://xfit.cz/xfit-os-protein-bez-laktozy/">'
+        'průvodce výběrem proteinu při intoleranci laktózy a mléčné alergii</a>. '
+        'Vysvětluje rozdíl mezi oběma situacemi a co ověřit na konkrétní '
+        'etiketě; pokud bílkoviny pokryjete jídlem, prášek nepotřebujete. '
+        'Tento odkaz není doporučení k nákupu.</p>'
+    ),
+)
+
 ALLOWLIST = {
+    _LACTOSE_INLINK_25451.key: _LACTOSE_INLINK_25451,
     "creatine_price_10835": Handoff(
         key="creatine_price_10835",
         post_id=10835,
