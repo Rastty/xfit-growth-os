@@ -45,7 +45,7 @@ class Bcaa9371ReviewTests(unittest.TestCase):
             self.assertEqual(self.body.count('href="' + target + '"'), 1)
         self.assertEqual(self.body.count("min-height:48px"), 3)
         self.assertIn("Nejdřív ověřit", self.body)
-        self.assertIn("žádný doplněk", self.body.lower())
+        self.assertIn("bez nákupu", self.body.lower())
 
     def test_source_links_and_allowed_hosts_only(self):
         for source in SOURCES:
