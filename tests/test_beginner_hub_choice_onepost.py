@@ -58,7 +58,7 @@ class BeginnerHubChoiceTests(unittest.TestCase):
         for change in (
             {"id":1}, {"slug":"other"}, {"sticky":False},
             {"categories":[3]}, {"title":{"raw":"Different Title"}},
-            {"content":{"raw":m.ready()["content"].replace("nejvíc", "nejméně")}},
+            {"content":{"raw":m.ready()["content"].replace("Nejvíc", "Nejméně")}},
         ):
             p=old_post()
             p.update(change)
