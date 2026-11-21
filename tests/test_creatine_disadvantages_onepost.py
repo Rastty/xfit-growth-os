@@ -163,7 +163,7 @@ class CreatineDisadvantagesOnepostTests(unittest.TestCase):
                 revision.snapshot()
             with patch.object(revision, "source_get", return_value=[drift]), \
                  patch.object(revision, "wp_request") as writer:
-                with self.assertRaisesRegex(PublishError, "changed between"):
+                with self.assertRaisesRegex(PublishError, "raw source hash|changed between"):
                     revision.apply()
             writer.assert_not_called()
 
