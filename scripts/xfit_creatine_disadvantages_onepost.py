@@ -172,6 +172,47 @@ def verify_existing_public(*, reader=None):
                                                    "dehydrataci", "krevní tlak")))
 
 
+
+def diagnose_source():
+    """Sanitized GET-only identity/content structure; no article text is printed."""
+    rows = source_get()
+    report = {"state": "GET_ONLY_CREATINE_DISADVANTAGES_STRUCTURE",
+              "wordpress_writes": 0, "post_attempts": 0,
+              "source_listing_type": "list" if isinstance(rows, list) else "other",
+              "matching_wp_rows": len(rows) if isinstance(rows, list) else None}
+    if isinstance(rows, list) and len(rows) == 1 and isinstance(rows[0], dict):
+        p = rows[0]
+        title = (p.get("title") or {}).get("raw")
+        raw = (p.get("content") or {}).get("raw")
+        excerpt = (p.get("excerpt") or {}).get("raw")
+        report.update({
+            "post_id": p.get("id") if type(p.get("id")) is int else None,
+            "slug_exact": p.get("slug") == SLUG,
+            "status_published": p.get("status") == "publish",
+            "canonical_url_exact": p.get("link") == URL,
+            "raw_title_is_old": isinstance(title, str) and unescape(title) == OLD_TITLE,
+            "raw_title_is_new": title == NEW_TITLE,
+            "title_raw_length": len(title) if isinstance(title, str) else None,
+            "title_expected_length": len(OLD_TITLE),
+            "raw_body_length": len(raw) if isinstance(raw, str) else None,
+            "excerpt_is_text": isinstance(excerpt, str),
+            "modified_gmt_present": bool(p.get("modified_gmt")),
+            "source_full_document_marker": bool(UNSAFE_SOURCE.search(raw)) if isinstance(raw, str) else None,
+            "reviewed_claims": [
+                bool(claim.casefold() in unescape(raw).casefold())
+                for claim in LEGACY_CLAIMS
+            ] if isinstance(raw, str) else None,
+            "new_revision_marker_present": MARKER in raw if isinstance(raw, str) else None,
+            "raw_sha256": sha(raw) if isinstance(raw, str) else None,
+            "source_heading_counts": {
+                "h1": len(re.findall(r"<h1\\b", raw, flags=re.I)),
+                "h2": len(re.findall(r"<h2\\b", raw, flags=re.I)),
+                "title": len(re.findall(r"<title\\b", raw, flags=re.I)),
+                "html": len(re.findall(r"<html\\b", raw, flags=re.I)),
+            } if isinstance(raw, str) else None,
+        })
+    print(json.dumps(report, ensure_ascii=False))
+
 def snapshot():
     new_body = reviewed_document()
     post, mode = classify(source_get(), new_body=new_body)
@@ -246,9 +287,10 @@ def apply():
 
 if __name__ == "__main__":
     try:
-        if len(sys.argv) != 2 or sys.argv[1] not in ("snapshot", "apply"):
-            raise PublishError("Usage snapshot|apply")
-        (snapshot if sys.argv[1] == "snapshot" else apply)()
+        if len(sys.argv) != 2 or sys.argv[1] not in ("snapshot", "apply", "diagnose"):
+            raise PublishError("Usage snapshot|apply|diagnose")
+        (snapshot if sys.argv[1] == "snapshot" else
+         diagnose_source if sys.argv[1] == "diagnose" else apply)()
     except (PublishError, OSError, ValueError, TypeError, KeyError) as exc:
         print("XFIT_CREATINE_DISADVANTAGES_ERROR: " + type(exc).__name__ +
               ("_SOURCE_GUARD" if isinstance(exc, PublishError) else "_OTHER"), file=sys.stderr)
