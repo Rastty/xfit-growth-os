@@ -1,0 +1,44 @@
+name: XFIT Creatine Ordinary vs No-Cache Readback
+# One GET-only reconciliation after 2026-11-21 source-bound content release.
+# No WordPress POST, no cache purge, no Google indexing API calls.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-creatine-ordinary-cache-readonly.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-creatine-ordinary-cache-getonly-20261121
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify exact no-write and stale-cache unit contracts
+        run: python -m unittest tests.test_creatine_public_cache_readonly -v
+      - name: Compare authenticated source, ordinary browser and no-cache public view
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p reports
+          python -m scripts.xfit_creatine_public_cache_readonly | tee reports/xfit-creatine-ordinary-cache.json
+      - name: Save sanitized status, including when verification is inconclusive
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-creatine-ordinary-cache-${{ github.run_id }}
+          path: reports/xfit-creatine-ordinary-cache.json
+          if-no-files-found: error
+          retention-days: 14
