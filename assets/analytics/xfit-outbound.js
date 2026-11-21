@@ -100,7 +100,11 @@
     if (href === "#xfit-need" &&
         anchor.closest('[data-xfit-quick-pick="no-buy"]') &&
         anchor.closest("section#xfit-rychly-vyber")) {
-      return "no_buy";
+      // The old "zjistit, zda..." CTA merely begins reading. Only an
+      // explicitly marked "today I choose not to buy" CTA is a completion.
+      // This remains safe while the WordPress HTML has not been refreshed.
+      return anchor.getAttribute("data-xfit-funnel-complete") === "no-buy"
+        ? "no_buy" : "start";
     }
     return null;
   }
