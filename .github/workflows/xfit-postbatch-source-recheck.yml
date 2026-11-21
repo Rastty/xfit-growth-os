@@ -1,0 +1,62 @@
+name: XFIT Post-batch Source Recheck GET Only
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-postbatch-source-recheck.yml'
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  readonly:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline regression for exact source pins
+        run: python -m unittest tests.test_xfit_wp_empty_batch_transport -v
+      - name: Verify both source fingerprints via authenticated and public GET
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p reports
+          python - <<'PY' | tee reports/xfit-postbatch-source-recheck.json
+          import json
+          from scripts.xfit_wp_empty_batch_transport import all_fingerprints
+          items = all_fingerprints()
+          print(json.dumps({'state': 'READ_ONLY_POSTBATCH_SOURCES_STABLE',
+                            'post_ids': [item['post_id'] for item in items],
+                            'sources': items, 'wordpress_post_attempts': 0,
+                            'release_allowed': False}, sort_keys=True))
+          PY
+      - name: Record source proof in existing canonical issue
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo '### XFIT source recheck following blocked empty batch'
+            echo
+            echo 'Authenticated and public GET only; no WordPress POST.'
+            echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo
+            if test -s reports/xfit-postbatch-source-recheck.json; then
+              cat reports/xfit-postbatch-source-recheck.json
+            else
+              echo '{"state":"READ_ONLY_RECHECK_UNVERIFIED","wordpress_post_attempts":0,"release_allowed":false}'
+            fi
+          } > /tmp/xfit-postbatch-readonly-proof.txt
+          gh issue comment 282 --repo "$GITHUB_REPOSITORY" --body-file /tmp/xfit-postbatch-readonly-proof.txt
