@@ -1,0 +1,56 @@
+name: XFIT WordPress REST OPTIONS Safety Probe
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-wp-rest-options-probe.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write # Only for the sanitized proof comment on existing issue #282
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  options_only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline OPTIONS and no-POST guard tests
+        run: python -m unittest tests.test_xfit_wp_rest_options_probe -v
+      - name: Authenticated OPTIONS transport observations — no POST
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p reports
+          python -m scripts.xfit_wp_rest_options_probe | tee reports/xfit-wp-rest-options-probe.json
+      - name: Save sanitized read-only proof in existing issue
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo '### XFIT WordPress REST OPTIONS preflight'
+            echo
+            echo 'Only OPTIONS requests, no WordPress writes.'
+            echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo 'Publishing remains disabled for #9371 and #9462.'
+            echo
+            if test -s reports/xfit-wp-rest-options-probe.json; then
+              cat reports/xfit-wp-rest-options-probe.json
+            else
+              echo '{"state":"READ_ONLY_PROBE_NO_REPORT","post_attempts":0,"permits_post_release":false}'
+            fi
+          } > /tmp/xfit-options-issue-comment.txt
+          gh issue comment 282 --repo "$GITHUB_REPOSITORY" --body-file /tmp/xfit-options-issue-comment.txt
