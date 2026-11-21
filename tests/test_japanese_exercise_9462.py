@@ -182,5 +182,65 @@ class JapaneseExerciseTests(unittest.TestCase):
             self.assertEqual(write.call_count, 1)
 
 
+    def test_redacted_post_error_categories_do_not_echo_secrets(self):
+        from scripts.wp_publish import classify_wp_write_failure
+        examples = (
+            (PublishError("WordPress REST API returned HTTP 403"), "HTTP_403"),
+            (PublishError("WordPress REST API returned HTTP 504"), "HTTP_504"),
+            (PublishError("WordPress REST request failed (TimeoutError)"), "TRANSPORT_TIMEOUT"),
+            (PublishError("WordPress REST request failed (ConnectionResetError)"),
+             "TRANSPORT_CONNECTION_ERROR"),
+            (PublishError("WordPress REST request failed (URLError)"), "TRANSPORT_OTHER"),
+            (PublishError("WordPress REST request failed (JSONDecodeError)"), "MALFORMED_RESPONSE"),
+            (TimeoutError("secrets should stay hidden"), "TRANSPORT_TIMEOUT"),
+            (PublishError("private password=not-for-logs"), "UNCLASSIFIED"),
+        )
+        for error, expected in examples:
+            with self.subTest(expected=expected):
+                self.assertEqual(classify_wp_write_failure(error), expected)
+
+    def test_realistic_wp_timeout_is_reported_but_no_post_is_retried(self):
+        import contextlib
+        from io import StringIO
+        initial = post()
+        output = StringIO()
+        with tempfile.TemporaryDirectory() as folder, \
+                patch.object(r, "BACKUP", Path(folder) / "snap.json"), \
+                patch.object(r, "old_public_fingerprint", return_value={}):
+            with patch.object(r, "remote", return_value=initial):
+                r.snapshot()
+            with patch.object(r, "remote", side_effect=[initial, initial]), \
+                    patch.object(r, "wp_request", side_effect=PublishError(
+                        "WordPress REST request failed (TimeoutError)")) as write, \
+                    patch.object(r, "normalized_base", return_value="https://xfit.cz"), \
+                    contextlib.redirect_stdout(output):
+                with self.assertRaises(PublishError):
+                    r.apply()
+        self.assertEqual(write.call_count, 1)
+        self.assertIn('"state": "UNRESOLVED_NO_RETRY"', output.getvalue())
+        self.assertIn('"post_error_category": "TRANSPORT_TIMEOUT"', output.getvalue())
+        self.assertNotIn("Authorization", output.getvalue())
+
+    def test_http_403_is_reported_without_retry_or_secret(self):
+        import contextlib
+        from io import StringIO
+        initial = post()
+        output = StringIO()
+        with tempfile.TemporaryDirectory() as folder, \
+                patch.object(r, "BACKUP", Path(folder) / "snap.json"), \
+                patch.object(r, "old_public_fingerprint", return_value={}):
+            with patch.object(r, "remote", return_value=initial):
+                r.snapshot()
+            with patch.object(r, "remote", side_effect=[initial, initial]), \
+                    patch.object(r, "wp_request", side_effect=PublishError(
+                        "WordPress REST API returned HTTP 403")) as write, \
+                    patch.object(r, "normalized_base", return_value="https://xfit.cz"), \
+                    contextlib.redirect_stdout(output):
+                with self.assertRaises(PublishError):
+                    r.apply()
+        self.assertEqual(write.call_count, 1)
+        self.assertIn('"post_error_category": "HTTP_403"', output.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()
