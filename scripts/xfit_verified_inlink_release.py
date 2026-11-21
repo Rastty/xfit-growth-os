@@ -31,6 +31,7 @@ class Handoff:
     marker: str
     sentence: str
     paragraph: str
+    before_heading: str | None = None
 
     @property
     def url(self):
@@ -188,7 +189,31 @@ _WHEY_SNACKS_7195 = Handoff(
         'tento odkaz není doporučení doplněk koupit.</p>'
     ),
 )
+_LACTOSE_INLINK_25451 = Handoff(
+    key="protein_lactose_25451",
+    post_id=25451,
+    slug="xfit-os-protein-guide",
+    title_term="protein",
+    target="https://xfit.cz/xfit-os-protein-bez-laktozy/",
+    marker="xfit-protein-lactose-25451-20261121",
+    sentence="Když řešíte protein a laktózu, nepleťte si intoleranci s alergií",
+    before_heading="<h3>Hydrolyzát</h3>",
+    paragraph=(
+        '<p data-xfit-handoff="xfit-protein-lactose-25451-20261121">'
+        '<strong>Když řešíte protein a laktózu, nepleťte si intoleranci s alergií.</strong> '
+        'Syrovátkový izolát sám o sobě nezaručuje nulový obsah laktózy '
+        'a při alergii na mléčnou bílkovinu není bezpečnou náhradou. '
+        'Před porovnáváním produktů proto doporučujeme '
+        '<a href="https://xfit.cz/xfit-os-protein-bez-laktozy/">'
+        'průvodce výběrem proteinu při intoleranci laktózy a mléčné alergii</a>. '
+        'Vysvětluje rozdíl mezi oběma situacemi a co ověřit na konkrétní '
+        'etiketě; pokud bílkoviny pokryjete jídlem, prášek nepotřebujete. '
+        'tento odkaz není doporučení k nákupu.</p>'
+    ),
+)
+
 ALLOWLIST = {
+    _LACTOSE_INLINK_25451.key: _LACTOSE_INLINK_25451,
     "creatine_price_10835": Handoff(
         key="creatine_price_10835",
         post_id=10835,
@@ -281,12 +306,21 @@ def prepare(cfg, post):
             or "<iframe" in cfg.paragraph.casefold()
             or "onclick=" in cfg.paragraph.casefold()):
         raise PublishError("Unreviewed or unsafe inlink paragraph")
-    updated=raw+"\n"+cfg.paragraph
+    if cfg.before_heading is not None:
+        # Contextual handoff must appear beside its reviewed topic, not at
+        # the end of a long guide. Exact single-heading match only.
+        if raw.count(cfg.before_heading) != 1:
+            raise PublishError("Reviewed topical insertion heading drifted")
+        updated = raw.replace(cfg.before_heading,
+                              cfg.paragraph + "\n" + cfg.before_heading, 1)
+    else:
+        updated = raw + "\n" + cfg.paragraph
     a,b=Inspector(),Inspector()
     a.feed(raw)
     b.feed(updated)
     if (a.headers!=b.headers or a.images!=b.images
-            or b.links!=a.links+[(cfg.target,"")]):
+            or b.links.count((cfg.target,"")) != 1
+            or [link for link in b.links if link != (cfg.target,"")] != a.links):
         raise PublishError("Legacy article non-target elements changed")
     if real_links(updated)!=(old_links | {cfg.target}):
         raise PublishError("New link set does not match reviewed source")

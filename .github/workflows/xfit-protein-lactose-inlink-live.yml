@@ -1,0 +1,46 @@
+name: XFIT Protein Lactose Context Inlink Onepost
+# Single contextual link in existing WordPress guide WP 25451 only.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-protein-lactose-inlink-live.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  guarded-onepost:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Entire XFIT release safety suite
+        run: |
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -v
+      - name: Snapshot full authenticated edit source without a write
+        run: python -m scripts.xfit_verified_inlink_release protein_lactose_25451 snapshot
+      - name: Upload mandatory original source BEFORE any WordPress POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-protein-lactose-25451-rollback-${{ github.run_id }}
+          path: reports/backups/xfit-reviewed-inlink-protein_lactose_25451.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: At most one guarded WP write and authenticated/public verification
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_verified_inlink_release protein_lactose_25451 apply | tee -a "$GITHUB_STEP_SUMMARY"
