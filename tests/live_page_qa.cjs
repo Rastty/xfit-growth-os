@@ -361,9 +361,21 @@ for(const spec of checks){
     const productTargets=new Set([...document.querySelectorAll('.xfit-product-card[id]')]
       .map(card=>'#'+card.id));
     const heroLinks=hero ? [...hero.querySelectorAll('a')] : [];
+    // Google may inject `a.google-anno` into editorial text after WP has
+    // rendered. Do not mistake those third-party annotations for XFIT
+    // commercial CTAs or approved educational links. Unknown extra links and
+    // any annotation carrying an XFIT CTA identity still fail this check.
+    const injectedGoogleLinks=heroLinks.filter(a=>a.classList.contains('google-anno'));
+    const harmlessGoogleAnnotations=injectedGoogleLinks.every(a=>
+      !a.hasAttribute('data-xfit-cta') &&
+      !a.hasAttribute('data-xfit-product-id') &&
+      !a.relList.contains('sponsored') &&
+      !/^https:\/\/(?:www\.)?namaximum\.cz\//i.test(a.href));
+    const ownedHeroLinks=harmlessGoogleAnnotations ?
+      heroLinks.filter(a=>!a.classList.contains('google-anno')) : heroLinks;
     const wheyHero=location.pathname==='/xfit-os-syrovatkovy-protein-porovnani/';
     const labelGuideHref='https://xfit.cz/xfit-os-cena-proteinu-podle-etikety/';
-    const heroLabelLinks=heroLinks.filter(a=>a.getAttribute('href')===labelGuideHref);
+    const heroLabelLinks=ownedHeroLinks.filter(a=>a.getAttribute('href')===labelGuideHref);
     const firstQuickMerchant=hero?.querySelector('a[data-xfit-cta="quick-pick"]');
     const heroEducationSafe=heroLabelLinks.length===(wheyHero?1:0) &&
       heroLabelLinks.every(link=>firstQuickMerchant &&
@@ -385,7 +397,8 @@ for(const spec of checks){
             row.getAttribute('data-xfit-quick-pick')===kind))),
       linksValid:quickOfferBlocks.length>=1 && quickOfferBlocks.length<=2 &&
         heroEducationSafe &&
-        heroLinks.length===quickOfferBlocks.length*2+1+heroLabelLinks.length &&
+        harmlessGoogleAnnotations &&
+        ownedHeroLinks.length===quickOfferBlocks.length*2+1+heroLabelLinks.length &&
         quickOfferBlocks.every(row=>{
           const merchant=row.querySelector('a[data-xfit-cta="quick-pick"]');
           const detail=row.querySelector('a[href^="#xfit-offer-"]');
@@ -406,7 +419,11 @@ for(const spec of checks){
             !detail.hasAttribute('target') && !detail.hasAttribute('onclick') &&
             detail.getBoundingClientRect().height>=44;
         }) &&
-        heroLinks.filter(a=>a.getAttribute('href')==='#xfit-need').length===1,
+        ownedHeroLinks.filter(a=>a.getAttribute('href')==='#xfit-need').length===1,
+      thirdPartyGoogleAnnotations:injectedGoogleLinks.length,
+      thirdPartyAnnotationsHarmless:harmlessGoogleAnnotations,
+      ownedAnchorCount:ownedHeroLinks.length,
+      expectedOwnedAnchorCount:quickOfferBlocks.length*2+1+heroLabelLinks.length,
       caveats:!!hero && hero.textContent.includes('nikoli celý trh') &&
         hero.textContent.includes('ověřte před nákupem') &&
         hero.textContent.includes('může získat provizi'),
