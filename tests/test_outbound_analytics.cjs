@@ -34,10 +34,12 @@ function harness({consent = true, bridge = true, page = "/xfit-os-kreatin-poradc
   return {
     calls, funnel, root,
     decide({type = "nav", href = "#xfit-need", trusted = true,
-            googleAnnotation = false} = {}) {
+            googleAnnotation = false, confirmed = true} = {}) {
       const anchor = {
         classList: {contains: name => name === "google-anno" && googleAnnotation},
-        getAttribute: name => name === "href" ? href : null,
+        getAttribute: name => name === "href" ? href :
+          name === "data-xfit-funnel-complete" && type === "no_buy" && confirmed
+            ? "no-buy" : null,
         hasAttribute: () => false,
         closest: selector =>
           selector === 'nav[aria-label="Rychlá navigace poradcem"]' && type === "nav" ||
@@ -98,6 +100,15 @@ test("real choice start and no-buy completion are distinct, consented and dedupe
       assert.equal(payload.includes(forbidden), false);
     }
   }
+});
+
+test("legacy informational no-buy anchor is start only until explicit source marker exists", () => {
+  const h = harness();
+  h.decide({type:"no_buy", confirmed:false});
+  assert.deepEqual(h.funnel.map(x => x[1]), ["advisor_start"]);
+  h.decide({type:"no_buy", confirmed:true});
+  assert.deepEqual(h.funnel.map(x => x[1]), ["advisor_start", "advisor_complete"]);
+  assert.equal(h.calls.length, 0);
 });
 
 test("first direct real merchant click starts and completes before outbound; repeat only click", () => {
