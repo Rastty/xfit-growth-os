@@ -103,6 +103,31 @@ def source_assess(rows):
             ("paragraph_start", r"<\s*p(?:\s|>)"),
         )
     }
+    first_doctype = re.search(r"<!\s*doctype\b[^>]*>", raw, re.I)
+    closing_html = list(re.finditer(r"</\s*html\s*>", raw, re.I))
+    if first_doctype and len(closing_html) == 1:
+        before = raw[:first_doctype.start()]
+        after = raw[closing_html[0].end():]
+        only_comments = lambda text: bool(re.fullmatch(
+            r"(?:\s|<!--.*?-->)*", text, flags=re.S
+        ))
+        shell_boundaries = {
+            "prefix_chars": len(before),
+            "suffix_chars": len(after),
+            "prefix_only_whitespace_or_html_comments": only_comments(before),
+            "suffix_only_whitespace_or_html_comments": only_comments(after),
+            "starts_immediately_with_doctype": not before.strip(),
+            "ends_immediately_after_html": not after.strip(),
+            "html_closing_tag_count": 1,
+        }
+    else:
+        shell_boundaries = {
+            "prefix_chars": None,
+            "suffix_chars": None,
+            "prefix_only_whitespace_or_html_comments": False,
+            "suffix_only_whitespace_or_html_comments": False,
+            "html_closing_tag_count": len(closing_html),
+        }
     return {
         "post_id": post["id"],
         "raw_sha256": hashlib.sha256(raw.encode("utf-8")).hexdigest(),
@@ -111,6 +136,7 @@ def source_assess(rows):
         "title_contains_pilates": True,
         "raw_embedded_complete_document_markers": embedded,
         "source_structure": structure,
+        "shell_boundaries": shell_boundaries,
         "raw_contains_power_pilates": "power pilates" in unescape(raw).casefold(),
         "source_h1_count": len(signals["h1"]),
         "source_link_to_primary": signals["links_to_primary"],
