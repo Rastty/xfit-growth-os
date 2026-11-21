@@ -90,6 +90,8 @@ class QuickPicks(HTMLParser):
         self.in_no_buy = False
         self.links = []
         self.copy = []
+        self.copy_before_first_offer = []
+        self.first_offer_seen = False
         self.suppressed = 0
 
     def handle_starttag(self, tag, attrs):
@@ -109,6 +111,7 @@ class QuickPicks(HTMLParser):
             if self.depth and self.in_no_buy and a.get("href") == "#xfit-need":
                 self.no_buy_link = True
             if a.get("data-xfit-cta") == "quick-pick":
+                self.first_offer_seen = True
                 self.links.append({
                     "inside": bool(self.depth),
                     "href": unescape(a.get("href") or ""),
@@ -121,6 +124,8 @@ class QuickPicks(HTMLParser):
     def handle_data(self, data):
         if self.depth and not self.suppressed:
             self.copy.append(data)
+            if not self.first_offer_seen:
+                self.copy_before_first_offer.append(data)
 
     def handle_endtag(self, tag):
         if tag == "p":
@@ -132,30 +137,81 @@ class QuickPicks(HTMLParser):
 
 
 class VisibleText(HTMLParser):
-    """Affiliate disclosure must be readable text, not a hidden URL parameter."""
+    """Capture only reader-visible disclosure before the first tracked offer.
+
+    Do not mistake UTM values in href, scripts, hidden blocks, footer copy
+    after a commercial CTA, or third-party ad annotations for disclosure.
+    When the document markup is malformed, the parser conservatively ignores
+    text remaining beneath an unclosed hidden ancestor.
+    """
+    HIDDEN_TAGS = frozenset(("script", "style", "noscript", "template", "svg"))
+    VOID_TAGS = frozenset(("area", "base", "br", "col", "embed", "hr",
+                           "img", "input", "link", "meta", "param",
+                           "source", "track", "wbr"))
+
     def __init__(self):
         super().__init__(convert_charrefs=True)
-        self.skip = 0
+        self.stack = []
         self.parts = []
+        self.first_offer_seen = False
+
+    @staticmethod
+    def _hidden(tag, attrs):
+        style = (attrs.get("style") or "").lower().replace(" ", "")
+        return (tag in VisibleText.HIDDEN_TAGS
+                or "hidden" in attrs
+                or (attrs.get("aria-hidden") or "").lower() == "true"
+                or "display:none" in style or "visibility:hidden" in style)
+
+    @staticmethod
+    def _tracked_offer(attrs):
+        href = attrs.get("href") or ""
+        p = urlsplit(href)
+        if p.hostname not in MERCHANTS:
+            return False
+        q = parse_qs(p.query, keep_blank_values=True)
+        return (attrs.get("data-xfit-partner") == "namaximum"
+                or attrs.get("data-xfit-cta") == "quick-pick"
+                or ("a_aid" in q and "a_bid" in q))
 
     def handle_starttag(self, tag, attrs):
-        if tag in ("script", "style", "noscript", "template"):
-            self.skip += 1
+        a = dict(attrs)
+        parent_hidden = self.stack[-1][1] if self.stack else False
+        hidden = parent_hidden or self._hidden(tag, a)
+        if tag == "a" and not hidden and self._tracked_offer(a):
+            self.first_offer_seen = True
+        if tag not in self.VOID_TAGS:
+            self.stack.append((tag, hidden))
+
+    def handle_startendtag(self, tag, attrs):
+        # XML-like self-closing elements must not leave a hidden ancestor.
+        self.handle_starttag(tag, attrs)
+        if tag not in self.VOID_TAGS:
+            self.handle_endtag(tag)
 
     def handle_endtag(self, tag):
-        if tag in ("script", "style", "noscript", "template") and self.skip:
-            self.skip -= 1
+        # Native WordPress text may contain incidental malformed HTML.
+        for i in range(len(self.stack) - 1, -1, -1):
+            if self.stack[i][0] == tag:
+                del self.stack[i:]
+                break
 
     def handle_data(self, text):
-        if not self.skip:
+        if not self.first_offer_seen and not (
+                self.stack and self.stack[-1][1]):
             self.parts.append(text)
 
 
 def has_visible_disclosure(body):
+    """True only for a visible fee notice before the first tracked merchant CTA.
+
+    Mere 'affiliate' in an href is NOT a disclosure to the reader.
+    """
     parser = VisibleText()
     parser.feed(body)
     text = " ".join(parser.parts).casefold()
-    return "provizi" in text or "affiliate" in text
+    return ("provizi" in text
+            and ("affiliate" in text or "partnersk" in text or "xfit" in text))
 
 
 def canonical_article(url, slug):
@@ -310,7 +366,8 @@ def quick_pick_evidence(body, slug, affiliate_base, card_signature):
         errors.add("unexpected_quick_pick_cta_count")
     if hero.no_buy != 1 or not hero.no_buy_link:
         errors.add("missing_quick_pick_no_buy_path")
-    visible = " ".join(hero.copy).casefold()
+    # The notice must precede the first commercial hero CTA, not follow it.
+    visible = " ".join(hero.copy_before_first_offer).casefold()
     if "affiliate" not in visible or "provizi" not in visible:
         errors.add("missing_quick_pick_disclosure")
     seen = set()

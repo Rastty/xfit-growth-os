@@ -137,6 +137,48 @@ class AffiliateParityTests(unittest.TestCase):
         for secret in ("SENSITIVE_AID", "SENSITIVE_BID", "392", "393"):
             self.assertNotIn(secret, str(result))
 
+    def test_disclosure_must_precede_first_hero_merchant_cta(self):
+        # A disclosure inserted after the first paid CTA is too late for a
+        # reader deciding whether to open the merchant offer.
+        shifted = body().replace(
+            '<p>Odkazy jsou affiliate: XFIT může získat provizi.</p>', ''
+        ).replace(
+            'Ověřit cenu a dostupnost</a>',
+            'Ověřit cenu a dostupnost</a>'
+            '<p>Odkazy jsou affiliate: XFIT může získat provizi.</p>',
+            1,
+        )
+        result = probe.audit_page(
+            SLUG, BASE, wp_reader=lambda slug: wp(shifted),
+            public_reader=lambda slug: shifted)
+        self.assertIn("wp_missing_quick_pick_disclosure", result["errors"])
+        self.assertIn("public_missing_quick_pick_disclosure", result["errors"])
+
+    def test_visible_disclosure_must_precede_tracked_offer(self):
+        first = card("392", "392")
+        notice = '<p>Partnerské odkazy: XFIT může získat provizi.</p>'
+        self.assertTrue(probe.has_visible_disclosure(notice + first))
+        self.assertFalse(probe.has_visible_disclosure(first + notice))
+        self.assertFalse(probe.has_visible_disclosure(first))
+        self.assertTrue(probe.has_visible_disclosure(
+            '<p>Affiliate: XFIT může získat provizi.</p>' + first))
+
+    def test_visibility_excludes_hidden_notice_and_allows_text_outside(self):
+        c = card("392", "392")
+        notice = 'Partnerské odkazy: XFIT může získat provizi.'
+        for hidden in (
+            '<script>'+notice+'</script>',
+            '<style>'+notice+'</style>',
+            '<template><p>'+notice+'</p></template>',
+            '<span hidden>'+notice+'</span>',
+            '<div aria-hidden="true"><p>'+notice+'</p></div>',
+            '<div style="visibility: hidden"><p>'+notice+'</p></div>',
+        ):
+            with self.subTest(hidden=hidden[:24]):
+                self.assertFalse(probe.has_visible_disclosure(hidden+c))
+        self.assertTrue(probe.has_visible_disclosure(
+            '<div hidden>skryté</div><p>'+notice+'</p>'+c))
+
     def test_budget_jump_is_not_mistaken_for_second_affiliate_cta(self):
         # Current live cards contain one commercial offer and a separate
         # same-page link to the budget picker. Both WP and public HTML are

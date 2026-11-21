@@ -12,6 +12,7 @@ import sys
 from urllib.parse import parse_qs, urlencode, urlsplit
 from urllib.request import Request, urlopen
 from scripts.xfit_affil_deeplink import affiliate_signature
+from scripts.xfit_affiliate_public_audit import has_visible_disclosure
 
 SLUGS=("xfit-os-kreatin-poradce","xfit-os-syrovatkovy-protein-porovnani")
 TARGET_HOSTS=("namaximum.cz","www.namaximum.cz")
@@ -56,7 +57,7 @@ def check_markdown_html(body, base_url, *, min_links=2):
     if len(merchant)<min_links:
         errors.append("insufficient_affiliate_product_links")
     return {"merchant_link_count":len(merchant),
-        "has_disclosure":("provizi" in body.casefold() or "affiliate" in body.casefold()),
+        "has_disclosure":has_visible_disclosure(body),
         "errors":sorted(set(errors))}
 
 def inspect_live(slug, base):

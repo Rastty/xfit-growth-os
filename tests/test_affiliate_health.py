@@ -9,6 +9,33 @@ class HealthTests(unittest.TestCase):
         result=check_markdown_html(link()+link(),BASE)
         self.assertEqual(result["errors"],[])
         self.assertEqual(result["merchant_link_count"],2)
+    def test_url_tracking_is_not_a_reader_visible_disclosure(self):
+        result=check_markdown_html(link()+link(),BASE)
+        self.assertFalse(result["has_disclosure"])
+        # The URLs contain utm_medium=affiliate, but that is not page copy.
+        self.assertEqual(result["errors"],[])
+
+    def test_actual_visible_notice_before_offer(self):
+        body='<p>Partnerské odkazy: Xfit.cz může získat provizi.</p>'+link()+link()
+        self.assertTrue(check_markdown_html(body,BASE)["has_disclosure"])
+
+    def test_notice_after_first_offer_does_not_count(self):
+        body=link()+'<p>Partnerské odkazy: Xfit.cz může získat provizi.</p>'+link()
+        self.assertFalse(check_markdown_html(body,BASE)["has_disclosure"])
+
+    def test_disclosure_in_hidden_or_script_content_does_not_count(self):
+        text='Partnerské odkazy: Xfit.cz může získat provizi.'
+        hidden=(
+            '<script>'+text+'</script>',
+            '<template><p>'+text+'</p></template>',
+            '<div hidden><p>'+text+'</p></div>',
+            '<div aria-hidden="true"><p>'+text+'</p></div>',
+            '<div style="display: none"><p>'+text+'</p></div>',
+        )
+        for fragment in hidden:
+            with self.subTest(fragment=fragment[:30]):
+                self.assertFalse(check_markdown_html(fragment+link()+link(),BASE)["has_disclosure"])
+
     def test_wrong_campaign(self):
         result=check_markdown_html(link(Q.replace("TESTID","OTHER"))+link(),BASE)
         self.assertIn("wrong_campaign_ids",result["errors"])
