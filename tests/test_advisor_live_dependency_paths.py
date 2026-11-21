@@ -1,4 +1,4 @@
-"""Live advisors must refresh when any shared affiliate-link generator changes."""
+"""Live advisors refresh for offer-builder changes, not CI-only publisher upkeep."""
 from pathlib import Path
 import unittest
 
@@ -10,7 +10,6 @@ LIVE_WORKFLOWS = {
 COMMON = {
     "scripts/xfit_creatine_guide.py",
     "scripts/xfit_affil_deeplink.py",
-    "scripts/wp_publish.py",
     "scripts/xfit_click_metadata.py",
 }
 
@@ -32,7 +31,16 @@ class SharedAdvisorDependencyTests(unittest.TestCase):
                 paths = push_paths(file)
                 self.assertTrue(COMMON.issubset(paths),
                                 f"Missing shared runtime dependency for {name}: {COMMON - paths}")
-                self.assertIn(file, paths)
+                # Publisher implementation and release YAML are CI-reviewed
+                # but not a reason to post new unchanged product articles.
+                self.assertNotIn("scripts/wp_publish.py", paths)
+                self.assertNotIn(file, paths)
+
+    def test_shared_publisher_changes_still_run_full_main_ci(self):
+        code_checks = Path(".github/workflows/xfit-checks.yml").read_text(encoding="utf-8")
+        self.assertIn("'scripts/**'", code_checks)
+        self.assertIn("'tests/**'", code_checks)
+        self.assertIn("python -m unittest discover -s tests -v", code_checks)
 
     def test_both_advisors_keep_safety_and_nonoverlapping_schedules(self):
         schedules = []

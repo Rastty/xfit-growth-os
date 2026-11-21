@@ -27,6 +27,32 @@ class ReleaseGateTests(unittest.TestCase):
                          {"XFIT Whey Advisor Live"})
         self.assertEqual(expected_releases({"tests/live_page_qa.cjs"}, self.sources), set())
 
+    def test_publisher_only_maintenance_never_triggers_product_releases(self):
+        # The 2026-11-21 publisher safety-only merge unexpectedly triggered
+        # both live writers; those writes do not validate publisher code.
+        for path in (
+            "scripts/wp_publish.py", "tests/test_publisher.py",
+            ".github/workflows/xfit-creatine-live.yml",
+            ".github/workflows/xfit-whey-live.yml",
+        ):
+            with self.subTest(file=path):
+                self.assertEqual(expected_releases({path}, self.sources), set())
+
+        mobile = Path(".github/workflows/xfit-mobile-qa.yml").read_text(encoding="utf-8")
+        watched = set(workflow_push_paths(mobile))
+        for file in (
+            "scripts/wp_publish.py", "tests/test_publisher.py",
+            ".github/workflows/xfit-creatine-live.yml",
+            ".github/workflows/xfit-whey-live.yml",
+        ):
+            self.assertNotIn(file, watched)
+
+        # Daily scheduled feed updates and manual dispatch remain untouched.
+        for source in self.sources.values():
+            self.assertIn("  schedule:", source)
+            self.assertIn("  workflow_dispatch:", source)
+            self.assertIn("scripts/xfit_feed_ingest.py", workflow_push_paths(source))
+
     def test_mobile_qa_watches_all_release_inputs(self):
         mobile = Path(".github/workflows/xfit-mobile-qa.yml").read_text(encoding="utf-8")
         watched = set(workflow_push_paths(mobile))
