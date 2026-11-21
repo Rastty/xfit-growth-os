@@ -360,6 +360,17 @@ for(const spec of checks){
     const heroChoices=hero ? [...hero.querySelectorAll('[data-xfit-quick-pick]')] : [];
     const productTargets=new Set([...document.querySelectorAll('.xfit-product-card[id]')]
       .map(card=>'#'+card.id));
+    // The explicit no-buy reader choice is the only non-commercial
+    // completion. Verify its marker and size in actual public mobile DOM.
+    const noBuyChoices=hero ? [...hero.querySelectorAll(
+      '[data-xfit-quick-pick="no-buy"] a[data-xfit-funnel-complete="no-buy"]')] : [];
+    const noBuyCompletionValid=noBuyChoices.length===1 &&
+      noBuyChoices[0].getAttribute('href')==='#xfit-need' &&
+      noBuyChoices[0].textContent.includes('Dnes nekupuji žádný doplněk') &&
+      !noBuyChoices[0].hasAttribute('onclick') &&
+      noBuyChoices[0].getAttribute('target')===null &&
+      !noBuyChoices[0].relList.contains('sponsored') &&
+      noBuyChoices[0].getBoundingClientRect().height>=44;
     const heroLinks=hero ? [...hero.querySelectorAll('a')] : [];
     // Google may inject `a.google-anno` into editorial text after WP has
     // rendered. Do not mistake those third-party annotations for XFIT
@@ -386,6 +397,7 @@ for(const spec of checks){
       row.getAttribute('data-xfit-quick-pick')!=='no-buy');
     const heroQuickPick={
       count:heroSections.length,
+      noBuyCompletionValid,
       beforeQuestions:!!hero && !!document.querySelector('#xfit-need') &&
         !!(hero.compareDocumentPosition(document.querySelector('#xfit-need')) & Node.DOCUMENT_POSITION_FOLLOWING),
       beforeOffers:!!hero && !!document.querySelector('#xfit-offers') &&
@@ -729,7 +741,7 @@ for(const spec of checks){
   if(spec.commercial && (doc.heroQuickPick.count!==1 ||
       !doc.heroQuickPick.beforeQuestions || !doc.heroQuickPick.beforeOffers ||
       !doc.heroQuickPick.choicesValid || !doc.heroQuickPick.linksValid ||
-      !doc.heroQuickPick.caveats))
+      !doc.heroQuickPick.noBuyCompletionValid || !doc.heroQuickPick.caveats))
     failures.push("live_mobile_first_screen_source_bound_quick_pick_missing_or_invalid");
   if(spec.commercial && (!doc.noPurchase.heading ||
       doc.noPurchase.questions!==3 || !doc.noPurchase.firstOpen ||
