@@ -10,7 +10,7 @@ from scripts.xfit_supplements_two_advisors_category import PAGES
 
 def post(row, *, categories=None):
     ident, slug, title = row
-    body = ("<p>Bez rozhodnutí lze také nekupovat</p>" * 80 +
+    body = ("<p>Bez rozhodnutí lze také nekupovat</p>" * 90 +
         "".join('<article class="xfit-product-card" '
                 'data-xfit-product-id="' + str(i) + '">'
                 '<a href="https://www.namaximum.cz/p/x">Nabídka</a></article>'
