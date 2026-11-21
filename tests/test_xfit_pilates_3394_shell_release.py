@@ -81,6 +81,38 @@ class Pilates3394OnepostTests(unittest.TestCase):
         self.assertIn("min-height:44px", result)
         self.assertIn("Klasické a power pilates", result)
 
+    def test_readonly_inspect_reports_only_allowlisted_guard_reason(self):
+        old, _ = fixture()
+        with patch.object(p, "EXPECTED_SHA", p.sha(old)), \
+             patch.object(p, "source", return_value=post(old)), \
+             patch.object(p, "transform", side_effect=PublishError(
+                 "Embedded head contains unreviewed substantive text"
+             )), patch.object(p, "wp_request") as writer:
+            output = StringIO()
+            with contextlib.redirect_stdout(output):
+                p.inspect()
+            receipt = json.loads(output.getvalue())
+            self.assertEqual(receipt["state"], "SOURCE_GUARD_REJECTED_NO_WRITE")
+            self.assertEqual(receipt["guard_reason"],
+                             "Embedded head contains unreviewed substantive text")
+            self.assertEqual(receipt["post_attempts"], 0)
+            self.assertFalse(receipt["release_permitted"])
+            writer.assert_not_called()
+
+    def test_readonly_inspect_redacts_unrecognized_exception_text(self):
+        old, _ = fixture()
+        with patch.object(p, "EXPECTED_SHA", p.sha(old)), \
+             patch.object(p, "source", return_value=post(old)), \
+             patch.object(p, "transform", side_effect=PublishError(
+                 "SECRET-from-external-origin"
+             )):
+            output = StringIO()
+            with contextlib.redirect_stdout(output):
+                p.inspect()
+            receipt = json.loads(output.getvalue())
+            self.assertEqual(receipt["guard_reason"], "UNCLASSIFIED")
+            self.assertNotIn("SECRET", output.getvalue())
+
     def test_surgery_fails_closed_on_changed_markup_and_source_fragments(self):
         old, body = fixture()
         invalid = (
