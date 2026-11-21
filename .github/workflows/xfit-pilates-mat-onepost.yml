@@ -1,0 +1,44 @@
+name: XFIT Pilates 3660 Existing Mat Guide Handoff
+# One already-indexed source to one existing first-party mat decision guide.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-pilates-mat-onepost.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-pilates-mat-3660-onepost
+  cancel-in-progress: false
+jobs:
+  onepost:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile and run all regressions before any access to WordPress
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -v
+      - name: Get exact source and verify real linked destination without writing
+        run: python -m scripts.xfit_pilates_mat_handoff_3660 snapshot
+      - name: Store mandatory full original WordPress HTML before possible POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-pilates-3660-mat-rollback-${{ github.run_id }}
+          path: reports/backups/xfit-pilates-mat-3660.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: One guarded WP post at most, authenticated and public link readback
+        run: python -m scripts.xfit_pilates_mat_handoff_3660 apply
