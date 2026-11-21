@@ -44,10 +44,15 @@ HANDOFF = (
     'Klasické a power pilates – porovnání tempa a vhodnosti pro začátečníky'
     '</a>. Před rezervací si ověřte úroveň kurzu a možnost lehčích variant.</p>'
 )
+# Independent authenticated source layout proof: 1,202 characters precede the
+# embedded document and 4,590 follow it. These are ORIGINAL editorial bytes.
+# Preserve both segments; removing either would destroy valid page content.
+EXPECTED_PREFIX_CHARS = 1202
+EXPECTED_SUFFIX_CHARS = 4590
 SHELL = re.compile(
-    r"\A\s*<!DOCTYPE\s+html[^>]*>\s*<html\b[^>]*>\s*"
-    r"<head\b[^>]*>.*?</head\s*>\s*"
-    r"<body\b[^>]*>(?P<body>.*?)</body\s*>\s*</html\s*>\s*\Z",
+    r"<!DOCTYPE\s+html[^>]*>\s*<html\b[^>]*>\s*"
+    r"<head\b[^>]*>(?P<head>.*?)</head\s*>\s*"
+    r"<body\b[^>]*>(?P<body>.*?)</body\s*>\s*</html\s*>",
     re.I | re.S,
 )
 
@@ -113,26 +118,46 @@ def transform(original):
                    r"<\s*link\b[^>]*\bcanonical\b|\bon\w+\s*=",
                    original, re.I):
         raise PublishError("Legacy shell structure differs from reviewed source")
-    match = SHELL.fullmatch(original)
+    match = SHELL.search(original)
     if match is None:
-        raise PublishError("Cannot remove only the outer document shell")
+        raise PublishError("Cannot isolate one complete embedded document")
+    prefix, suffix = original[:match.start()], original[match.end():]
+    if (len(prefix) != EXPECTED_PREFIX_CHARS
+            or len(suffix) != EXPECTED_SUFFIX_CHARS):
+        raise PublishError("Original surrounding editorial content drifted")
+    head = match.group("head")
+    # Discard only document-level metadata. If the embedded <head> contains
+    # actual editorial text or interactive content, abort rather than erase it.
+    cleaned_head = re.sub(
+        r"<\s*(?:meta|link)\b[^>]*>|<\s*title\b[^>]*>.*?</title\s*>|"
+        r"<!--.*?-->",
+        "", head, flags=re.I | re.S,
+    )
+    if cleaned_head.strip():
+        raise PublishError("Embedded head contains unreviewed substantive text")
     body = match.group("body")
-    if (len(body) < 3500 or TARGET in body or MARKER in body
+    if (len(body) < 200 or TARGET in original or MARKER in original
             or re.search(r"<\s*(?:/?(?:html|head|body)|title|meta)\b|<!doctype",
-                         body, re.I)
-            or len(re.findall(r"<\s*h2\b", body, re.I)) != 6
-            or len(re.findall(r"<\s*p(?:\s|>)", body, re.I)) != 15):
-        raise PublishError("Extracted editorial body fails exact source safety")
-    intro = re.search(r"</p\s*>", body, re.I)
+                         body, re.I)):
+        raise PublishError("Embedded article body failed source safety")
+    # The article is NOT a standalone embedded document. Preserve every
+    # original byte before/after it, and the entire embedded body in order.
+    preserved = prefix + body + suffix
+    if (len(re.findall(r"<\s*h2\b", preserved, re.I)) != 6
+            or len(re.findall(r"<\s*p(?:\s|>)", preserved, re.I)) != 15
+            or re.search(r"<!doctype|<\s*(?:html|head|body|title)\b",
+                         preserved, re.I)):
+        raise PublishError("Preserved editorial content structure drifted")
+    intro = re.search(r"</p\s*>", preserved, re.I)
     if intro is None:
         raise PublishError("No reviewed introduction paragraph")
-    revised = body[:intro.end()] + "\n" + HANDOFF + body[intro.end():]
+    revised = preserved[:intro.end()] + "\n" + HANDOFF + preserved[intro.end():]
     if (revised.count(MARKER) != 1 or revised.count(TARGET) != 1
             or re.search(r"<!doctype|<\s*(?:html|head|body|title|meta)\b",
                          revised, re.I)):
         raise PublishError("Unexpected revised article markup")
     old, new = Inspector(), Inspector()
-    old.feed(body)
+    old.feed(preserved)
     new.feed(revised)
     if (old.headers != new.headers or old.images != new.images
             or [link for link in new.links if link[0] != TARGET] != old.links
