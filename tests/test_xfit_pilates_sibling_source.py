@@ -58,6 +58,18 @@ class SupportingPilatesSourceTests(unittest.TestCase):
         self.assertEqual(report["state"], "HOLD_LEGACY_MARKUP_REVIEW")
         self.assertEqual(report["public"]["head_title_tag_count"], 2)
 
+    def test_source_counts_precisely_discriminate_title_from_nested_document(self):
+        title_only = "<p>Pilates porovnání.</p>" * 30 + "<title>Stará SEO hlavička</title>"
+        result = audit.source_assess(source(title_only))
+        self.assertEqual(result["source_structure"]["title_start"], 1)
+        self.assertEqual(result["source_structure"]["title_end"], 1)
+        self.assertEqual(result["source_structure"]["doctype"], 0)
+        self.assertEqual(result["source_structure"]["html_start"], 0)
+        self.assertEqual(result["source_structure"]["head_start"], 0)
+        self.assertEqual(result["source_structure"]["body_start"], 0)
+        self.assertEqual(result["source_structure"]["paragraph_start"], 30)
+        self.assertNotIn("Stará SEO hlavička", json.dumps(result))
+
     def test_source_embedded_document_hold(self):
         html = "<!DOCTYPE html><html><head><title>Old copy</title></head></html>"
         report = audit.evidence(
