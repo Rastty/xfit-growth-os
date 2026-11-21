@@ -64,7 +64,7 @@ jobs:
           {
             echo '### XFIT canonical preflight (GET-only)'
             echo
-            echo "Post ID: `$XFIT_PREFLIGHT_POST_ID`"
+            echo "Post ID: $XFIT_PREFLIGHT_POST_ID"
             echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
             echo 'WordPress write attempts: **0**'
             echo
