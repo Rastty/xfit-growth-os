@@ -121,7 +121,8 @@ def run():
         "note": "OPTIONS cannot prove a real WordPress POST will succeed",
     }
     print(json.dumps(aggregate, sort_keys=True))
-    if any(report["state"] != "READ_ONLY_OPTIONS_OBSERVED" for report in reports):
+    if any(report["state"] != "READ_ONLY_OPTIONS_OBSERVED"
+           or not report["advertises_post"] for report in reports):
         raise SystemExit(2)
 
 
