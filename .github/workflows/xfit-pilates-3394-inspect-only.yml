@@ -1,0 +1,52 @@
+name: XFIT Pilates 3394 Source Guard Diagnose Only
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-pilates-3394-inspect-only.yml'
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify offline inspect and no-post behavior
+        run: python -m unittest tests.test_xfit_pilates_3394_shell_release -v
+      - name: Categorize precise source guard via one authenticated GET
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p reports
+          python -m scripts.xfit_pilates_3394_shell_release inspect | tee reports/pilates-3394-safe-guard.json
+      - name: Record redacted guard category
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo '### XFIT 3394 dry-run source guard (no WP POST)'
+            echo
+            echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            if test -s reports/pilates-3394-safe-guard.json; then
+              cat reports/pilates-3394-safe-guard.json
+            else
+              echo '{"state":"READ_ONLY_GUARD_UNAVAILABLE","post_attempts":0,"release_permitted":false}'
+            fi
+          } > /tmp/xfit-pilates-3394-guard.txt
+          gh issue comment 1 --repo "$GITHUB_REPOSITORY" --body-file /tmp/xfit-pilates-3394-guard.txt
