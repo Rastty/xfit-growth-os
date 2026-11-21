@@ -1,4 +1,4 @@
-/* XFIT outbound CTA analytics adapter (opt-in integration only).
+/* XFIT consent-gated advisor funnel and outbound analytics (opt-in integration only).
  * Deploy as an externally enqueued first-party script after the site's real
  * consent manager and GA4 are verified. This file does NOT self-create consent.
  * No cookies, session IDs, URL params or health/quiz answers are collected here.
@@ -73,6 +73,48 @@
     };
   }
 
+  // A deliberately small, observable decision boundary; no pageview is an
+  // advisor start, and no quiz answer, selected option, or visitor identity is
+  // put into GA4. A no-buy choice is an equally valid completion.
+  const NAV_TARGETS = Object.freeze([
+    "#xfit-need", "#xfit-vyber-podle-rozpoctu", "#xfit-offers"
+  ]);
+  let started = false;
+  let completed = false;
+
+  function readDecisionClick(event) {
+    if (!event || event.isTrusted !== true || !event.target ||
+        typeof event.target.closest !== "function") return null;
+    const anchor = event.target.closest("a");
+    if (!anchor || typeof anchor.closest !== "function") return null;
+    if (anchor.classList && anchor.classList.contains("google-anno")) return null;
+    if (typeof anchor.getAttribute !== "function" ||
+        typeof anchor.hasAttribute !== "function" ||
+        anchor.hasAttribute("onclick") ||
+        anchor.getAttribute("target") !== null) return null;
+    const href = anchor.getAttribute("href");
+    if (!NAV_TARGETS.includes(href)) return null;
+    if (anchor.closest('nav[aria-label="Rychlá navigace poradcem"]')) {
+      return "start";
+    }
+    if (href === "#xfit-need" &&
+        anchor.closest('[data-xfit-quick-pick="no-buy"]') &&
+        anchor.closest("section#xfit-rychly-vyber")) {
+      return "no_buy";
+    }
+    return null;
+  }
+
+  function emit(eventName, params) {
+    try {
+      root.gtag("event", eventName, params);
+      return true;
+    } catch (_error) {
+      // Analytics failure never blocks navigation or user choice.
+      return false;
+    }
+  }
+
   function onClick(event) {
     // Must be supplied by a verified CMP integration. Missing/unknown consent
     // is denial; never infer consent from a cookie, button or banner.
@@ -91,15 +133,28 @@
         state.categories.analytics === true;
     } catch (_error) { return; }
     if (!granted) return;
+    // Always re-check current page identity at event time; consent may be
+    // granted or withdrawn between actions without refreshing the page.
+    const location = root.location;
+    const engine = location && location.protocol === "https:" &&
+      ["xfit.cz", "www.xfit.cz"].includes(location.hostname) &&
+      ENGINES[location.pathname];
+    if (!engine) return;
     const data = readApprovedClick(event);
-    if (!data) return;
-    // No transport retry, navigation interception, health data or affiliate
-    // destination URL. This event is NOT a purchase or earned commission.
-    try {
-      root.gtag("event", "affiliate_outbound_click", data);
-    } catch (_error) {
-      // Analytics failures may not disrupt a reader's purchase link.
+    const decision = readDecisionClick(event);
+    if (!data && !decision) return;
+    const context = {
+      page: location.pathname.slice(1, -1),
+      selection_engine: engine
+    };
+    if (!started) started = emit("advisor_start", context);
+    if (started && !completed && (data || decision === "no_buy")) {
+      completed = emit("advisor_complete", context);
     }
+    // Never dedupe genuine affiliate clicks: each trusted merchant action
+    // is an observed click, not a buyer or completed order. The adapter
+    // never attempts navigation interception or a network retry.
+    if (data) emit("affiliate_outbound_click", data);
   }
 
   if (root.document && typeof root.document.addEventListener === "function") {
