@@ -85,6 +85,24 @@ def source_assess(rows):
         raise PublishError("Supporting Pilates source unavailable or unsafe")
     signals = parse_public(SLUG, raw)
     embedded = bool(DANGEROUS_EMBED.search(raw))
+    # Diagnostic counts only. No raw HTML, hidden offer URLs, IDs, user data
+    # or secret-like query parameters are emitted to public issue receipts.
+    structure = {
+        name: len(re.findall(pattern, raw, flags=re.I))
+        for name, pattern in (
+            ("doctype", r"<!\s*doctype\b"),
+            ("html_start", r"<\s*html\b"),
+            ("head_start", r"<\s*head\b"),
+            ("body_start", r"<\s*body\b"),
+            ("title_start", r"<\s*title\b"),
+            ("title_end", r"</\s*title\s*>"),
+            ("body_canonical", r"<\s*link\b[^>]*\bcanonical\b"),
+            ("script_start", r"<\s*script\b"),
+            ("style_start", r"<\s*style\b"),
+            ("h2_start", r"<\s*h2\b"),
+            ("paragraph_start", r"<\s*p(?:\s|>)"),
+        )
+    }
     return {
         "post_id": post["id"],
         "raw_sha256": hashlib.sha256(raw.encode("utf-8")).hexdigest(),
@@ -92,6 +110,7 @@ def source_assess(rows):
         "raw_length": len(raw),
         "title_contains_pilates": True,
         "raw_embedded_complete_document_markers": embedded,
+        "source_structure": structure,
         "raw_contains_power_pilates": "power pilates" in unescape(raw).casefold(),
         "source_h1_count": len(signals["h1"]),
         "source_link_to_primary": signals["links_to_primary"],
