@@ -1,4 +1,4 @@
-name: XFIT Pilates 3394 Onepost Legacy HTML Shell Rescue
+name: XFIT Pilates 3394 Onepost Preserve Surrounding Content
 on:
   push:
     branches: [main]
@@ -30,7 +30,7 @@ jobs:
           set -euo pipefail
           python -m compileall -q scripts tests
           python -m unittest discover -s tests -q
-      - name: Exact source SHA and markup preflight, no WordPress write
+      - name: Pin exact source SHA and preserve 1202+4590 original characters
         run: python -m scripts.xfit_pilates_3394_shell_release snapshot
       - name: Save original post before any content write
         uses: actions/upload-artifact@v4
