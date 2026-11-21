@@ -96,6 +96,36 @@ def wp_request(base, path, *, payload=None):
     raise PublishError("WordPress REST GET retries exhausted")
 
 
+
+def classify_wp_write_failure(error):
+    """Return a safe, fixed diagnostic code without exposing HTTP body or secrets.
+
+    A failed POST must still be treated as potentially committed. This function
+    is logging-only: it must never authorize a retry or mark a write successful.
+    """
+    if isinstance(error, PublishError):
+        value = str(error)
+        status = re.fullmatch(r"WordPress REST API returned HTTP ([1-5][0-9]{2})", value)
+        if status:
+            return "HTTP_" + status.group(1)
+        transport = re.fullmatch(r"WordPress REST request failed \\(([A-Za-z]+)\\)", value)
+        # Known stdlib exception names are allowlisted rather than reflected.
+        if transport:
+            kind = transport.group(1)
+            if kind in {"TimeoutError", "sockettimeout"}:
+                return "TRANSPORT_TIMEOUT"
+            if kind in {"ConnectionResetError", "ConnectionAbortedError",
+                        "BrokenPipeError", "ConnectionRefusedError"}:
+                return "TRANSPORT_CONNECTION_ERROR"
+            if kind in {"RemoteDisconnected", "URLError", "OSError"}:
+                return "TRANSPORT_OTHER"
+            if kind in {"JSONDecodeError", "UnicodeDecodeError", "ValueError"}:
+                return "MALFORMED_RESPONSE"
+    if isinstance(error, TimeoutError):
+        return "TRANSPORT_TIMEOUT"
+    return "UNCLASSIFIED"
+
+
 def existing_content(post):
     content = post.get("content", {})
     return (str(content.get("raw", "")) + str(content.get("rendered", ""))) if isinstance(content, dict) else ""
