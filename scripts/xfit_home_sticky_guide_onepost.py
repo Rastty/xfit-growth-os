@@ -141,6 +141,62 @@ def card_rank(html):
     return unique.index(path) + 1 if path in unique else None
 
 
+
+def diagnose_readonly():
+    """Classify public/home + WP sticky prewrite blocker without raw content."""
+    report = {"state": "GET_ONLY_HOME_STICKY_DIAGNOSIS",
+              "wordpress_writes": 0, "post_attempts": 0}
+    try:
+        p = source_get()
+        title = (p.get("title") or {}).get("raw") if isinstance(p, dict) else None
+        content = (p.get("content") or {}).get("raw") if isinstance(p, dict) else None
+        report["source"] = {
+            "post_id_matches": isinstance(p, dict) and p.get("id") == POST_ID,
+            "slug_matches": isinstance(p, dict) and p.get("slug") == SLUG,
+            "canonical_matches": isinstance(p, dict) and p.get("link") == URL,
+            "published": isinstance(p, dict) and p.get("status") == "publish",
+            "sticky_is_true": isinstance(p, dict) and p.get("sticky") is True,
+            "sticky_is_false": isinstance(p, dict) and p.get("sticky") is False,
+            "title_matches": isinstance(title, str) and
+                            normalize_visible(title) == normalize_visible(TITLE),
+            "raw_chars": len(content) if isinstance(content, str) else None,
+            "raw_has_no_buy": isinstance(content, str) and
+                              "nekup" in normalize_visible(content),
+            "raw_has_decision_link": isinstance(content, str) and
+                                     "xfit-os-kreatin-nebo-protein" in content,
+            "excerpt_text": isinstance(p, dict) and isinstance(
+                (p.get("excerpt") or {}).get("raw"), str),
+            "modified_present": isinstance(p, dict) and
+                                bool(p.get("modified_gmt")),
+        }
+    except (PublishError, OSError, ValueError, TypeError):
+        report["source"] = {"state": "WP_SOURCE_GET_UNAVAILABLE"}
+    try:
+        ids = sticky_ids(sticky_list())
+        report["sticky_inventory"] = {
+            "count": len(ids),
+            "only_guide_or_empty": ids in ([], [POST_ID]),
+            "guide_is_sticky": POST_ID in ids,
+        }
+    except (PublishError, OSError, ValueError, TypeError):
+        report["sticky_inventory"] = {"state": "WP_STICKY_QUERY_UNAVAILABLE"}
+    try:
+        html = homepage_get()
+        cards = HeadlineCards()
+        cards.feed(html)
+        urls = list(dict.fromkeys(cards.hrefs))
+        report["homepage"] = {
+            "recognized_unique_h2_h3_links": len(urls),
+            "guide_visible_among_cards": ("/" + SLUG + "/") in urls,
+            "guide_rank": urls.index("/" + SLUG + "/") + 1
+                          if "/" + SLUG + "/" in urls else None,
+            "public_card_parser_ok": 8 <= len(urls) <= 200,
+        }
+    except (PublishError, OSError, ValueError, TypeError):
+        report["homepage"] = {"state": "PUBLIC_HOME_GET_UNAVAILABLE"}
+    print(json.dumps(report, ensure_ascii=False, sort_keys=True))
+    return report
+
 def snapshot():
     original = selected(source_get())
     sticky = sticky_ids(sticky_list())
@@ -231,9 +287,10 @@ def apply():
 
 if __name__ == "__main__":
     try:
-        if len(sys.argv) != 2 or sys.argv[1] not in ("snapshot", "apply"):
-            raise PublishError("Usage snapshot|apply")
-        (snapshot if sys.argv[1] == "snapshot" else apply)()
+        if len(sys.argv) != 2 or sys.argv[1] not in ("snapshot", "apply", "diagnose"):
+            raise PublishError("Usage snapshot|apply|diagnose")
+        (snapshot if sys.argv[1] == "snapshot" else
+         diagnose_readonly if sys.argv[1] == "diagnose" else apply)()
     except (PublishError, OSError, ValueError, TypeError, KeyError):
         print("XFIT_HOME_STICKY_ERROR: SOURCE_OR_PUBLIC_GUARD", file=sys.stderr)
         sys.exit(2)
