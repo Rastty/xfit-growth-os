@@ -1,0 +1,42 @@
+name: XFIT Existing Home Sticky Source GET Only
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-home-sticky-diagnose-getonly.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-home-sticky-diagnose-20261121
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify source-only diagnostic and onepost safety tests
+        run: python -m unittest tests.test_home_sticky_guide_onepost -v
+      - name: Read only existing guide sticky flags, competing posts and public homepage card position
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p reports
+          python -m scripts.xfit_home_sticky_guide_onepost diagnose | tee reports/xfit-home-sticky-getonly.json
+      - name: Preserve sanitized exact public and source metadata
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-home-sticky-getonly-${{ github.run_id }}
+          path: reports/xfit-home-sticky-getonly.json
+          if-no-files-found: warn
+          retention-days: 14
