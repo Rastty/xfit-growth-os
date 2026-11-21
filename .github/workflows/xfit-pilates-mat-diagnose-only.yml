@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/xfit-pilates-mat-diagnose-only.yml'
+      - 'scripts/xfit_pilates_mat_handoff_3660.py'
 permissions:
   contents: read
 concurrency:
