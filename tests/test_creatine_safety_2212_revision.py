@@ -52,7 +52,7 @@ class CreatineSafetyReviewTests(unittest.TestCase):
             post(title={"raw": "Protein a cena"}),
             post(raw="<p>Short</p>"),
             post(raw=OLD_RAW.replace("5NM2022", "NEW2026")),
-            post(raw=OLD_RAW.replace("bezpečnostní aspekty", "jiné téma")),
+            post(raw=OLD_RAW.replace("Bezpečnostní aspekty", "Jiné téma")),
         ]
         for case in changed:
             with self.subTest(case=case.get("slug")):
