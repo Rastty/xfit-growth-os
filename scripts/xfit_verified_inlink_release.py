@@ -32,6 +32,7 @@ class Handoff:
     sentence: str
     paragraph: str
     before_heading: str | None = None
+    before_first_h2: bool = False
 
     @property
     def url(self):
@@ -295,7 +296,35 @@ _CREATINE_PROTEIN_VEGAN_25504 = Handoff(
 )
 
 
+# Reviewed 11,789-article archive on 2026-11-22 found a strong, old,
+# exact-title buyer-intent source with no link in its article body to the
+# already-live decision guide. 1 existing article, no new post/product.
+_CREATINE_PROTEIN_JOINT_4763 = Handoff(
+    key="creatine_protein_joint_4763",
+    post_id=4763,
+    slug="je-vhodne-uzivat-kreatin-a-protein-spolecne-pri-cviceni",
+    title_term="kreatin",
+    target="https://xfit.cz/xfit-os-kreatin-nebo-protein/",
+    marker="xfit-joint-creatine-protein-chooser-20261122",
+    sentence="Potřebujete kreatin, protein, oba, nebo ani jeden",
+    paragraph=(
+        '<p data-xfit-handoff="xfit-joint-creatine-protein-chooser-20261122">'
+        '<strong>Potřebujete kreatin, protein, oba, nebo ani jeden?</strong> '
+        'Nejdřív rozlište běžný příjem bílkovin, silový trénink a '
+        'cíl při opakovaném krátkém intenzivním výkonu. '
+        'Proteinový prášek není nutný, když máte dostatek bílkovin ze stravy; '
+        'kreatin nenahrazuje pravidelný trénink. '
+        '<a href="https://xfit.cz/xfit-os-kreatin-nebo-protein/">'
+        'Projít krátký rozhodovací rozcestník podle situace a cíle</a>. '
+        'Můžete v něm zvolit i nekoupit nic; tento odkaz není doporučení '
+        'doplněk koupit.</p>'
+    ),
+    before_first_h2=True,
+)
+
+
 ALLOWLIST = {
+    _CREATINE_PROTEIN_JOINT_4763.key: _CREATINE_PROTEIN_JOINT_4763,
     _CREATINE_PROTEIN_VEGAN_25504.key: _CREATINE_PROTEIN_VEGAN_25504,
     _BEGINNER_PLANT_25458.key: _BEGINNER_PLANT_25458,
     _LACTOSE_INLINK_25451.key: _LACTOSE_INLINK_25451,
@@ -392,6 +421,8 @@ def prepare(cfg, post):
             or "<iframe" in cfg.paragraph.casefold()
             or "onclick=" in cfg.paragraph.casefold()):
         raise PublishError("Unreviewed or unsafe inlink paragraph")
+    if cfg.before_heading is not None and cfg.before_first_h2:
+        raise PublishError("Only one reviewed insertion mode may be selected")
     if cfg.before_heading is not None:
         # Contextual handoff must appear beside its reviewed topic, not at
         # the end of a long guide. Exact single-heading match only.
@@ -399,6 +430,18 @@ def prepare(cfg, post):
             raise PublishError("Reviewed topical insertion heading drifted")
         updated = raw.replace(cfg.before_heading,
                               cfg.paragraph + "\n" + cfg.before_heading, 1)
+    elif cfg.before_first_h2:
+        # Reader-facing decision route near the beginning, not after years of
+        # historical promotional blocks. Require a true H2 inside a bounded
+        # initial source span and sufficient topic evidence before inserting.
+        # Do not infer a unique heading from a source that changed structure.
+        intro = raw[:10000]
+        headings = list(re.finditer(r"<h2(?:\\s+[^>]*)?>", intro, re.I))
+        if not headings or not re.search(r"kreatin|creatin", intro, re.I) or not re.search(
+                r"protein", intro, re.I):
+            raise PublishError("Reviewed early topic/H2 insertion anchor unavailable")
+        first_h2 = headings[0].start()
+        updated = raw[:first_h2] + cfg.paragraph + "\n" + raw[first_h2:]
     else:
         updated = raw + "\n" + cfg.paragraph
     a,b=Inspector(),Inspector()
