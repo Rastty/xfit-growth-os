@@ -1,0 +1,47 @@
+name: XFIT Remaining Canonical Evidence 9544 6959 7268 GET-only
+# Three distinct historic candidates. Read-only auth + public recheck; NO POST.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-remaining-canonicals-getonly.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Canonical preflight no-write regression
+        run: python -m unittest discover -s tests -p test_xfit_canonical_preflight.py -q
+      - name: Fresh authenticated and independent public GET for three remaining sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/canonical-next
+          for post_id in 9544 6959 7268; do
+            echo "Checking original WP post ID $post_id (GET-only)"
+            XFIT_PREFLIGHT_POST_ID="$post_id" python -m scripts.xfit_canonical_preflight \
+              | tee "reports/canonical-next/verified-${post_id}.json"
+          done
+      - name: Preserve sanitized source fingerprints, never raw WordPress content
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-next-three-canonical-getonly-${{ github.run_id }}
+          path: reports/canonical-next/verified-*.json
+          retention-days: 30
+          if-no-files-found: warn
