@@ -15,8 +15,10 @@ from urllib.error import HTTPError, URLError
 
 try:
     from scripts.xfit_home_sticky_guide_onepost import HeadlineCards
+    from scripts.xfit_supplements_category_hub_onepost import CategoryH1, CAT_NAME, CAT_URL
 except ModuleNotFoundError:
     from xfit_home_sticky_guide_onepost import HeadlineCards
+    from xfit_supplements_category_hub_onepost import CategoryH1, CAT_NAME, CAT_URL
 
 try:
     from scripts.xfit_status_evidence import real_release_evidence
@@ -105,6 +107,68 @@ def homepage_buyer_placement(*, reader=None):
                       else "PUBLIC_HOME_ORDER_DIFFERS_OR_CACHE_STALE"),
         })
     except (HTTPError, URLError, TimeoutError, OSError, ValueError, TypeError):
+        pass
+    return result
+
+
+
+def supplement_category_buyer_placement(*, reader=None):
+    """One ordinary public category GET; no cache bypass, auth or WP writes.
+
+    The previously verified edit-context category memberships are not
+    inferred from this one cache observation. A stale CDN copy must be
+    reported as a separate state, not a rollback or a request to POST again.
+    """
+    result = {
+        "state":"PUBLIC_SUPPLEMENT_CATEGORY_READ_UNKNOWN",
+        "scope":"ORDINARY_PUBLIC_HTML_NO_CACHE_BYPASS",
+        "guide_rank":None, "whey_rank":None, "creatine_rank":None,
+        "wordpress_writes":0,
+    }
+    try:
+        if reader is None:
+            request=Request(CAT_URL, headers={
+                "User-Agent":"XFITFourHourSupplementCategoryReadonly/1.0",
+                "Accept":"text/html",
+            }, method="GET")
+            with urlopen(request, timeout=20) as response:
+                target=urlsplit(response.geturl())
+                expected=urlsplit(CAT_URL)
+                if (response.status != 200 or target.scheme != "https"
+                        or target.hostname not in ("xfit.cz","www.xfit.cz")
+                        or target.path != expected.path or target.query
+                        or target.fragment or target.username or target.password
+                        or target.port is not None):
+                    return result
+                data=response.read(2_000_001)
+                if len(data)>2_000_000:
+                    return result
+                body=data.decode("utf-8",errors="replace")
+        else:
+            body=reader()
+        if not isinstance(body,str) or not 400<=len(body)<=2_000_000:
+            return result
+        heading=CategoryH1()
+        heading.feed(body)
+        if heading.h1 != [CAT_NAME]:
+            return result
+        cards=HeadlineCards()
+        cards.feed(body)
+        links=list(dict.fromkeys(cards.hrefs))
+        if not 8<=len(links)<=250:
+            return result
+        ranks=[
+            links.index("/"+slug+"/")+1 if "/"+slug+"/" in links else None
+            for slug in HOMEPAGE_GUIDE_SLUGS
+        ]
+        result.update({
+            "guide_rank":ranks[0], "whey_rank":ranks[1],
+            "creatine_rank":ranks[2],
+            "state":("ORDINARY_PUBLIC_SUPPLEMENT_TOP3_VERIFIED"
+                     if ranks==[1,2,3]
+                     else "PUBLIC_SUPPLEMENT_CATEGORY_ORDER_DIFFERS_OR_CACHE_STALE")
+        })
+    except (HTTPError,URLError,TimeoutError,OSError,ValueError,TypeError):
         pass
     return result
 
@@ -205,7 +269,7 @@ def github_lanes(token):
             results.append((number,label,"stav issue nepodařilo se ověřit",""))
     return results
 
-def render(runs, states, now, lanes=None, production=None, homepage=None):
+def render(runs, states, now, lanes=None, production=None, homepage=None, supplement_category=None):
     successes=[x for x in runs if x.get("conclusion")=="success"]
     failures=[x for x in runs if x.get("conclusion") in ("failure","timed_out","cancelled")]
     ongoing=[x for x in runs if x.get("status")!="completed"]
@@ -229,6 +293,18 @@ def render(runs, states, now, lanes=None, production=None, homepage=None):
             rank_text(homepage["whey_rank"]) + ", kreatinový poradce " +
             rank_text(homepage["creatine_rank"]) + ".",
             "- Jedno veřejné načtení neprokazuje globální cache ani nárůst kliknutí; případná odchylka neznamená, že WordPress sticky příznak byl vrácen.",
+        ]
+    if supplement_category is not None:
+        def category_rank_text(value):
+            return "#"+str(value) if type(value) is int and value>0 else "NEOVĚŘENO"
+        lines += [
+            "",
+            "**Běžný veřejný archiv Doplňky stravy (jeden GET bez obejití cache):**",
+            "- Stav: **"+supplement_category["state"]+"**; nezávislý průvodce "+
+            category_rank_text(supplement_category["guide_rank"])+", syrovátkový poradce "+
+            category_rank_text(supplement_category["whey_rank"])+", kreatinový poradce "+
+            category_rank_text(supplement_category["creatine_rank"])+".",
+            "- Odlišná odpověď v jedné CDN cache není důkaz, že byly WordPress kategorie vráceny; žádné automatické opakované zápisy.",
         ]
     lines += [
         "",
@@ -313,7 +389,9 @@ def main():
             "https://api.github.com/repos/" + EXPECTED_REPO +
             "/actions/runs/" + str(run_id) + "/jobs?per_page=100", auth))
     homepage=homepage_buyer_placement()
-    body=render(runs,states,now,lanes,production,homepage=homepage)
+    supplement_category=supplement_category_buyer_placement()
+    body=render(runs,states,now,lanes,production,homepage=homepage,
+                supplement_category=supplement_category)
     summary=os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary,"a",encoding="utf-8") as f:f.write(body+"\n")
@@ -324,7 +402,8 @@ def main():
           "verified_wp_changes":len(production["verified_events"]),
           "unverified_publisher_runs":len(production["unverified_runs"]),
           "no_wordpress_writes":True,
-          "homepage_observation":homepage["state"]},ensure_ascii=False))
+          "homepage_observation":homepage["state"],
+          "supplement_category_observation":supplement_category["state"]},ensure_ascii=False))
 if __name__=="__main__":
     try:
         main()

@@ -10,6 +10,7 @@ on:
       - 'tests/test_status_evidence.py'
       - 'tests/test_status_lanes.py'
       - 'tests/test_status_homepage.py'
+      - 'tests/test_status_supplement_category.py'
   schedule:
     - cron: '13 */4 * * *'
 permissions:
@@ -32,6 +33,6 @@ jobs:
         with:
           python-version: '3.12'
       - name: Validate production receipt classification before issue write
-        run: python -m unittest tests.test_status_evidence tests.test_status_lanes tests.test_status_homepage -v
+        run: python -m unittest tests.test_status_evidence tests.test_status_lanes tests.test_status_homepage tests.test_status_supplement_category -v
       - name: Collect evidence and post status to issue #1
         run: python -m scripts.xfit_status
