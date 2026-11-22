@@ -1,6 +1,6 @@
 """One-source-locked evidence-led rescue of legacy GAINER WP #8531.
 
-Legacy has three nested HTML documents, an in-body bogus example.com
+Legacy has one nested HTML document, an in-body bogus example.com
 canonical and unclear old marketing. Snapshot full authenticated raw source
 and metadata BEFORE one possible content-only POST. Verify independent public
 canonical, exact article body and mobile via workflow. Never retry a POST
