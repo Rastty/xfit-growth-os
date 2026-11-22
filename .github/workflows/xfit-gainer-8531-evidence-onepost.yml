@@ -1,0 +1,64 @@
+name: XFIT Gainer 8531 Buyer Guide and Canonical Rescue Onepost
+# Guard exact old B2C page, original article backup before a single WP POST.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-gainer-8531-evidence-onepost.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  onepost:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: All Python regressions and source evidence gates before WP
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -q
+      - name: Auth exact original gainer post and corroborate public duplicate canonical
+        run: python -m scripts.xfit_gainer_8531_evidence_release snapshot
+      - name: Mandatory complete original WP source and metadata artifact BEFORE any POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-gainer-8531-original-${{ github.run_id }}
+          path: reports/backups/xfit-gainer-8531-original.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Source-CAS guarded single content-only WP write and public proof
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_gainer_8531_evidence_release deploy | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Set up real test-only Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Prove actual public 320/375/768 buyer page and one valid canonical
+        run: node tests/gainer_8531_live_mobile.cjs
+      - name: Retain public mobile screenshot artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-gainer-8531-mobile-${{ github.run_id }}
+          path: reports/browser-qa/gainer-8531-*.png
+          if-no-files-found: ignore
+          retention-days: 7
