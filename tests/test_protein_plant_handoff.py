@@ -48,7 +48,7 @@ class PlantContextLinkTests(unittest.TestCase):
         self.assertIn("rostlinná směs",CFG.paragraph)
         self.assertIn("alergeny",CFG.paragraph)
         self.assertIn("nemusíte žádný prášek kupovat",CFG.paragraph)
-        self.assertIn("Tento odkaz není doporučení k nákupu",CFG.paragraph)
+        self.assertIn("tento odkaz není doporučení k nákupu",CFG.paragraph)
         self.assertNotIn("namaximum.cz",CFG.paragraph.casefold())
         self.assertNotIn("a_aid",CFG.paragraph)
         self.assertTrue(release.public_verified(CFG,reader=lambda _:CFG.paragraph))
