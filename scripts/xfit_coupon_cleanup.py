@@ -18,7 +18,10 @@ MAX_COUNT=8
 # 44793630877; seven neighboring posts were independently public-verified.
 # Never attempt 10995 again in the recurring wave. It requires its own pinned
 # diagnostic/recovery, just like the earlier isolated failures above.
-QUARANTINE_IDS={11945,11595,11264,10995}
+# WP #10860 was demonstrably unchanged after exactly one POST in run
+# 45008217157 (2026-11-22); seven neighboring posts were public verified.
+# Do not reattempt it in future recurring waves; needs isolated diagnosis.
+QUARANTINE_IDS={11945,11595,11264,10995,10860}
 BACKUP=Path("reports/backups/xfit-expired-coupon-wave01.json")
 PROMO=re.compile(r"\[su_button\b[^\]]{0,1200}\][^\[]*?5NM2022\[/su_button\]",re.I|re.S)
 def sha(s):return hashlib.sha256(s.encode("utf-8")).hexdigest()
