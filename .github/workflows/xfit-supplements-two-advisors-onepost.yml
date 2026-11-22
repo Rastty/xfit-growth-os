@@ -3,6 +3,14 @@ name: XFIT Two Product Advisers Supplement Category Onepost
 # Full prewrite rollback uploaded before any category-only POST.
 # 44897339584 failed before POST marker; GET-only 44897698415 confirmed both unassigned.
 # This release pins both observed original source hashes; no blind retry after a POST.
+# Fresh zero-write auth/source + public audit: run 45002544614, 2026-11-22 08:24 UTC.
+# Category term 44: guide WP 25458 rank #1; both advisers are published but
+# absent from category. Each still has original approved 2026-11-21 raw SHA:
+# WP 25455 c4bbe1182700516918b5797656af493bda0580e046a336982f2482be24e0b1dd
+# WP 25456 7dc434d2ddc1a63e31dce1afd0fea0f04204e0d17ff7f03532b5c2e9bafc33e8
+# Both are already native homepage sticky, categories [1]. DO NOT change sticky.
+# Owner-scoped continuation after confirmed prior prewrite failures: one attempt
+# PER article, mandatory source backup before posts, no timeout/POST retry.
 on:
   push:
     branches: [main]
