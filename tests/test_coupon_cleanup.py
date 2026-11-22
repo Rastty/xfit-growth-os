@@ -16,6 +16,7 @@ class CouponCleanupTests(unittest.TestCase):
         self.assertIn(10995,QUARANTINE_IDS)
         # One unchanged post in run 45008217157 must never block new batches.
         self.assertIn(10860,QUARANTINE_IDS)
+        self.assertIn(10830,QUARANTINE_IDS)
         self.assertEqual(c.MAX_COUNT, 8)
 
     def test_accelerated_cadence_keeps_eight_post_prewrite_release(self):
