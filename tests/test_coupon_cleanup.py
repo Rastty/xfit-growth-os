@@ -156,8 +156,12 @@ class CouponCleanupTests(unittest.TestCase):
         def response(body):
             return {"id":911,"slug":slug,"status":"publish","link":url,
                     "content":{"raw":body}}
+        ledger=Ledger("2026-11-22T11:00:00Z","body",(),fingerprint(()))
+        reserved=Ledger("2026-11-22T11:01:00Z","newbody",(911,),fingerprint((911,)))
         with tempfile.TemporaryDirectory() as temp, patch.object(
                 c,"BACKUP",Path(temp)/"rollback.json"), \
+                patch.object(c,"ledger_load",return_value=ledger), \
+                patch.object(c,"ledger_reserve",return_value=reserved) as reserve, \
                 patch.object(c,"get_post",side_effect=[response(before),response(after)]), \
                 patch.object(c,"wp_request",return_value={"id":911,"status":"publish"}) as post, \
                 patch.object(c,"normalized_base",return_value="https://xfit.cz"), \
@@ -165,8 +169,13 @@ class CouponCleanupTests(unittest.TestCase):
                     "not_verified":[{"id":911,"state":"EXPIRED_COUPON_VISIBLE"}]}), \
                 patch.object(c.time,"sleep"),patch("sys.stdout",new_callable=io.StringIO) as output:
             c.BACKUP.write_text(json.dumps({"wave":"coupon01","entries":[entry],
-                                           "remote_writes":0}))
+                                           "remote_writes":0,"ledger_issue":363,
+                                           "ledger_updated_at":ledger.updated_at,
+                                           "ledger_fingerprint":ledger.fingerprint}))
             with self.assertRaises(PublishError):
                 c.apply()
             self.assertEqual(post.call_count,1)
+            reserve.assert_called_once()
+            self.assertEqual(reserve.call_args.args[1],[911])
+            self.assertIn("COUPON_ATTEMPTS_RESERVED_BEFORE_WP",output.getvalue())
             self.assertIn("coupon_wave_public_unverified",output.getvalue())
