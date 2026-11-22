@@ -17,6 +17,8 @@ GUIDE_SLUGS = (
     "xfit-os-syrovatkovy-protein-porovnani",
     "xfit-os-kreatin-nebo-protein",
     "xfit-os-cena-proteinu-podle-etikety",
+    "xfit-os-protein-bez-laktozy",
+    "xfit-os-jak-vybrat-rostlinny-protein",
 )
 ALLOWED_HOSTS = frozenset(("xfit.cz", "www.xfit.cz"))
 SLUG = re.compile(r"[a-z0-9][a-z0-9-]{0,179}\Z")
