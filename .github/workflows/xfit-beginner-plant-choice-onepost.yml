@@ -1,0 +1,60 @@
+name: XFIT Beginner Plant Choice Onepost
+# Add one evidence-led first-party plant-protein route below existing home-entry decision strip.
+# Exactly WP #25458, no theme edits, no new post, no affiliate links, no retry.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-beginner-plant-choice-onepost.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  onepost:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate entire XFIT Python suite and syntax, no WordPress writes
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -q
+      - name: Prove plant-guide public publication before changing any source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from scripts.xfit_ai_editorial import public_proof
+          if public_proof(
+              "https://xfit.cz/xfit-os-jak-vybrat-rostlinny-protein/",
+              "xfit-ai-plant-protein-label-choice-v1", kind="create",
+          ) is not True:
+              raise RuntimeError("Destination not independently verified")
+          print("PLANT_GUIDE_PUBLIC_VERIFIED")
+          PY
+      - name: Pin live source and save complete original WP 25458 before any POST
+        run: python -m scripts.xfit_verified_inlink_release beginner_plant_25458 snapshot
+      - name: Upload original source as rollback artifact BEFORE one possible POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-beginner-plant-25458-original-${{ github.run_id }}
+          path: reports/backups/xfit-reviewed-inlink-beginner_plant_25458.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: CAS-guarded single WP 25458 update with authenticated and public verification
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_verified_inlink_release beginner_plant_25458 apply | tee -a "$GITHUB_STEP_SUMMARY"
