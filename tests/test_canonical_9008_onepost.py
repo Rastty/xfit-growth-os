@@ -142,6 +142,7 @@ class Canonical9008Tests(unittest.TestCase):
                 c.snapshot()
             with patch.object(c,"remote",side_effect=[post(),post()]), \
                  patch.object(c,"public_page",return_value=PUBLIC_BEFORE), \
+                 patch.object(c,"normalized_base",return_value="https://xfit.cz"), \
                  patch.object(c,"wp_request",side_effect=PublishError(
                      "WEDOS POST timeout"
                  )) as writer:
