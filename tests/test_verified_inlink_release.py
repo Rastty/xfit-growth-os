@@ -302,7 +302,7 @@ class JointCreatineProteinHandoffTests(unittest.TestCase):
         self.assertEqual(changed["mode"], "update")
         self.assertEqual(changed["after"].count(JOINT.marker), 1)
         self.assertEqual(changed["after"].count(JOINT.target), 1)
-        self.assertEqual(changed["after"].replace(JOINT.paragraph + "\\n", ""), before)
+        self.assertEqual(changed["after"].replace(JOINT.paragraph + "\n", ""), before)
         self.assertLess(changed["after"].index(JOINT.marker),
                         changed["after"].index("<h2"))
         self.assertEqual(
@@ -337,11 +337,11 @@ class JointCreatineProteinHandoffTests(unittest.TestCase):
             self.assertEqual(backup["original_raw"],old["content"]["raw"])
             self.assertEqual(backup["remote_writes"],0)
             self.assertEqual(backup["post_id"],4763)
-            with patch.object(release,"remote",side_effect=[old,new]), \\
+            with patch.object(release,"remote",side_effect=[old,new]), \
                  patch.object(release,"normalized_base",
-                              return_value="https://xfit.cz"), \\
+                              return_value="https://xfit.cz"), \
                  patch.object(release,"wp_request",
-                              return_value={"id":4763,"status":"publish"}) as writer, \\
+                              return_value={"id":4763,"status":"publish"}) as writer, \
                  patch.object(release,"public_verified",return_value=True):
                 release.apply(JOINT)
                 writer.assert_called_once()
@@ -357,7 +357,7 @@ class JointCreatineProteinHandoffTests(unittest.TestCase):
             with patch.object(release,"remote",return_value=old):
                 release.snapshot(JOINT)
             with patch.object(release,"remote",
-                              return_value=joint_source(modified="2026-11-22T10:31:04")), \\
+                              return_value=joint_source(modified="2026-11-22T10:31:04")), \
                  patch.object(release,"wp_request") as wp:
                 with self.assertRaises(PublishError):
                     release.apply(JOINT)
