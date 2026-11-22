@@ -63,6 +63,14 @@ class GuideNavigationTests(unittest.TestCase):
                 body = build(catalog, base, sample)["content"]
                 parser = NavigationParser()
                 parser.feed(body)
+                # The decision navigation must be the first useful action after
+                # the short verdict, before dated catalog details or product CTAs.
+                verdict_end = body.index("</p>") + len("</p>")
+                nav_start = body.index("<nav ")
+                self.assertEqual(body[verdict_end:nav_start].strip(), "")
+                self.assertLess(nav_start, body.index("Rozpočet a doprava"))
+                self.assertLess(nav_start, body.index('data-xfit-quick-pick="no-buy"'))
+                self.assertEqual(body.count('aria-label="Rychlá navigace poradcem"'), 1)
                 self.assertEqual(parser.label, "Rychlá navigace poradcem")
                 self.assertEqual([a["href"] for a in parser.shortcuts],
                                  ["#xfit-need", "#xfit-vyber-podle-rozpoctu",
