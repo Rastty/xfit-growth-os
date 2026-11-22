@@ -1,0 +1,64 @@
+name: XFIT Creatine+Protein Joint Buyer Route Onepost
+# One reviewed public legacy source only; existing shared WP backup/reader gates.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-creatine-protein-joint-4763-onepost.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  exact-onepost:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run complete no-write regression before entering WordPress
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -q
+      - name: Verify single exact WP article and create original source snapshot
+        run: python -m scripts.xfit_verified_inlink_release creatine_protein_joint_4763 snapshot
+      - name: Upload complete source rollback artifact BEFORE any POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-creatine-protein-joint-original-${{ github.run_id }}
+          path: reports/backups/xfit-reviewed-inlink-creatine_protein_joint_4763.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: One source-CAS WordPress POST then authenticated and public verification
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_verified_inlink_release creatine_protein_joint_4763 apply | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Set up test-only Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Verify actual live reader journey on mobile 320/375/768
+        run: node tests/joint_creatine_protein_4763_mobile.cjs
+      - name: Preserve real browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-joint-4763-mobile-${{ github.run_id }}
+          path: reports/browser-qa/joint-creatine-protein-*.png
+          if-no-files-found: ignore
+          retention-days: 7

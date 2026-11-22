@@ -34,6 +34,7 @@ class VerifiedInlinkTests(unittest.TestCase):
             "protein_plant_25451",
             "beginner_plant_25458",
             "creatine_protein_vegan_25504",
+            "creatine_protein_joint_4763",
         })
         self.assertEqual(CFG.post_id,2139)
         self.assertEqual(CFG.target,
@@ -262,6 +263,105 @@ class BuyerIntentHandoffTests(unittest.TestCase):
             else:
                 self.assertEqual(cfg.target,
                                  "https://xfit.cz/xfit-os-syrovatkovy-protein-porovnani/")
+
+
+
+JOINT = release.ALLOWLIST["creatine_protein_joint_4763"]
+
+
+def joint_source(*, body=None, modified="2023-05-03T10:00:00"):
+    if body is None:
+        body = ("<p>Kreatin a protein se často používají společně při cvičení. "
+                "Zde jsou možnosti podle cíle.</p>" * 20
+                + '<h2 class="topic">Kreatin a protein při tréninku</h2>'
+                + '<p>Článek o proteinu a kreatinu s obvyklými omezeními.</p>' * 40)
+    return {
+        "id": 4763, "slug": JOINT.slug, "link": JOINT.url,
+        "status": "publish",
+        "title": {"raw": "Je vhodné užívat kreatin a protein společně při cvičení?"},
+        "content": {"raw": body}, "modified_gmt": modified,
+    }
+
+
+class JointCreatineProteinHandoffTests(unittest.TestCase):
+    def test_real_archive_source_url_and_one_bound_link(self):
+        self.assertEqual(JOINT.post_id, 4763)
+        self.assertEqual(JOINT.target,
+                         "https://xfit.cz/xfit-os-kreatin-nebo-protein/")
+        self.assertTrue(JOINT.before_first_h2)
+        self.assertIsNone(JOINT.before_heading)
+        self.assertIn("nekoupit nic", JOINT.paragraph)
+        self.assertIn("tento odkaz není doporučení", JOINT.paragraph)
+        self.assertNotIn("namaximum.cz", JOINT.paragraph)
+        self.assertEqual(JOINT.paragraph.count(JOINT.target), 1)
+
+    def test_early_onepost_insertion_retains_all_original_content(self):
+        old = joint_source()
+        before = old["content"]["raw"]
+        changed = release.prepare(JOINT, old)
+        self.assertEqual(changed["mode"], "update")
+        self.assertEqual(changed["after"].count(JOINT.marker), 1)
+        self.assertEqual(changed["after"].count(JOINT.target), 1)
+        self.assertEqual(changed["after"].replace(JOINT.paragraph + "\n", ""), before)
+        self.assertLess(changed["after"].index(JOINT.marker),
+                        changed["after"].index("<h2"))
+        self.assertEqual(
+            release.prepare(JOINT,joint_source(body=changed["after"]))["mode"],
+            "already_linked",
+        )
+
+    def test_missing_early_heading_and_offtopic_source_rejected(self):
+        original = joint_source()["content"]["raw"]
+        for bad in (
+            original.replace("<h2 class=\"topic\">", "<h3 class=\"topic\">"),
+            original.replace("Kreatin", "Doplněk").replace("kreatin", "doplněk"),
+            original.replace("protein", "jídlo"),
+            "<p>První stručná věta.</p>" * 700 +
+                "<h2>Další obsah o kreatinu a proteinu</h2>",
+        ):
+            with self.subTest(snippet=bad[:100]):
+                with self.assertRaises(PublishError):
+                    release.prepare(JOINT, joint_source(body=bad))
+
+    def test_snapshot_source_cas_and_exact_single_post(self):
+        old = joint_source()
+        new_body = release.prepare(JOINT,old)["after"]
+        new = joint_source(body=new_body,modified="2026-11-22T11:00:00")
+        with tempfile.TemporaryDirectory() as d, patch.object(
+            release.Handoff, "backup",
+            property(lambda self: Path(d)/"joint-rollback.json")
+        ):
+            with patch.object(release,"remote",return_value=old):
+                release.snapshot(JOINT)
+            backup=json.loads(JOINT.backup.read_text(encoding="utf-8"))
+            self.assertEqual(backup["original_raw"],old["content"]["raw"])
+            self.assertEqual(backup["remote_writes"],0)
+            self.assertEqual(backup["post_id"],4763)
+            with patch.object(release,"remote",side_effect=[old,new]), \
+                 patch.object(release,"normalized_base",
+                              return_value="https://xfit.cz"), \
+                 patch.object(release,"wp_request",
+                              return_value={"id":4763,"status":"publish"}) as writer, \
+                 patch.object(release,"public_verified",return_value=True):
+                release.apply(JOINT)
+                writer.assert_called_once()
+                self.assertEqual(writer.call_args.kwargs["payload"],
+                                 {"content":new_body})
+
+    def test_concurrent_source_drift_blocks_wp_write(self):
+        old=joint_source()
+        with tempfile.TemporaryDirectory() as d, patch.object(
+            release.Handoff, "backup",
+            property(lambda self:Path(d)/"joint-rollback.json")
+        ):
+            with patch.object(release,"remote",return_value=old):
+                release.snapshot(JOINT)
+            with patch.object(release,"remote",
+                              return_value=joint_source(modified="2026-11-22T10:31:04")), \
+                 patch.object(release,"wp_request") as wp:
+                with self.assertRaises(PublishError):
+                    release.apply(JOINT)
+                wp.assert_not_called()
 
 
 if __name__=="__main__":
