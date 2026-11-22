@@ -235,7 +235,7 @@ _PLANT_INLINK_25451 = Handoff(
         'Rostlinný původ automaticky nezaručuje nepřítomnost alergenů '
         'ani kvalitu konkrétního výrobku. Pokud máte dost bílkovin '
         'z běžného jídla, nemusíte žádný prášek kupovat. '
-        'Tento odkaz není doporučení k nákupu.</p>'
+        'tento odkaz není doporučení k nákupu.</p>'
     ),
 )
 
