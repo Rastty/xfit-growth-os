@@ -58,8 +58,10 @@ class PlantAlternativeHandoffTests(unittest.TestCase):
                         body.index('rel="sponsored'))
         self.assertLess(body.index('id="xfit-milk-allergy"'),
                         body.index('href="' + DEST + '"'))
-        self.assertIn("zkontrolujte složení a alergeny", body)
-        self.assertIn("nemusíte doplněk kupovat", body)
+        self.assertIn("Syrovátka pochází z mléka", body)
+        self.assertIn("izolát není zárukou absence mléčných alergenů", body)
+        self.assertLess(body.index('id="xfit-milk-allergy"'),
+                        body.index('id="xfit-rychly-vyber"'))
         self.assertEqual(doc["slug"], "xfit-os-syrovatkovy-protein-porovnani")
 
 
