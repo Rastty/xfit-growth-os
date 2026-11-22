@@ -35,8 +35,7 @@ class BlackMambaReleaseTests(unittest.TestCase):
         self.assertTrue(r.revised(source))
         self.assertIn("nekoupit", r.visible(source))
         self.assertIn("těhotenství a kojení", r.visible(source))
-        self.assertIn("bez nezávislého", r.visible(
-            "<p>bez nezávislého</p>"))
+        self.assertIn("laboratorní rozbor", r.visible(source))
         self.assertNotIn("us-supplements.to", source)
         self.assertNotIn("5nm2022", source.casefold())
         self.assertNotIn("<script", source.casefold())
@@ -47,7 +46,7 @@ class BlackMambaReleaseTests(unittest.TestCase):
     def test_legacy_signature_and_unverified_merchant_are_required(self):
         self.assertEqual(r.source_state(post())[0], "needs_revision")
         candidates = [
-            post(id=5), post(id="9187"), post(slug="other"),
+            post(id="9187"), post(slug="other"),
             post(status="draft"), post(link="https://xfit.cz/other/"),
             post(title={"raw": "Nebezpečný článek"}),
             post(modified_gmt="unknown"),
@@ -60,6 +59,10 @@ class BlackMambaReleaseTests(unittest.TestCase):
             with self.subTest(candidate=candidate.get("slug")):
                 with self.assertRaises(PublishError):
                     r.source_state(candidate)
+
+    def test_frozen_wp_id_rejects_wrong_article_even_when_slug_matches(self):
+        with self.assertRaises(PublishError):
+            r.source_identity(post(id=5), expected_id=9187)
 
     def test_discover_only_exact_published_slug(self):
         with patch.object(r, "wp_request",side_effect=[
