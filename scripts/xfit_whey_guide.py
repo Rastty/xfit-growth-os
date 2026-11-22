@@ -86,6 +86,11 @@ def build_document(catalog, base, sample):
         'Syrovátka pochází z mléka. Při alergii na mléčnou bílkovinu ji '
         'nepovažujte za bezpečnou volbu; izolát není zárukou absence mléčných '
         'alergenů.</p>',
+        '<p><strong>Syrovátka není pro vás?</strong> Pokud hledáte rostlinnou '
+        'alternativu, přečtěte si <a href="https://xfit.cz/xfit-os-jak-vybrat-rostlinny-protein/">'
+        'průvodce výběrem rostlinného proteinu</a>. I u rostlinných výrobků '
+        'zkontrolujte složení a alergeny konkrétní varianty. Pokud potřebu '
+        'bílkovin pokryjete běžným jídlem, nemusíte doplněk kupovat.</p>',
         '<p><strong>Rozpočet a doprava:</strong> Uvedené ceny a rozpočtové limity '
         'zahrnují pouze cenu balení, bez dopravy a případných poplatků za platbu. '
         'Konečnou částku ověřte v košíku prodejce. '
