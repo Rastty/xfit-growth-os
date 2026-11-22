@@ -33,7 +33,7 @@ NEW_MARKERS = (
     "co jsou bcaa a v čem se liší od kompletního proteinu",
     "pomohou bcaa s regenerací a svalovou bolestí",
     "bcaa, eaa nebo protein: jak se rozhodnout",
-    "kontrolní seznam",
+    "jak posoudit nabídku, pokud bcaa přesto zvažujete",
     "odborné zdroje a rozsah tvrzení",
 )
 # Required links only, no invented products, prices or merchant claims.
