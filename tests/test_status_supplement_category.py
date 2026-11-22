@@ -22,7 +22,6 @@ class OrdinaryCategoryCacheTests(unittest.TestCase):
         self.assertIn("průvodce #1",report)
         self.assertIn("syrovátkový poradce #2",report)
         self.assertIn("kreatinový poradce #3",report)
-        self.assertIn("nejsou důkaz",report) if False else None
 
     def test_old_cdn_snapshot_is_not_wordpress_membership_rollback(self):
         x=supplement_category_buyer_placement(reader=category_html)
