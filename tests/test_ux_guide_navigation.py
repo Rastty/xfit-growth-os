@@ -11,6 +11,7 @@ class NavigationParser(HTMLParser):
         super().__init__()
         self.ids = {}
         self.shortcuts = []
+        self.decision_summaries = []
         self.in_nav = False
         self.label = None
         self.cards = []
@@ -25,6 +26,8 @@ class NavigationParser(HTMLParser):
             self.cards.append(self.current_card)
         if tag == "a" and self.current_card is not None:
             self.current_card.append(attrs)
+        if tag == "summary" and len(self.decision_summaries) < 3:
+            self.decision_summaries.append(attrs)
         if tag == "nav":
             self.in_nav = True
             self.label = attrs.get("aria-label")
@@ -71,6 +74,10 @@ class GuideNavigationTests(unittest.TestCase):
                 tag, decision = parser.ids["xfit-need"][0]
                 self.assertEqual(tag, "details")
                 self.assertIn("open", decision)
+                self.assertEqual(len(parser.decision_summaries), 3)
+                for summary in parser.decision_summaries:
+                    self.assertIn("min-height:44px", summary["style"])
+                    self.assertNotIn("role", summary)
                 self.assertEqual(parser.ids["xfit-offers"][0][0], "h2")
                 # The budget shortcut reaches the decision section before
                 # product cards, keeping the reader within their spend limit.
