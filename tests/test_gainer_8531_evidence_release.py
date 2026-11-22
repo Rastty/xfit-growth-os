@@ -19,8 +19,11 @@ OLD=(
 )
 TITLE="Jaké jsou klíčové faktory při výběru nejlepšího gainery pro fitness a růst svalové hmoty?"
 PUBLIC_OLD='<html><head>'+SELF+'</head><body>'+OLD+'</body></html>'
-NEW_PUBLIC='<html><head>'+SELF+'</head><body><article>'+
-    r.SOURCE.read_text(encoding="utf-8")+'</article></body></html>'
+NEW_PUBLIC=(
+    '<html><head>'+SELF+'</head><body><article>'
+    +r.SOURCE.read_text(encoding="utf-8")
+    +'</article></body></html>'
+)
 
 
 def post(body=OLD, **change):
