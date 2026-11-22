@@ -1,0 +1,64 @@
+name: XFIT BCAA 9371 Evidence and Canonical Rescue Onepost
+# Bounded single existing source, fail closed on source/canonical drift.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-bcaa-9371-evidence-onepost.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  onepost:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: All Python regressions and medical claim source checks before WP writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -q
+      - name: Auth exact old BCAA post and independent old public canonical proof
+        run: python -m scripts.xfit_bcaa_9371_evidence_release snapshot
+      - name: Upload complete original WP source and metadata BEFORE any POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-bcaa-9371-original-${{ github.run_id }}
+          path: reports/backups/xfit-bcaa-9371-original.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Source-CAS guarded one body-only WP POST then authenticated and public proof
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_bcaa_9371_evidence_release deploy | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Set up test-only real Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Prove live mobile 320/375/768 BCAA revised body, independent sources, unique canonical
+        run: node tests/bcaa_9371_live_mobile.cjs
+      - name: Preserve actual public screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-bcaa-9371-mobile-${{ github.run_id }}
+          path: reports/browser-qa/bcaa-9371-*.png
+          if-no-files-found: ignore
+          retention-days: 7
