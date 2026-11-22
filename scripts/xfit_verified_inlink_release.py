@@ -436,7 +436,7 @@ def prepare(cfg, post):
         # initial source span and sufficient topic evidence before inserting.
         # Do not infer a unique heading from a source that changed structure.
         intro = raw[:10000]
-        headings = list(re.finditer(r"<h2(?:\\s+[^>]*)?>", intro, re.I))
+        headings = list(re.finditer(r"<h2(?:\s+[^>]*)?>", intro, re.I))
         if not headings or not re.search(r"kreatin|creatin", intro, re.I) or not re.search(
                 r"protein", intro, re.I):
             raise PublishError("Reviewed early topic/H2 insertion anchor unavailable")
