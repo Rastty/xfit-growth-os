@@ -85,6 +85,20 @@
         "https://xfit.cz/xfit-os-doplnky-pro-zacatecniky/"
       ],
       "min_words": 550
+    },
+    {
+      "kind": "create",
+      "slug": "xfit-os-jak-vybrat-rostlinny-protein",
+      "marker": "xfit-ai-plant-protein-label-choice-v1",
+      "brief": "Nový samostatný spotřebitelský návod (nikoli další obecný protein guide) na výběr rostlinného proteinového prášku pro domácí cvičení. Vysvětli konkrétně rozdíl sójový vs hrachový vs rýžový vs vícesložková směs bez univerzálního vítěze, co je jen marketingové tvrzení a jak číst složení, deklarovaný obsah bílkovin na 100 g, velikost porce, hmotnost balení, sóju a další alergeny. Vlož 1 přehlednou rozhodovací tabulku typ/situace/co ověřit a dva matematicky správné, jasně HYPOTETICKÉ příklady rozdílu mezi cenou za 100 g prášku a cenou za 25 g skutečných bílkovin. Nepřisuzuj konkrétním výrobkům složení, obsah leucinu, účinnost nebo cenu. Vysvětli, že samotný rostlinný původ či označení vegan nezaručují absenci alergenů, složení záleží na konkrétním výrobku. Odliš intoleranci laktózy od alergie na mléčnou bílkovinu jen odkazem na existující specializovaný průvodce, bez diagnostiky. Začni odpovědí pro čtenáře: pokud stačí bílkoviny z běžných potravin, nic nekupovat. Zakonči čtenářským checklistem a odkazy na evropské značení, hlavní proteinový průvodce, podrobnou cenu a lactose guide; žádná affiliate produktová CTA ani neověřené sklady.",
+      "allowed_links": [
+        "https://food.ec.europa.eu/food-safety/labelling-and-nutrition/food-information-consumers-legislation_en",
+        "https://xfit.cz/xfit-os-protein-guide/",
+        "https://xfit.cz/xfit-os-cena-proteinu-podle-etikety/",
+        "https://xfit.cz/xfit-os-protein-bez-laktozy/",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC5477153/"
+      ],
+      "min_words": 650
     }
   ]
 }
