@@ -240,7 +240,33 @@ _PLANT_INLINK_25451 = Handoff(
 )
 
 
+_BEGINNER_PLANT_25458 = Handoff(
+    key="beginner_plant_25458",
+    post_id=25458,
+    slug="xfit-os-doplnky-pro-zacatecniky",
+    title_term="doplňky",
+    target="https://xfit.cz/xfit-os-jak-vybrat-rostlinny-protein/",
+    marker="xfit-beginner-plant-choice-25458-20261122",
+    sentence="Hledáte rostlinný protein místo syrovátky",
+    # Immediately after the already published decision strip, not at article end.
+    before_heading='<h2 id="zacatecnik-rozhodnuti">',
+    paragraph=(
+        '<p data-xfit-handoff="xfit-beginner-plant-choice-25458-20261122">'
+        '<strong>Hledáte rostlinný protein místo syrovátky?</strong> '
+        'První volba „Hledám protein“ vede na srovnání syrovátkových výrobků. '
+        'Pokud se stravujete vegansky nebo je pro vás mléčná bílkovina nevhodná, '
+        '<a href="https://xfit.cz/xfit-os-jak-vybrat-rostlinny-protein/">'
+        'podívejte se na výběr rostlinného proteinu podle etikety, alergenů '
+        'a ceny za skutečné bílkoviny</a>. Rostlinný původ sám o sobě '
+        'nezaručuje nepřítomnost alergenů. Pokud potřebné bílkoviny získáte '
+        'běžným jídlem, prášek nepotřebujete; tento odkaz není doporučení '
+        'doplněk koupit.</p>'
+    ),
+)
+
+
 ALLOWLIST = {
+    _BEGINNER_PLANT_25458.key: _BEGINNER_PLANT_25458,
     _LACTOSE_INLINK_25451.key: _LACTOSE_INLINK_25451,
     _PLANT_INLINK_25451.key: _PLANT_INLINK_25451,
     "creatine_price_10835": Handoff(
