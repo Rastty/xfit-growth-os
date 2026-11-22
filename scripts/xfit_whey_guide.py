@@ -79,6 +79,8 @@ def build_document(catalog, base, sample):
     chosen=choose_price_scenarios(chosen, limit=6)[0]
     parts=[
         '<p><strong>Výběr syrovátkového proteinu nemusí začínat značkou.</strong> '
+        '<a href="#xfit-need" style="display:inline-block;padding:12px 0;">'
+        'Ověřit potřebu bez nákupu</a>. '
         'Nejdříve zvažte, zda vám vyhovuje mléčná bílkovina, co říká etiketa '
         'o složení a jakou porci chcete. Teprve potom má smysl srovnávat cenu.</p>',
         catalog_retrieval_notice(catalog),

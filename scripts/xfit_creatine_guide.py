@@ -151,6 +151,8 @@ def build_document(catalog, base, sample):
     chosen = shortlist(catalog, base, sample)
     bits = [
       '<p><strong>Jak vybrat kreatin bez zbytečného přeplácení?</strong> '
+      '<a href="#xfit-need" style="display:inline-block;padding:12px 0;">'
+      'Ověřit potřebu bez nákupu</a>. '
       'Pro většinu zdravých dospělých, kteří pravidelně silově nebo intenzivně trénují, '
       'je často nejpraktičtější volbou kreatin monohydrát. '
       'Tento přehled srovnává nabídky podle ceny a hmotnosti balení, '

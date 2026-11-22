@@ -63,6 +63,13 @@ class GuideNavigationTests(unittest.TestCase):
                 body = build(catalog, base, sample)["content"]
                 parser = NavigationParser()
                 parser.feed(body)
+                # Keep the verified first-screen commercial quick pick in place.
+                # The new opt-out is a simple first-paragraph anchor, not a gate.
+                first_paragraph = body.split("</p>", 1)[0]
+                self.assertIn('href="#xfit-need"', first_paragraph)
+                self.assertIn("Ověřit potřebu bez nákupu", first_paragraph)
+                self.assertIn("display:inline-block;padding:12px 0;", first_paragraph)
+                self.assertLess(body.index('id="xfit-rychly-vyber"'), body.index("<nav "))
                 self.assertEqual(parser.label, "Rychlá navigace poradcem")
                 self.assertEqual([a["href"] for a in parser.shortcuts],
                                  ["#xfit-need", "#xfit-vyber-podle-rozpoctu",
