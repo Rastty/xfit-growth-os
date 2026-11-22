@@ -24,12 +24,37 @@ def guide(report, slug):
 
 
 class CoverageTests(unittest.TestCase):
-    def test_all_six_guides_are_reported_without_claiming_seo_orphans(self):
+    def test_all_eight_guides_are_reported_without_claiming_seo_orphans(self):
         result = build_coverage([])
         self.assertEqual([p["slug"] for p in result["guides"]], list(GUIDE_SLUGS))
+        self.assertEqual(result["guide_count"], 8)
         self.assertEqual(result["posts_examined"], 0)
         self.assertTrue(result["no_wordpress_writes"])
         self.assertIn("menus", result["not_covered"])
+
+    def test_new_plant_and_lactose_guides_get_real_source_counts(self):
+        plant = "xfit-os-jak-vybrat-rostlinny-protein"
+        lactose = "xfit-os-protein-bez-laktozy"
+        posts = [
+            make_post(25458, "xfit-os-doplnky-pro-zacatecniky",
+                      f'<p><a href="https://xfit.cz/{plant}/">Výběr</a></p>'),
+            make_post(25451, "xfit-os-protein-guide",
+                      f'<p><a href="/{plant}/">Rostlinný</a> '
+                      f'<a href="/{lactose}/">Bez laktózy</a></p>'),
+            make_post(25987, plant, f'<a href="/{plant}/">Vlastní odkaz</a>'),
+        ]
+        result = build_coverage(posts)
+        self.assertEqual(guide(result, plant)["source_post_count"], 2)
+        self.assertEqual(guide(result, lactose)["source_post_count"], 1)
+        self.assertEqual(guide(result, plant)["sample_source_posts"], [
+            {"id": 25451, "slug": "xfit-os-protein-guide"},
+            {"id": 25458, "slug": "xfit-os-doplnky-pro-zacatecniky"},
+        ])
+        self.assertNotIn("25987", str(guide(result, plant)["sample_source_posts"]))
+        self.assertFalse(guide(result, plant)["no_post_body_inlink_observed"])
+        self.assertEqual(result["not_covered"],
+                         "menus_pages_widgets_external_backlinks_google_indexing")
+        self.assertTrue(result["no_wordpress_writes"])
 
     def test_genuine_anchor_sources_are_deduplicated_and_self_links_ignored(self):
         target = "xfit-os-kreatin-poradce"
