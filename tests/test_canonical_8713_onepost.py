@@ -75,6 +75,7 @@ class Canonical8713Tests(unittest.TestCase):
             with patch.object(c, "remote", return_value=auth), \
                  patch.object(c, "public_rest", side_effect=lambda src: mock_rest(src)), \
                  patch.object(c, "get_public", return_value=PUBLIC_OLD), \
+                 patch.object(c, "normalized_base", return_value="https://xfit.cz"), \
                  patch.object(c, "wp_request") as writer:
                 c.snapshot()
                 writer.assert_not_called()
@@ -85,6 +86,7 @@ class Canonical8713Tests(unittest.TestCase):
             with patch.object(c, "remote", side_effect=[auth, edited]), \
                  patch.object(c, "public_rest", side_effect=lambda src: mock_rest(src)), \
                  patch.object(c, "get_public", side_effect=[PUBLIC_OLD, PUBLIC_NEW]), \
+                 patch.object(c, "normalized_base", return_value="https://xfit.cz"), \
                  patch.object(c, "wp_request",
                               return_value={"id":8713,"status":"publish"}) as writer:
                 c.deploy()
@@ -101,6 +103,7 @@ class Canonical8713Tests(unittest.TestCase):
                 c.snapshot()
             with patch.object(c, "remote", return_value=post(
                     modified_gmt="2026-11-22T18:00:01")), \
+                 patch.object(c, "normalized_base", return_value="https://xfit.cz"), \
                  patch.object(c, "wp_request") as writer:
                 with self.assertRaisesRegex(PublishError, "Source changed"):
                     c.deploy()
@@ -116,6 +119,7 @@ class Canonical8713Tests(unittest.TestCase):
             with patch.object(c, "remote", return_value=post()), \
                  patch.object(c, "public_rest", side_effect=lambda src: mock_rest(src)), \
                  patch.object(c, "get_public", return_value=PUBLIC_NEW), \
+                 patch.object(c, "normalized_base", return_value="https://xfit.cz"), \
                  patch.object(c, "wp_request") as writer:
                 with self.assertRaisesRegex(PublishError, "Fresh page"):
                     c.deploy()
@@ -131,6 +135,7 @@ class Canonical8713Tests(unittest.TestCase):
             with patch.object(c, "remote", side_effect=[post(), post()]), \
                  patch.object(c, "public_rest", side_effect=lambda src: mock_rest(src)), \
                  patch.object(c, "get_public", return_value=PUBLIC_OLD), \
+                 patch.object(c, "normalized_base", return_value="https://xfit.cz"), \
                  patch.object(c, "wp_request", side_effect=PublishError("timeout")) as writer, \
                  patch.object(c.time, "sleep"):
                 with self.assertRaisesRegex(PublishError, "UNKNOWN_NO_RETRY"):
