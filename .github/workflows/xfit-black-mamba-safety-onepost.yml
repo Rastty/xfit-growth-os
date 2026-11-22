@@ -1,0 +1,64 @@
+name: XFIT Legacy Black Mamba Safety Onepost
+# Exactly one existing public page. Source drift/unknown WP state => no POST.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-black-mamba-safety-onepost.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  onepost:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Full Python unit regression and editorial gate before WP write
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -q
+      - name: Read authenticated exact published slug, freeze original and proposed source
+        run: python -m scripts.xfit_black_mamba_safety_release snapshot
+      - name: Mandatory full original WP HTML/title/media backup BEFORE any POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-black-mamba-original-${{ github.run_id }}
+          path: reports/backups/xfit-black-mamba-before-20261122.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: CAS-guarded content-only single WP update, authenticated and public readback
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_black_mamba_safety_release deploy | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Set up test-only Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Verify actual public 320/375/768 px content and retired merchant links
+        run: node tests/black_mamba_live_mobile.cjs
+      - name: Archive mobile browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-black-mamba-mobile-${{ github.run_id }}
+          path: reports/browser-qa/black-mamba-*.png
+          retention-days: 7
+          if-no-files-found: ignore
