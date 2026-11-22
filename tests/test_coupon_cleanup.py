@@ -15,6 +15,24 @@ class CouponCleanupTests(unittest.TestCase):
         self.assertIn(11264,QUARANTINE_IDS)
         self.assertIn(10995,QUARANTINE_IDS)
 
+    def test_accelerated_cadence_keeps_eight_post_prewrite_release(self):
+        workflow = Path(".github/workflows/xfit-coupon-cleanup-wave01.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("cron: '17 2,8,14,20 * * *'", workflow)
+        self.assertEqual(c.MAX_COUNT, 8)
+        self.assertIn("xfit-wp-heavy-reads", workflow)
+        self.assertIn("xfit_coupon_cleanup snapshot", workflow)
+        self.assertIn("xfit_coupon_cleanup apply", workflow)
+        self.assertIn("if-no-files-found: error", workflow)
+        self.assertLess(workflow.index("xfit_coupon_cleanup snapshot"),
+                        workflow.index("actions/upload-artifact@v4"))
+        self.assertLess(workflow.index("actions/upload-artifact@v4"),
+                        workflow.index("xfit_coupon_cleanup apply"))
+        self.assertIn("QUARANTINE_IDS", Path("scripts/xfit_coupon_cleanup.py").read_text(
+            encoding="utf-8"
+        ))
+
     def test_only_explicit_2022_promo_shortcode_removed(self):
         s=(('Užitečný odstavec. '*40)+
           '[su_button url="https://xfit.cz/damske-obleceni" background="#2def4c"]'
