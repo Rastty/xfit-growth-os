@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bounded public XFIT technical indexability preflight for seven GSC-reviewed guides.
+"""Bounded public XFIT technical indexability preflight for eight source-reviewed guides.
 
 This is NOT a Google indexation decision. No credentials, WP writes, plugins,
 indexing API requests, ranking claims, affiliate clicks or tracking requests.
@@ -24,6 +24,7 @@ OWNED = (
     "xfit-os-kreatin-nebo-protein",
     "xfit-os-cena-proteinu-podle-etikety",
     "xfit-os-protein-bez-laktozy",
+    "xfit-os-jak-vybrat-rostlinny-protein",
 )
 REFERERS = ("jaky-je-rozdil-mezi-klasickym-pilates-a-power-pilates",)
 REPORT = Path("reports/xfit-indexability-readonly.json")
@@ -360,7 +361,7 @@ def run(*, reader=read_xfit_path):
             "Sitemap XML membership is not proof of Google discovery or indexation",
             "NOT_OBSERVED means only that a bounded current public post map lacked a URL",
             "Root Disallow observation alone needs complete robots precedence interpretation",
-            "Only eight reviewed public articles are sampled for inlinks, not full site graph",
+            "Only nine reviewed public articles are sampled for inlinks, not full site graph",
             "UNKNOWN_FETCH is not a 404, noindex or proof of deindexation",
             "HTTP_4XX/5XX is the exact observed status at probe time, not persistent absence",
             "HTTP_REDIRECT_3XX is a no-follow redirect observation; target was not fetched",

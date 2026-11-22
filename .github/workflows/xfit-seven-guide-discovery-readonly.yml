@@ -1,4 +1,4 @@
-name: XFIT Seven-Guide Public Discovery Readonly
+name: XFIT Eight-Guide Public Discovery Readonly
 # Inspect exact public pages, internal inlinks and WordPress post sitemap only.
 # No credentials, no WordPress writes, no synthetic Google indexing requests.
 on:
@@ -28,7 +28,7 @@ jobs:
         run: |
           python -m unittest tests.test_indexability_preflight -v
           python -m compileall -q scripts/xfit_indexability_preflight.py
-      - name: Read exact seven live guides, sitemap, and reviewed inlink graph
+      - name: Read exact eight live guides, sitemap, and reviewed inlink graph
         shell: bash
         run: |
           set -o pipefail
@@ -36,7 +36,7 @@ jobs:
       - name: Keep bounded redacted public discovery receipt
         uses: actions/upload-artifact@v4
         with:
-          name: xfit-seven-guide-public-discovery-${{ github.run_id }}
+          name: xfit-eight-guide-public-discovery-${{ github.run_id }}
           path: reports/xfit-indexability-readonly.json
           retention-days: 14
           if-no-files-found: error

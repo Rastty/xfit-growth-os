@@ -1,4 +1,4 @@
-name: XFIT Six-Guide Technical Indexability Readonly
+name: XFIT Eight-Guide Technical Indexability Readonly
 on:
   workflow_dispatch:
   schedule:
@@ -29,13 +29,13 @@ jobs:
         run: |
           set -euo pipefail
           python -m unittest discover -s tests -v
-      - name: Inspect exact six owned public pages and sitemap roots without writes
+      - name: Inspect exact eight owned public pages and sitemap roots without writes
         run: python -m scripts.xfit_indexability_preflight
       - name: Preserve redacted technical evidence only
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: xfit-six-guide-indexability-${{ github.run_id }}
+          name: xfit-eight-guide-indexability-${{ github.run_id }}
           path: reports/xfit-indexability-readonly.json
           if-no-files-found: warn
           retention-days: 14
