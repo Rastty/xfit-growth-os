@@ -1,0 +1,59 @@
+name: XFIT Creatine vs Protein Vegan Route Onepost
+# Source-bound addition in the existing vegan decision details of WP #25504.
+# Never a new post, advertisement, price/ranking change or unsafe retry.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-creatine-protein-vegan-onepost.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  onepost:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Full Python regression and syntax checks, no WordPress writes
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -q
+      - name: Verify published plant guide before editing linked source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from scripts.xfit_ai_editorial import public_proof
+          assert public_proof(
+              "https://xfit.cz/xfit-os-jak-vybrat-rostlinny-protein/",
+              "xfit-ai-plant-protein-label-choice-v1", kind="create",
+          ) is True, "Destination not independently verified"
+          print("PUBLIC_PLANT_GUIDE_VERIFIED")
+          PY
+      - name: Verify exact live published WP 25504 and preserve original before POST
+        run: python -m scripts.xfit_verified_inlink_release creatine_protein_vegan_25504 snapshot
+      - name: Upload full original WP source as rollback artifact BEFORE any POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-creatine-protein-vegan-25504-original-${{ github.run_id }}
+          path: reports/backups/xfit-reviewed-inlink-creatine_protein_vegan_25504.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Source-CAS single WP 25504 content-only POST, authenticated and public proof
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_verified_inlink_release creatine_protein_vegan_25504 apply | tee -a "$GITHUB_STEP_SUMMARY"

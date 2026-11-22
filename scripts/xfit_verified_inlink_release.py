@@ -265,7 +265,38 @@ _BEGINNER_PLANT_25458 = Handoff(
 )
 
 
+_CREATINE_PROTEIN_VEGAN_25504 = Handoff(
+    key="creatine_protein_vegan_25504",
+    post_id=25504,
+    slug="xfit-os-kreatin-nebo-protein",
+    title_term="kreatin",
+    target="https://xfit.cz/xfit-os-jak-vybrat-rostlinny-protein/",
+    marker="xfit-creatine-protein-vegan-25504-20261122",
+    sentence="Rostlinný protein místo syrovátky",
+    # Unique reviewed end of the existing vegan decision <details> block.
+    # Insert an entire paragraph BEFORE its closing </details> and only there,
+    # preserving all other first-screen choice routes and source markup.
+    before_heading=(
+        '</details>\n\n'
+        '<details><summary><strong>Mám nemocné ledviny'
+    ),
+    paragraph=(
+        '<p data-xfit-handoff="xfit-creatine-protein-vegan-25504-20261122">'
+        '<strong>Rostlinný protein místo syrovátky?</strong> '
+        'Jestli vám běžné potraviny na doplnění bílkovin nestačí a '
+        'vyhýbáte se mléčné bílkovině, projděte si '
+        '<a href="https://xfit.cz/xfit-os-jak-vybrat-rostlinny-protein/">'
+        'průvodce výběrem rostlinného proteinu podle etikety, alergenů '
+        'a ceny</a>. Rostlinný původ není zárukou absence všech alergenů; '
+        'složení konkrétního výrobku vždy ověřte. Pokud vám běžné jídlo '
+        'stačí, prášek nepotřebujete a tento odkaz není doporučení '
+        'doplněk koupit.</p>'
+    ),
+)
+
+
 ALLOWLIST = {
+    _CREATINE_PROTEIN_VEGAN_25504.key: _CREATINE_PROTEIN_VEGAN_25504,
     _BEGINNER_PLANT_25458.key: _BEGINNER_PLANT_25458,
     _LACTOSE_INLINK_25451.key: _LACTOSE_INLINK_25451,
     _PLANT_INLINK_25451.key: _PLANT_INLINK_25451,
