@@ -9,9 +9,14 @@ import json
 import os
 import re
 import sys
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urlsplit
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
+
+try:
+    from scripts.xfit_home_sticky_guide_onepost import HeadlineCards
+except ModuleNotFoundError:
+    from xfit_home_sticky_guide_onepost import HeadlineCards
 
 try:
     from scripts.xfit_status_evidence import real_release_evidence
@@ -41,6 +46,68 @@ def get_json(url, token=None, method="GET", payload=None):
     request=Request(url,data=data,headers=headers,method=method)
     with urlopen(request,timeout=25) as response:
         return json.load(response)
+
+HOMEPAGE_GUIDE_SLUGS = (
+    "xfit-os-doplnky-pro-zacatecniky",
+    "xfit-os-syrovatkovy-protein-porovnani",
+    "xfit-os-kreatin-poradce",
+)
+
+
+def homepage_buyer_placement(*, reader=None):
+    """One ordinary public homepage GET, no cache bypass or WordPress writes.
+
+    Source: actual reader-visible headline-card anchors, not WP sticky flags,
+    metadata or successful release workflow. A stale CDN response is a
+    separate observation, not proof that the origin sticky settings reverted.
+    """
+    result = {
+        "state": "PUBLIC_HOME_READ_UNKNOWN",
+        "scope": "ORDINARY_PUBLIC_HTML_NO_CACHE_BYPASS",
+        "reader_first_rank": None, "whey_rank": None,
+        "creatine_rank": None, "wordpress_writes": 0,
+    }
+    try:
+        if reader is None:
+            req = Request("https://xfit.cz/", headers={
+                "User-Agent": "XFITFourHourHomePositionReadonly/1.0",
+                "Accept": "text/html",
+            }, method="GET")
+            with urlopen(req, timeout=20) as response:
+                final = urlsplit(response.geturl())
+                if (response.status != 200 or final.scheme != "https"
+                        or final.hostname not in ("xfit.cz", "www.xfit.cz")
+                        or final.path not in ("/", "") or final.query
+                        or final.fragment or final.username
+                        or final.password or final.port is not None):
+                    return result
+                blob = response.read(2_000_001)
+                if len(blob) > 2_000_000:
+                    return result
+                body = blob.decode("utf-8", errors="replace")
+        else:
+            body = reader()
+        if not isinstance(body, str) or not 250 <= len(body) <= 2_000_000:
+            return result
+        parser = HeadlineCards()
+        parser.feed(body)
+        paths = list(dict.fromkeys(parser.hrefs))
+        if not 8 <= len(paths) <= 200:
+            return result
+        ranks = [paths.index("/" + slug + "/") + 1
+                 if "/" + slug + "/" in paths else None
+                 for slug in HOMEPAGE_GUIDE_SLUGS]
+        result.update({
+            "reader_first_rank": ranks[0], "whey_rank": ranks[1],
+            "creatine_rank": ranks[2],
+            "state": ("ORDINARY_PUBLIC_HOME_TOP3_VERIFIED"
+                      if ranks == [1, 2, 3]
+                      else "PUBLIC_HOME_ORDER_DIFFERS_OR_CACHE_STALE"),
+        })
+    except (HTTPError, URLError, TimeoutError, OSError, ValueError, TypeError):
+        pass
+    return result
+
 
 def wordpress_state():
     rows=[]
@@ -138,7 +205,7 @@ def github_lanes(token):
             results.append((number,label,"stav issue nepodařilo se ověřit",""))
     return results
 
-def render(runs, states, now, lanes=None, production=None):
+def render(runs, states, now, lanes=None, production=None, homepage=None):
     successes=[x for x in runs if x.get("conclusion")=="success"]
     failures=[x for x in runs if x.get("conclusion") in ("failure","timed_out","cancelled")]
     ongoing=[x for x in runs if x.get("status")!="completed"]
@@ -151,6 +218,18 @@ def render(runs, states, now, lanes=None, production=None):
     ]
     for label,state,url in states:
         lines.append("- "+("["+label+"]("+url+")" if url else label)+" — "+state)
+    if homepage is not None:
+        def rank_text(value):
+            return "#" + str(value) if type(value) is int and value > 0 else "NEOVĚŘENO"
+        lines += [
+            "",
+            "**Běžná veřejná homepage (jeden GET bez obejití cache):**",
+            "- Stav: **" + homepage["state"] + "**; průvodce bez nákupu " +
+            rank_text(homepage["reader_first_rank"]) + ", syrovátkový poradce " +
+            rank_text(homepage["whey_rank"]) + ", kreatinový poradce " +
+            rank_text(homepage["creatine_rank"]) + ".",
+            "- Jedno veřejné načtení neprokazuje globální cache ani nárůst kliknutí; případná odchylka neznamená, že WordPress sticky příznak byl vrácen.",
+        ]
     lines += [
         "",
         "**Běhy GitHub Actions v posledních 4 hodinách:**",
@@ -233,7 +312,8 @@ def main():
         fetch_jobs=lambda run_id, auth: get_json(
             "https://api.github.com/repos/" + EXPECTED_REPO +
             "/actions/runs/" + str(run_id) + "/jobs?per_page=100", auth))
-    body=render(runs,states,now,lanes,production)
+    homepage=homepage_buyer_placement()
+    body=render(runs,states,now,lanes,production,homepage=homepage)
     summary=os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary,"a",encoding="utf-8") as f:f.write(body+"\n")
@@ -243,7 +323,8 @@ def main():
           "comment_id":result.get("id"),"runs_in_period":len(runs),
           "verified_wp_changes":len(production["verified_events"]),
           "unverified_publisher_runs":len(production["unverified_runs"]),
-          "no_wordpress_writes":True},ensure_ascii=False))
+          "no_wordpress_writes":True,
+          "homepage_observation":homepage["state"]},ensure_ascii=False))
 if __name__=="__main__":
     try:
         main()
