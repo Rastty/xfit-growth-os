@@ -30,6 +30,9 @@ class CouponCleanupTests(unittest.TestCase):
         self.assertIn("xfit_coupon_cleanup snapshot", workflow)
         self.assertIn("xfit_coupon_cleanup apply", workflow)
         self.assertIn("if-no-files-found: error", workflow)
+        self.assertIn("issues: write",workflow)
+        self.assertIn("XFIT_GITHUB_ISSUES_TOKEN:",workflow)
+
         self.assertLess(workflow.index("xfit_coupon_cleanup snapshot"),
                         workflow.index("actions/upload-artifact@v4"))
         self.assertLess(workflow.index("actions/upload-artifact@v4"),
@@ -63,6 +66,34 @@ class CouponCleanupTests(unittest.TestCase):
             self.assertEqual(saved["search_pages_examined"],2)
             self.assertEqual(get.call_count,2)
             self.assertIn("page=2",get.call_args_list[-1].args[0])
+            writer.assert_not_called()
+
+    def test_unverified_ledger_reservation_prevents_all_wp_posts(self):
+        slug="neprepisovat"
+        old=("<p>Obsah článku o cvičení a výživě. </p>"*40+
+             "[su_button]5NM2022[/su_button]")
+        after,count=c.stripped(old)
+        entry={"id":811,"slug":slug,"link":f"https://xfit.cz/{slug}/",
+               "original_raw":old,"before_sha256":c.sha(old),
+               "after_sha256":c.sha(after),"shortcodes_removed":count}
+        ledger=Ledger("2026-11-22T11:00:00Z","body",(),fingerprint(()))
+        post={"id":811,"slug":slug,"link":entry["link"],"status":"publish",
+              "content":{"raw":old}}
+        with tempfile.TemporaryDirectory() as temp, \
+             patch.object(c,"BACKUP",Path(temp)/"rollback.json"), \
+             patch.object(c,"ledger_load",return_value=ledger), \
+             patch.object(c,"ledger_reserve",
+                          side_effect=PublishError("GitHub readback failed")) as reserve, \
+             patch.object(c,"get_post",return_value=post), \
+             patch.object(c,"wp_request") as writer:
+            c.BACKUP.write_text(json.dumps({
+                "wave":"coupon01","entries":[entry],"remote_writes":0,
+                "ledger_issue":363,"ledger_updated_at":ledger.updated_at,
+                "ledger_fingerprint":ledger.fingerprint,
+            }),encoding="utf-8")
+            with self.assertRaisesRegex(PublishError,"GitHub readback failed"):
+                c.apply()
+            reserve.assert_called_once()
             writer.assert_not_called()
 
     def test_only_explicit_2022_promo_shortcode_removed(self):
