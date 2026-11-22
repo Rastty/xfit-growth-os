@@ -77,23 +77,74 @@ class EditorialEngineTests(unittest.TestCase):
         return temp, target, content
 
     def test_exact_policy_and_existing_source_identity(self):
-        self.assertEqual(len(self.policy), 7)
+        self.assertEqual(len(self.policy), 8)
         self.assertEqual(e.digest(self.base), self.target["source_sha256"])
 
     def test_distinct_home_fitness_buying_targets_have_official_safety_source(self):
         slugs = [x["slug"] for x in self.policy]
         self.assertEqual(len(slugs), len(set(slugs)))
-        self.assertEqual(slugs[-2:], [
+        self.assertEqual(slugs[5:7], [
             "xfit-os-vyber-odporove-gumy",
             "xfit-os-vyber-jednorucek-na-doma",
         ])
-        for item in self.policy[-2:]:
+        for item in self.policy[5:7]:
             self.assertEqual(item["kind"], "create")
             self.assertGreaterEqual(item["min_words"], 550)
             self.assertIn(
                 "https://commission.europa.eu/topics/business-and-industry/product-safety_en",
                 item["allowed_links"],
             )
+
+    def test_next_approved_target_after_exhausted_queue_is_distinct_plant_label_guide(self):
+        plant = self.policy[-1]
+        self.assertEqual(plant["kind"], "create")
+        self.assertEqual(plant["slug"], "xfit-os-jak-vybrat-rostlinny-protein")
+        self.assertEqual(plant["marker"], "xfit-ai-plant-protein-label-choice-v1")
+        self.assertGreaterEqual(plant["min_words"], 650)
+        self.assertLessEqual(plant["min_words"], 850)
+        self.assertEqual(len(plant["allowed_links"]), 5)
+        self.assertIn("https://food.ec.europa.eu/food-safety/labelling-and-nutrition/food-information-consumers-legislation_en",
+                      plant["allowed_links"])
+        self.assertIn("https://xfit.cz/xfit-os-protein-bez-laktozy/", plant["allowed_links"])
+        self.assertIn("https://xfit.cz/xfit-os-cena-proteinu-podle-etikety/",
+                      plant["allowed_links"])
+        self.assertIn("nic nekupovat",plant["brief"])
+        self.assertIn("HYPOTETICKÉ",plant["brief"])
+        self.assertIn("alergen",plant["brief"])
+        self.assertNotIn("namaximum.cz",str(plant).lower())
+
+    def test_completed_queue_can_select_exactly_one_new_plant_article(self):
+        """Source-backed previously published targets must not be published again."""
+        first = dict(self.existing)
+        first["content"] = {"raw": self.base + self.html}
+        other = {
+            "id": 3660, "slug": "jaky-je-rozdil-mezi-klasickym-pilates-a-power-pilates",
+            "status": "publish",
+            "link": "https://xfit.cz/jaky-je-rozdil-mezi-klasickym-pilates-a-power-pilates/",
+            "content": {"raw": '<section data-xfit-ai-edit="xfit-ai-pilates-choice-table-v1">done</section>'},
+            "modified_gmt": "2026-11-21T11:30:00",
+        }
+        completed = {}
+        for item in self.policy[2:-1]:
+            completed[item["slug"]] = [{
+                "slug": item["slug"], "status": "publish",
+                "link": "https://xfit.cz/" + item["slug"] + "/",
+                "content": {"raw": '<section data-xfit-ai-create="' +
+                            item["marker"] + '">already published</section>'},
+            }]
+        def lookup(slug):
+            return completed.get(slug, [])
+        with tempfile.TemporaryDirectory() as tmp, \
+             patch.object(e,"TARGET",Path(tmp)/"next.json"), \
+             patch.object(e,"read_wp_post",side_effect=[first,other]), \
+             patch.object(e,"list_by_slug",side_effect=lookup) as searched, \
+             patch.object(e,"public_proof",return_value=True) as proven:
+            result=e.select_target()
+        self.assertEqual(result["status"],"TARGET_SELECTED")
+        self.assertEqual(result["kind"],"create")
+        self.assertEqual(result["slug"],"xfit-os-jak-vybrat-rostlinny-protein")
+        self.assertEqual(searched.call_count,6)
+        self.assertEqual(proven.call_count,7)
 
     def test_read_only_selects_existing_article_before_new(self):
         with tempfile.TemporaryDirectory() as tmp:
