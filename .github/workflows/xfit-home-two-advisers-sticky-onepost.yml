@@ -1,0 +1,47 @@
+name: XFIT Two Approved Home Advisers Sticky Onepost
+# Owner-scoped one-time marketing placement, NOT a rewrite of published posts.
+# Only a merge modifying this exact workflow can initiate the native sticky edit.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-home-two-advisers-sticky-onepost.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  guarded-home-sticky:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+      XFIT_AFFIL_DEFAULT_LINK: ${{ secrets.XFIT_AFFIL_DEFAULT_LINK }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile and run entire release regression before any post
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -q
+      - name: Verify exact two live commercial adviser destinations (GET only)
+        run: python -m scripts.xfit_affiliate_public_audit
+      - name: Snapshot full authenticated articles, sticky inventory and homepage rank (zero writes)
+        run: python -m scripts.xfit_home_two_advisers_sticky snapshot
+      - name: Mandatory rollback artifact uploaded BEFORE any WordPress POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-home-two-advisers-sticky-original-${{ github.run_id }}
+          path: reports/backups/xfit-home-advisers-sticky-20261122.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: At most one native sticky-only POST per adviser; verify source and public homepage
+        run: python -m scripts.xfit_home_two_advisers_sticky apply
