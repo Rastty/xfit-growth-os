@@ -212,8 +212,37 @@ _LACTOSE_INLINK_25451 = Handoff(
     ),
 )
 
+_PLANT_INLINK_25451 = Handoff(
+    key="protein_plant_25451",
+    post_id=25451,
+    slug="xfit-os-protein-guide",
+    title_term="protein",
+    target="https://xfit.cz/xfit-os-jak-vybrat-rostlinny-protein/",
+    marker="xfit-protein-plant-25451-20261122",
+    sentence="Sójový, hrachový, rýžový, nebo rostlinná směs",
+    # End of an already source-verified dedicated plant-protein section.
+    # Never insert above the entire protein guide or into unrelated advice.
+    before_heading="<h2>3. Jak poznat skutečně výhodnou cenu</h2>",
+    paragraph=(
+        '<p data-xfit-handoff="xfit-protein-plant-25451-20261122">'
+        '<strong>Sójový, hrachový, rýžový, nebo rostlinná směs?</strong> '
+        'Rozdílné druhy prášku mají různé složení a marketingový název '
+        'sám o sobě nestačí. Praktický '
+        '<a href="https://xfit.cz/xfit-os-jak-vybrat-rostlinny-protein/">'
+        'návod k výběru rostlinného proteinu podle etikety a ceny</a> '
+        'ukazuje, jak ověřit deklarované bílkoviny na 100 g, seznam '
+        'složek, alergeny a cenu za stejné množství skutečných bílkovin. '
+        'Rostlinný původ automaticky nezaručuje nepřítomnost alergenů '
+        'ani kvalitu konkrétního výrobku. Pokud máte dost bílkovin '
+        'z běžného jídla, nemusíte žádný prášek kupovat. '
+        'tento odkaz není doporučení k nákupu.</p>'
+    ),
+)
+
+
 ALLOWLIST = {
     _LACTOSE_INLINK_25451.key: _LACTOSE_INLINK_25451,
+    _PLANT_INLINK_25451.key: _PLANT_INLINK_25451,
     "creatine_price_10835": Handoff(
         key="creatine_price_10835",
         post_id=10835,
