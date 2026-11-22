@@ -1,0 +1,64 @@
+name: XFIT Creatine Timing 9008 Canonical Onepost
+# One exact archived wrong example.com canonical. No broad archive write.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-creatine-timing-9008-canonical-onepost.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  onepost:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Full source/SEO regression before any WordPress operation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -q
+      - name: Read exact authenticated WP source and corroborate public bogus canonical
+        run: python -m scripts.xfit_canonical_9008_onepost snapshot
+      - name: Mandatory original full article rollback upload BEFORE any POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-canonical-9008-original-${{ github.run_id }}
+          path: reports/backups/xfit-creatine-timing-canonical-9008.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Remove only one wrong body canonical then authenticate and verify public HTML
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_canonical_9008_onepost deploy | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install test-only Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Test live single self-canonical at 320/375/768 without commercial clicks
+        run: node tests/canonical_9008_live_mobile.cjs
+      - name: Preserve actual mobile screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-canonical-9008-mobile-${{ github.run_id }}
+          path: reports/browser-qa/creatine-timing-canonical-*.png
+          retention-days: 7
+          if-no-files-found: ignore
