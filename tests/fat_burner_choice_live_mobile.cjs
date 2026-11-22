@@ -1,4 +1,4 @@
-/* Source-bound browser check for the exact Black Mamba legacy article only.
+/* Source-bound mobile browser QA of the legacy fat-burner buying guide.
  * Do not follow merchant links, cookies, tracking or external resources by hand. */
 const {chromium} = require("playwright");
 const fs=require("fs");
@@ -7,14 +7,15 @@ const {navigatePublicGet}=require("../scripts/xfit_mobile_navigation.cjs");
 const URL="https://xfit.cz/jak-vybrat-ten-spravny-spalovac-tuku-pro-vase-fitness-cile/";
 const NEED=[
   "Rychlá odpověď:",
-  "Co je Black Mamba a proč nestačí název produktu",
-  "Stimulanty, kofein a synefrin:",
-  "Zdroje a redakční metodika",
+  "První rozhodnutí: potřebujete vůbec doplněk na hubnutí",
+  "Co skutečně ukazují studie",
+  "Kontrolní seznam etikety",
+  "Zdroje, omezení a aktualizace",
   "nekoupit nic",
 ];
 const LINK=[
   "https://xfit.cz/xfit-os-doplnky-pro-zacatecniky/",
-  "https://xfit.cz/fat-burner-choice-co-to-je/",
+  "https://xfit.cz/black-mamba-co-to-je/",
   "https://ods.od.nih.gov/factsheets/WeightLoss-HealthProfessional/",
 ];
 (async()=>{
