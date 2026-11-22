@@ -1,0 +1,64 @@
+name: XFIT Legacy Fat Burner Buying Guide Safety Onepost
+# Existing exact buyer-intent page only, no new post, no blind retries.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-fat-burner-choice-onepost.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  onepost:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Complete Python regression and evidence-led editorial gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -q
+      - name: Freeze exact published WP source, slug and full raw original before mutation
+        run: python -m scripts.xfit_fat_burner_choice_release snapshot
+      - name: Upload original WP article and immutable rollback BEFORE any content POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-fat-burner-choice-original-${{ github.run_id }}
+          path: reports/backups/xfit-fat-burner-choice-before-20261122.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Single source-CAS WP content-only POST, authenticated and public proof
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_fat_burner_choice_release deploy | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install test-only Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Test actual 320/375/768 px public buying-guide content and retired promo
+        run: node tests/fat_burner_choice_live_mobile.cjs
+      - name: Retain live public screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-fat-burner-choice-mobile-${{ github.run_id }}
+          path: reports/browser-qa/fat-burner-choice-*.png
+          retention-days: 7
+          if-no-files-found: ignore
