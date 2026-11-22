@@ -8,6 +8,7 @@ from unittest.mock import patch
 from scripts.wp_publish import PublishError
 from scripts import xfit_coupon_cleanup as c
 from scripts.xfit_coupon_cleanup import stripped,sha,QUARANTINE_IDS
+from scripts.xfit_coupon_attempt_ledger import Ledger, fingerprint
 class CouponCleanupTests(unittest.TestCase):
     def test_failed_post_is_quarantined_until_isolated_recovery(self):
         self.assertIn(11595,QUARANTINE_IDS)
@@ -36,6 +37,33 @@ class CouponCleanupTests(unittest.TestCase):
         self.assertIn("QUARANTINE_IDS", Path("scripts/xfit_coupon_cleanup.py").read_text(
             encoding="utf-8"
         ))
+
+    def test_pagination_passes_previously_attempted_coupon_sources(self):
+        old_ids = tuple(range(1,101))
+        ledger=Ledger("2026-11-22T11:00:00Z","body",old_ids,fingerprint(old_ids))
+        def source(i):
+            slug=f"coupon-{i}"
+            return {"id":i,"slug":slug,"link":f"https://xfit.cz/{slug}/",
+                    "status":"publish","content":{"raw":
+                        "<p>Prokazatelně původní článek o výživě. </p>"*35 +
+                        "[su_button]5NM2022[/su_button]"}}
+        with tempfile.TemporaryDirectory() as root, \
+             patch.object(c,"BACKUP",Path(root)/"backup.json"), \
+             patch.object(c,"ledger_load",return_value=ledger), \
+             patch.object(c,"retry_read",
+                          side_effect=[[source(i) for i in range(1,101)],
+                                       [source(i) for i in range(101,109)]]) as get, \
+             patch.object(c,"wp_request") as writer:
+            c.snapshot()
+            saved=json.loads(c.BACKUP.read_text(encoding="utf-8"))
+            self.assertEqual([x["id"] for x in saved["entries"]],
+                             list(range(101,109)))
+            self.assertEqual(saved["ledger_issue"],363)
+            self.assertEqual(saved["ledger_fingerprint"],ledger.fingerprint)
+            self.assertEqual(saved["search_pages_examined"],2)
+            self.assertEqual(get.call_count,2)
+            self.assertIn("page=2",get.call_args_list[-1].args[0])
+            writer.assert_not_called()
 
     def test_only_explicit_2022_promo_shortcode_removed(self):
         s=(('Užitečný odstavec. '*40)+
