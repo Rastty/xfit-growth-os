@@ -31,7 +31,7 @@ def adviser(row):
              '<h3>NaMaximum monohydrát</h3><p>Nemusíte hned nakupovat.</p>'
              '<a data-xfit-product-id="101" '
              'href="https://www.namaximum.cz/test/">Cenu ověřit</a></article>' * 6)
-    raw = '<!-- xfit-growth-os:v1 -->' + cards + ('<p>Rozhodněte se, zda nekupovat.</p>' * 35)
+    raw = '<!-- xfit-growth-os:v1 -->' + cards + ('<p>Rozhodněte se, zda nekupovat.</p>' * 85)
     assert 4000 <= len(raw) <= 150000
     return {
         "id":post_id,"slug":slug,"status":"publish",
