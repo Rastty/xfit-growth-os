@@ -1,0 +1,47 @@
+name: XFIT Supplements Category Two Advisers Fresh Review
+# This workflow never calls a WordPress POST and cannot publish categories.
+# Source-backed review only; previous failed writer remains paused.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-supplements-category-fresh-readonly.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  readonly:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check exact current source and no-write observational tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest tests.test_supplements_category_reaudit tests.test_supplements_two_advisors_category -v
+      - name: Read exact two WP sources, category identity and public archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports
+          python -m scripts.xfit_supplements_category_reaudit | tee reports/supplement-category-fresh-readonly.json
+      - name: Preserve read-only evidence, no article source bytes
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-supplement-category-readonly-${{ github.run_id }}
+          path: reports/supplement-category-fresh-readonly.json
+          retention-days: 14
+          if-no-files-found: error
