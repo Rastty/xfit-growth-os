@@ -1,0 +1,63 @@
+name: XFIT Original WP 7268 Onepost Canonical Rescue
+# One confirmed old example.com body canonical, no mass archive mutation.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-canonical-7268-onepost.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  onepost:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Full regressions before any WordPress write
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -q
+      - name: Exact original WP 7268 authenticated/public source preflight
+        run: python -m scripts.xfit_canonical_7268_onepost snapshot
+      - name: Upload full immutable original raw/title/media backup BEFORE POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-canonical-7268-original-${{ github.run_id }}
+          path: reports/backups/xfit-canonical-7268-full-original.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Single source-guarded WP POST and independent public verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m scripts.xfit_canonical_7268_onepost deploy | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install test-only Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Verify original URL on real Chrome at 320, 375 and 768 px
+        run: node tests/canonical_7268_live_mobile.cjs
+      - name: Preserve mobile screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-canonical-7268-mobile-${{ github.run_id }}
+          path: reports/browser-qa/canonical-7268-*.png
+          retention-days: 7
+          if-no-files-found: ignore
