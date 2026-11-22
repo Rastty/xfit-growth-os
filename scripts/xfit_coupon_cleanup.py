@@ -5,8 +5,10 @@ from pathlib import Path
 from urllib.parse import urlencode
 from scripts.wp_publish import PublishError,normalized_base,wp_request
 from scripts.xfit_public_coupon_watch import exact_article_url,expected_url,probe
+from scripts.xfit_coupon_attempt_ledger import ISSUE as LEDGER_ISSUE, load as ledger_load, reserve as ledger_reserve
 
 MAX_COUNT=8
+MAX_SEARCH_PAGES=50  # Paginate beyond already-reserved attempts; never bulk write.
 # This post repeatedly refused a safe WP REST write while all neighbors succeeded.
 # Quarantine until its encoding/permissions are inspected independently.
 # WP 11595 was unchanged in run 42465256593 after seven successful edits;
@@ -98,27 +100,65 @@ def public_readback(entries, *, reader=None, sleeper=None):
     return {"verified_post_ids":verified,"not_verified":unverified,
             "public_verified_count":len(verified)}
 def snapshot():
-    query=urlencode({"search":"5NM2022","context":"edit","status":"publish",
-                    "per_page":100,"_fields":"id,slug,status,content,link"})
-    posts=retry_read("posts?"+query)
-    if not isinstance(posts,list):raise PublishError("Unexpected WordPress search response")
-    entries=[];ids=set()
-    for p in posts:
-        if p.get("id") in ids or p.get("id") in QUARANTINE_IDS:continue
-        ids.add(p.get("id"))
-        source=validate(p)
-        result,count=stripped(source)
-        if count<1 or len(result)<500 or "5nm2022" in result.casefold():continue
-        entries.append({"id":p["id"],"slug":p["slug"],"link":p["link"],
-          "original_raw":source,"before_sha256":sha(source),"after_sha256":sha(result),
-          "shortcodes_removed":count})
-        if len(entries)>=MAX_COUNT:break
+    # A missing/untrusted ledger blocks the wave before even selecting WP
+    # candidates. It keeps one ambiguous POST from being silently reattempted.
+    ledger = ledger_load()
+    attempted = set(ledger.ids)
+    entries=[]
+    ids=set()
+    pages_scanned=0
+    for page in range(1, MAX_SEARCH_PAGES + 1):
+        query=urlencode({"search":"5NM2022","context":"edit","status":"publish",
+                         "per_page":100,"page":page,
+                         "_fields":"id,slug,status,content,link"})
+        try:
+            posts=retry_read("posts?"+query)
+        except PublishError as exc:
+            # WP REST uses HTTP 400 for a page beyond the final search page.
+            # Never mask a first-page 400 or an unrelated transport failure.
+            if page>1 and "HTTP 400" in str(exc):
+                break
+            raise
+        if not isinstance(posts,list):
+            raise PublishError("Unexpected WordPress search response")
+        pages_scanned+=1
+        for p in posts:
+            pid=p.get("id")
+            if pid in ids or pid in QUARANTINE_IDS or pid in attempted:
+                continue
+            ids.add(pid)
+            source=validate(p)
+            result,count=stripped(source)
+            if count<1 or len(result)<500 or "5nm2022" in result.casefold():
+                continue
+            entries.append({"id":p["id"],"slug":p["slug"],"link":p["link"],
+              "original_raw":source,"before_sha256":sha(source),
+              "after_sha256":sha(result),"shortcodes_removed":count})
+            if len(entries)>=MAX_COUNT:
+                break
+        if len(entries)>=MAX_COUNT or len(posts)<100:
+            break
+    else:
+        # Potentially more source pages exist. The bounded scan must not
+        # certify absence or silently loop forever.
+        raise PublishError("Coupon search reached page limit; no write")
     BACKUP.parent.mkdir(parents=True,exist_ok=True)
-    if BACKUP.exists():raise PublishError("Rollback backup already exists")
-    BACKUP.write_text(json.dumps({"wave":"coupon01","entries":entries,
-      "source":"authenticated preflight","remote_writes":0},ensure_ascii=False,indent=2),encoding="utf-8")
-    print(json.dumps({"state":"backup_ready","post_count":len(entries),
-      "shortcodes_to_remove":sum(x["shortcodes_removed"] for x in entries),"no_remote_writes":True}))
+    if BACKUP.exists():
+        raise PublishError("Rollback backup already exists")
+    BACKUP.write_text(json.dumps({
+      "wave":"coupon01","entries":entries,"source":"authenticated preflight",
+      "remote_writes":0,"ledger_issue":LEDGER_ISSUE,
+      "ledger_updated_at":ledger.updated_at,
+      "ledger_fingerprint":ledger.fingerprint,
+      "search_pages_examined":pages_scanned,
+    },ensure_ascii=False,indent=2),encoding="utf-8")
+    print(json.dumps({
+      "state":"backup_ready","post_count":len(entries),
+      "shortcodes_to_remove":sum(x["shortcodes_removed"] for x in entries),
+      "already_attempted_ids":len(attempted),
+      "search_pages_examined":pages_scanned,"no_remote_writes":True,
+    }))
+
 def apply():
     if not BACKUP.exists():raise PublishError("Pre-write rollback backup missing")
     doc=json.loads(BACKUP.read_text(encoding="utf-8"))
@@ -130,6 +170,22 @@ def apply():
         after,count=stripped(before)
         if count!=e["shortcodes_removed"] or sha(after)!=e["after_sha256"]:
             raise PublishError("Preflight coupon replacement changed")
+    # Reserve ALL selected IDs in persistent issue #363 only AFTER the
+    # full original WP rollback artifact has already been uploaded. A failed
+    # reservation means ZERO WordPress writes. Even an attempted-but-unchanged
+    # WP post will be skipped automatically on future scheduled waves.
+    ledger=ledger_load()
+    if (doc.get("ledger_issue")!=LEDGER_ISSUE
+            or doc.get("ledger_updated_at")!=ledger.updated_at
+            or doc.get("ledger_fingerprint")!=ledger.fingerprint
+            or doc.get("remote_writes")!=0):
+        raise PublishError("Coupon attempt ledger changed since WP snapshot")
+    reserved=ledger_reserve(ledger,[e["id"] for e in entries])
+    print(json.dumps({"state":"COUPON_ATTEMPTS_RESERVED_BEFORE_WP",
+                      "issue":LEDGER_ISSUE,
+                      "new_attempt_ids":len(entries),
+                      "total_attempts":len(reserved.ids),
+                      "wordpress_writes":0}))
     # Each article is an independent atomic action. Earlier posts with
     # authenticated successful readback must remain fixed even if WEDOS
     # times out later in the wave.

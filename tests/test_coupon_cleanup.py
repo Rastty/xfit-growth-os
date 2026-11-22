@@ -8,6 +8,7 @@ from unittest.mock import patch
 from scripts.wp_publish import PublishError
 from scripts import xfit_coupon_cleanup as c
 from scripts.xfit_coupon_cleanup import stripped,sha,QUARANTINE_IDS
+from scripts.xfit_coupon_attempt_ledger import Ledger, fingerprint
 class CouponCleanupTests(unittest.TestCase):
     def test_failed_post_is_quarantined_until_isolated_recovery(self):
         self.assertIn(11595,QUARANTINE_IDS)
@@ -29,6 +30,9 @@ class CouponCleanupTests(unittest.TestCase):
         self.assertIn("xfit_coupon_cleanup snapshot", workflow)
         self.assertIn("xfit_coupon_cleanup apply", workflow)
         self.assertIn("if-no-files-found: error", workflow)
+        self.assertIn("issues: write",workflow)
+        self.assertIn("XFIT_GITHUB_ISSUES_TOKEN:",workflow)
+
         self.assertLess(workflow.index("xfit_coupon_cleanup snapshot"),
                         workflow.index("actions/upload-artifact@v4"))
         self.assertLess(workflow.index("actions/upload-artifact@v4"),
@@ -36,6 +40,61 @@ class CouponCleanupTests(unittest.TestCase):
         self.assertIn("QUARANTINE_IDS", Path("scripts/xfit_coupon_cleanup.py").read_text(
             encoding="utf-8"
         ))
+
+    def test_pagination_passes_previously_attempted_coupon_sources(self):
+        old_ids = tuple(range(1,101))
+        ledger=Ledger("2026-11-22T11:00:00Z","body",old_ids,fingerprint(old_ids))
+        def source(i):
+            slug=f"coupon-{i}"
+            return {"id":i,"slug":slug,"link":f"https://xfit.cz/{slug}/",
+                    "status":"publish","content":{"raw":
+                        "<p>Prokazatelně původní článek o výživě. </p>"*35 +
+                        "[su_button]5NM2022[/su_button]"}}
+        with tempfile.TemporaryDirectory() as root, \
+             patch.object(c,"BACKUP",Path(root)/"backup.json"), \
+             patch.object(c,"ledger_load",return_value=ledger), \
+             patch.object(c,"retry_read",
+                          side_effect=[[source(i) for i in range(1,101)],
+                                       [source(i) for i in range(101,109)]]) as get, \
+             patch.object(c,"wp_request") as writer:
+            c.snapshot()
+            saved=json.loads(c.BACKUP.read_text(encoding="utf-8"))
+            self.assertEqual([x["id"] for x in saved["entries"]],
+                             list(range(101,109)))
+            self.assertEqual(saved["ledger_issue"],363)
+            self.assertEqual(saved["ledger_fingerprint"],ledger.fingerprint)
+            self.assertEqual(saved["search_pages_examined"],2)
+            self.assertEqual(get.call_count,2)
+            self.assertIn("page=2",get.call_args_list[-1].args[0])
+            writer.assert_not_called()
+
+    def test_unverified_ledger_reservation_prevents_all_wp_posts(self):
+        slug="neprepisovat"
+        old=("<p>Obsah článku o cvičení a výživě. </p>"*40+
+             "[su_button]5NM2022[/su_button]")
+        after,count=c.stripped(old)
+        entry={"id":811,"slug":slug,"link":f"https://xfit.cz/{slug}/",
+               "original_raw":old,"before_sha256":c.sha(old),
+               "after_sha256":c.sha(after),"shortcodes_removed":count}
+        ledger=Ledger("2026-11-22T11:00:00Z","body",(),fingerprint(()))
+        post={"id":811,"slug":slug,"link":entry["link"],"status":"publish",
+              "content":{"raw":old}}
+        with tempfile.TemporaryDirectory() as temp, \
+             patch.object(c,"BACKUP",Path(temp)/"rollback.json"), \
+             patch.object(c,"ledger_load",return_value=ledger), \
+             patch.object(c,"ledger_reserve",
+                          side_effect=PublishError("GitHub readback failed")) as reserve, \
+             patch.object(c,"get_post",return_value=post), \
+             patch.object(c,"wp_request") as writer:
+            c.BACKUP.write_text(json.dumps({
+                "wave":"coupon01","entries":[entry],"remote_writes":0,
+                "ledger_issue":363,"ledger_updated_at":ledger.updated_at,
+                "ledger_fingerprint":ledger.fingerprint,
+            }),encoding="utf-8")
+            with self.assertRaisesRegex(PublishError,"GitHub readback failed"):
+                c.apply()
+            reserve.assert_called_once()
+            writer.assert_not_called()
 
     def test_only_explicit_2022_promo_shortcode_removed(self):
         s=(('Užitečný odstavec. '*40)+
@@ -128,8 +187,12 @@ class CouponCleanupTests(unittest.TestCase):
         def response(body):
             return {"id":911,"slug":slug,"status":"publish","link":url,
                     "content":{"raw":body}}
+        ledger=Ledger("2026-11-22T11:00:00Z","body",(),fingerprint(()))
+        reserved=Ledger("2026-11-22T11:01:00Z","newbody",(911,),fingerprint((911,)))
         with tempfile.TemporaryDirectory() as temp, patch.object(
                 c,"BACKUP",Path(temp)/"rollback.json"), \
+                patch.object(c,"ledger_load",return_value=ledger), \
+                patch.object(c,"ledger_reserve",return_value=reserved) as reserve, \
                 patch.object(c,"get_post",side_effect=[response(before),response(after)]), \
                 patch.object(c,"wp_request",return_value={"id":911,"status":"publish"}) as post, \
                 patch.object(c,"normalized_base",return_value="https://xfit.cz"), \
@@ -137,8 +200,13 @@ class CouponCleanupTests(unittest.TestCase):
                     "not_verified":[{"id":911,"state":"EXPIRED_COUPON_VISIBLE"}]}), \
                 patch.object(c.time,"sleep"),patch("sys.stdout",new_callable=io.StringIO) as output:
             c.BACKUP.write_text(json.dumps({"wave":"coupon01","entries":[entry],
-                                           "remote_writes":0}))
+                                           "remote_writes":0,"ledger_issue":363,
+                                           "ledger_updated_at":ledger.updated_at,
+                                           "ledger_fingerprint":ledger.fingerprint}))
             with self.assertRaises(PublishError):
                 c.apply()
             self.assertEqual(post.call_count,1)
+            reserve.assert_called_once()
+            self.assertEqual(reserve.call_args.args[1],[911])
+            self.assertIn("COUPON_ATTEMPTS_RESERVED_BEFORE_WP",output.getvalue())
             self.assertIn("coupon_wave_public_unverified",output.getvalue())

@@ -11,6 +11,7 @@ on:
     - cron: '17 2,8,14,20 * * *'
 permissions:
   contents: read
+  issues: write   # Dedicated issue #363: reserve post IDs, never raw WP content
 concurrency:
   group: xfit-wp-heavy-reads
   cancel-in-progress: false
@@ -22,6 +23,7 @@ jobs:
       WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
       WP_USERNAME: ${{ secrets.WP_USERNAME }}
       WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+      XFIT_GITHUB_ISSUES_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -29,7 +31,7 @@ jobs:
           python-version: '3.12'
       - name: Repository tests
         run: python -m unittest discover -s tests -v
-      - name: Read-only preview of up to eight posts excluding quarantined 10995 and 10860
+      - name: Read-only paginated preview of up to eight never-attempted coupon posts
         run: python -m scripts.xfit_coupon_cleanup snapshot
       - name: Backup artifact is mandatory before any WordPress writes
         uses: actions/upload-artifact@v4
@@ -38,7 +40,7 @@ jobs:
           path: reports/backups/xfit-expired-coupon-wave01.json
           retention-days: 90
           if-no-files-found: error
-      - name: Remove old shortcode blocks and independently verify live public pages
+      - name: Reserve all post IDs in issue 363 BEFORE any WP POST; then verify public pages
         shell: bash
         run: |
           set -o pipefail
