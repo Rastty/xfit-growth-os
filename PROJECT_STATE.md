@@ -2,6 +2,13 @@
 
 **Cíl:** Důvěryhodný český rozhodovací web pro fitness, výživu a doplňky. Čtenář → vhodná volba / nic nekupovat → aktuální nabídka → ověřený affiliate proklik → **schválená a vyplacená** provize. Zdroj pravdy: GitHub `main`, nativní WordPress REST, skutečný public GET, GSC a oddělené soukromé Affial/GA4 důkazy. **Commit ≠ produkce; HTTP 200 ≠ indexace; klik ≠ objednávka.**
 
+## 2026-11-22 — navazující TURBO cykly (aktuální verified release)
+
+- **Užitečná volba z nejnavštěvovanějšího rozcestníku:** [PR #355](https://github.com/Rastty/xfit-growth-os/pull/355) **MERGED** `90b11eb`. Existující WP #25458 „Doplňky pro začátečníky“ má po původní rozhodovací sekci první nesponzorovaný odkaz k existujícímu WP #25987 rostlinný protein; zachován no-buy, whey/kreatin, původní source, titul, ostatní odkazy, affiliate parametry. [**Skutečný live onepost #45007035445**](https://github.com/Rastty/xfit-growth-os/actions/runs/45007035445) **SUCCESS, `PUBLIC_VERIFIED`**, právě **1 POST**, WP #25458. **1002 Python testů**, destination public proof před zápisem, immutable úplná originální WordPress záloha upload **artifact #14747758213 ještě před jediným POST**, source CAS + authenticated re-readback + public readback. **0 nových stránek.** Google indexace, návštěvy, konverze i provize **UNKNOWN**.
+- **Důkaznější zlepšování SEO:** [PR #356](https://github.com/Rastty/xfit-growth-os/pull/356) **MERGED** `30ff1e7`. Jeden existující post-body inlink audit nyní zahrnuje **8 relevantních URL místo 6**, nově rostlinný a bezlaktózový protein. Testy PR [#45007157127](https://github.com/Rastty/xfit-growth-os/actions/runs/45007157127) **SUCCESS**, main [#45007204339](https://github.com/Rastty/xfit-growth-os/actions/runs/45007204339) **SUCCESS**. [**Full read-only archive #45007204371**](https://github.com/Rastty/xfit-growth-os/actions/runs/45007204371) je spuštěn; finální auditní výsledek a počty inlinků **zatím neověřené**. Nejsou tím žádné WP writes ani automatické mazání; chybějící post-body anchor **není** Google orphan.
+- **Odmítnutý duplicitní směr:** starý [onepost header-menu #44894214252](https://github.com/Rastty/xfit-growth-os/actions/runs/44894214252) skončil před zápisem; bezpečná [GET-only diagnóza #44894378579](https://github.com/Rastty/xfit-growth-os/actions/runs/44894378579) zjistila **NO_SAFE_UNIQUE_HEADER_MENU**. Neopakovat naslepo změnu primárního WP menu.
+- Cizí otevřené PR #248, #263, #270 a #271 nedotčeny. Tato vydání nejsou důkaz přírůstku příjmů nebo Google pozic.
+
 ## HOTOVO — TURBO cyklus #1 (22. 11. 2026, produkčně ověřeno)
 
 - [PR #354](https://github.com/Rastty/xfit-growth-os/pull/354) **MERGED** do `main` jako `23f70d6dedbf4dd139222a71513c0f216b6ea438`. Syrovátkový poradce generovaný ze zdrojového feedu nyní uvádí **jediný nesponzorovaný odkaz** na existující [rostlinný průvodce](https://xfit.cz/xfit-os-jak-vybrat-rostlinny-protein/) přímo uvnitř upozornění na mléčnou alergii **před první affiliate CTA**. Zachován rychlý výběr na první obrazovce; žádné nové produkty, ceny, tvrzení, redirecty nebo články. Nejprve zamítnuta příliš dlouhá varianta kvůli reálnému regresnímu testu, pak zkrácena bez oslabení testu.
@@ -22,10 +29,10 @@
 - Cizí otevřené PR [#248](https://github.com/Rastty/xfit-growth-os/pull/248), [#263](https://github.com/Rastty/xfit-growth-os/pull/263), [#270](https://github.com/Rastty/xfit-growth-os/pull/270), [#271](https://github.com/Rastty/xfit-growth-os/pull/271) nebyly změněny. Legacy WP **#7468 write-held** a **#3394 karanténa**; nepřepisovat cizí práci.
 - Budoucí živý WP write: konkrétní identita a zdrojový SHA/CAS, původní úplná záloha nahraná **před** jediným POST pokusem, autentizované/veřejné čtení, rollback plán. Žádné hromadné mazání, noindex ani redirect bez tvrdých podkladů a záloh.
 
-## DALŠÍ 3 CYKLY / priority
+## DALŠÍ PRIORITY
 
-1. **Hotovo:** bezpečný syrovátkový → rostlinný rozhodovací přechod se skutečným WP deploy a mobile QA (PR #354).
-2. **Nejvyšší ekonomická priorita:** skutečná XFIT GA4 landing/source/medium + consented outbound a soukromé Affial approved/paid výsledky; bez dat neoptimalizovat podle domnělých prodejů. Nenarušit existující rozpracované revenue PR #270.
-3. **Růst bez duplicit:** po finálním GSC období ověřit novou rostlinnou URL a indexaci kreatinového poradce; další úpravy pouze na jednoznačně odlišných existujících buyer-intent URL s důkazy, kontrolou kanibalizace a QA.
+1. **Obchodní výsledek:** připojit správné XFIT GA4 landing/source/medium + consented outbound a oddělené Affial schválené/**vyplacené** provize; žádné domnělé ROI ani duplicitní trackery, nezasahovat do PR #270.
+2. **Získávání návštěvníků:** vyhodnotit finální výstup read-only archive #45007204371 pro již propojené rostlinné a bezlaktózové guide; potom finalizované GSC/indexaci kreatinového poradce a plant guide. Opravovat jen konkrétní doložené buyer-intent gapy, bez thin/kanibalizačních URL.
+3. **Produkt:** pokračovat čtenářskou volbou bez nutnosti nákupu, respektovat existující doplňkové poradce/Feed a onepost zálohy; další změna jen po source-backed důkazu.
 
 [Úplný historický stav před TURBO cyklem](https://github.com/Rastty/xfit-growth-os/blob/811b73d3e6743820c42631e08458a33f9a00b518/PROJECT_STATE.md).
