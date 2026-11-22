@@ -1,0 +1,85 @@
+name: XFIT 7268 Post-Failure State Readonly Reconcile
+# 2026-11-22: the previous onepost run failed with URLError, outcome unknown.
+# DO NOT RE-RUN WRITER. Auth/public GET only; no WordPress writes.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-7268-postfailure-getonly.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  reconcile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+      XFIT_PREFLIGHT_POST_ID: '7268'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run existing GET-only canonical source regressions
+        run: python -m unittest discover -s tests -p test_xfit_canonical_preflight.py -q
+      - name: Read current authenticated WP source twice, public REST and HTML
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/canonical-reconcile
+          python -m scripts.xfit_canonical_preflight | tee reports/canonical-reconcile/7268-postfailure-source.json
+      - name: Classify observation without initiating or retrying any WP POST
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY' | tee reports/canonical-reconcile/7268-classification.json
+          import json,hashlib
+          from pathlib import Path
+          row=json.loads(Path("reports/canonical-reconcile/7268-postfailure-source.json").read_text())
+          correct="https://xfit.cz/jak-mohu-dosahnout-svalu-na-brise-bez-nutnosti-pouziti-vybaveni/"
+          good_hash=hashlib.sha256(correct.encode()).hexdigest()
+          old_raw="427329bf39088503cc3d918af309100949e9e10def8f56465d4cc4830b762393"
+          old_public="aab65d84aaa8dd0722143add2818b38de8d9a7c971a13fd55ab07e668fcd3bc0"
+          orig=(row.get("state")=="READ_ONLY_SOURCE_STABLE"
+            and row.get("post_id")==7268 and row.get("url")==correct
+            and row.get("auth_raw_sha256")==old_raw
+            and row.get("raw_body_canonical_count")==1
+            and row.get("public_page_canonical_count")==2
+            and row.get("public_rendered_sha256")==old_public
+            and row.get("public_modified_gmt")==row.get("modified_gmt"))
+          destinations=row.get("public_page_canonical_destinations") or []
+          fixed=(row.get("state")=="READ_ONLY_SOURCE_STABLE"
+            and row.get("post_id")==7268 and row.get("url")==correct
+            and row.get("auth_raw_sha256")!=old_raw
+            and row.get("raw_body_canonical_count")==0
+            and row.get("public_page_canonical_count")==1
+            and len(destinations)==1
+            and destinations[0].get("host")=="xfit.cz"
+            and destinations[0].get("sha256")==good_hash
+            and row.get("public_modified_gmt")==row.get("modified_gmt"))
+          state=("PUBLIC_CORRECT_CANONICAL_READONLY_CONFIRMED"
+                  if fixed else "ORIGINAL_SOURCE_STILL_PRESENT_NO_RETRY"
+                  if orig else "AMBIGUOUS_SOURCE_OR_PUBLIC_STATE_NO_RETRY")
+          print(json.dumps({"state":state,"post_id":7268,
+            "origin_public_verified":bool(fixed),
+            "wordpress_post_attempts_this_run":0,
+            "previous_release_run":45057670185,
+            "previous_release_outcome":"FAILED_URLError",
+            "new_posts_this_run":0,
+            "no_automatic_retry":True}))
+          PY
+      - name: Archive sanitized read-only evidence regardless of failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-7268-postfailure-getonly-${{ github.run_id }}
+          path: reports/canonical-reconcile/*.json
+          retention-days: 30
+          if-no-files-found: warn
