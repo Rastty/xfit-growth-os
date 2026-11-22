@@ -1,0 +1,64 @@
+name: XFIT Pregnancy and Breastfeeding Fat Burner 6331 Safety Onepost
+# Existing exact high-risk article only. Backup BEFORE the only WP content POST.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-pregnancy-fatburner-6331-onepost.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  onepost:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run all Python regressions and medical-source editorial checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -q
+      - name: Freeze exact published WP source, status and public page identity
+        run: python -m scripts.xfit_pregnancy_fatburner_6331_release snapshot
+      - name: Mandatory complete original article backup BEFORE WP POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-pregnancy-6331-original-${{ github.run_id }}
+          path: reports/backups/xfit-pregnancy-fatburner-6331-original.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: CAS-protected single content-only WP correction and public readback
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_pregnancy_fatburner_6331_release deploy | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Set up test-only Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Real 320/375/768 public safety first-screen, sources and no merchant proof
+        run: node tests/pregnancy_6331_live_mobile.cjs
+      - name: Preserve actual live browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfit-pregnancy-6331-mobile-${{ github.run_id }}
+          path: reports/browser-qa/pregnancy-6331-*.png
+          retention-days: 7
+          if-no-files-found: ignore
