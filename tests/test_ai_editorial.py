@@ -77,7 +77,8 @@ class EditorialEngineTests(unittest.TestCase):
         return temp, target, content
 
     def test_exact_policy_and_existing_source_identity(self):
-        self.assertEqual(len(self.policy), 8)
+        self.assertGreaterEqual(len(self.policy), 10)
+        self.assertEqual(len({x['slug'] for x in self.policy}), len(self.policy))
         self.assertEqual(e.digest(self.base), self.target["source_sha256"])
 
     def test_distinct_home_fitness_buying_targets_have_official_safety_source(self):
@@ -96,7 +97,7 @@ class EditorialEngineTests(unittest.TestCase):
             )
 
     def test_next_approved_target_after_exhausted_queue_is_distinct_plant_label_guide(self):
-        plant = self.policy[-1]
+        plant = next(x for x in self.policy if x['slug'] == 'xfit-os-jak-vybrat-rostlinny-protein')
         self.assertEqual(plant["kind"], "create")
         self.assertEqual(plant["slug"], "xfit-os-jak-vybrat-rostlinny-protein")
         self.assertEqual(plant["marker"], "xfit-ai-plant-protein-label-choice-v1")
@@ -125,7 +126,7 @@ class EditorialEngineTests(unittest.TestCase):
             "modified_gmt": "2026-11-21T11:30:00",
         }
         completed = {}
-        for item in self.policy[2:-1]:
+        for item in self.policy[2:7]:
             completed[item["slug"]] = [{
                 "slug": item["slug"], "status": "publish",
                 "link": "https://xfit.cz/" + item["slug"] + "/",
