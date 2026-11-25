@@ -115,6 +115,12 @@ class GuideNavigationTests(unittest.TestCase):
                     purchases = [a for a in links if "sponsored" in
                                  a.get("rel", "").split()]
                     self.assertEqual(len(purchases), 1)
+                    purchase = purchases[0]
+                    disclosure_id = purchase["aria-describedby"]
+                    disclosure = f'<p><small id="{disclosure_id}">'
+                    self.assertEqual(len(parser.ids[disclosure_id]), 1)
+                    self.assertLess(body.index(disclosure),
+                                    body.index(f'aria-describedby="{disclosure_id}"'))
                 self.assertEqual(body.count("Zpět k výběru podle rozpočtu</a>"), 2)
 
 
