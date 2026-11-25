@@ -99,6 +99,28 @@
         "https://pmc.ncbi.nlm.nih.gov/articles/PMC5477153/"
       ],
       "min_words": 650
+    },
+    {
+      "kind": "create",
+      "slug": "xfit-os-vyber-svihadla-na-doma",
+      "marker": "xfit-ai-jump-rope-choice-v1",
+      "brief": "Praktický nákupní průvodce výběrem švihadla podle prostoru, nastavitelné délky, povrchu, typu lanka a možnosti výměny. Porovnej běžné PVC, textilní a rychlostní lanko bez tvrzení o zdravotních účincích, konkrétních značek nebo vymyšlených testů. Uveď kontrolu návodu výrobce, prostoru kolem uživatele a situace, kdy nákup nedává smysl. Rozhodovací tabulka a checklist.",
+      "allowed_links": [
+        "https://commission.europa.eu/topics/business-and-industry/product-safety_en",
+        "https://xfit.cz/xfit-os-vyber-podlozky-na-cviceni/"
+      ],
+      "min_words": 550
+    },
+    {
+      "kind": "create",
+      "slug": "xfit-os-vyber-hrazdy-do-dveri",
+      "marker": "xfit-ai-door-pullup-bar-choice-v1",
+      "brief": "Spotřebitelský návod na výběr hrazdy do dveří podle typu zárubně, rozměrů, způsobu montáže a doložené nosnosti výrobce. Rozliš rozpěrné a závěsné varianty, nepředpokládej kompatibilitu, neuváděj univerzální montážní postup ani zaručenou bezpečnost. Pokud nelze ověřit podklad a kompatibilitu, nekupovat. Praktická tabulka a checklist měření, bez zdravotních tvrzení, značek a cen.",
+      "allowed_links": [
+        "https://commission.europa.eu/topics/business-and-industry/product-safety_en",
+        "https://xfit.cz/xfit-os-vyber-jednorucek-na-doma/"
+      ],
+      "min_words": 550
     }
   ]
 }
