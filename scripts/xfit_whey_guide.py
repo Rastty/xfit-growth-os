@@ -97,7 +97,8 @@ def build_document(catalog, base, sample):
         '<p><strong>Rozsah srovnání:</strong> Vybíráme pouze z katalogu '
         'jediného prodejce, NaMaximum.cz, nikoli z celého trhu. '
         'Pořadí podle ceny není nezávislý test kvality ani účinnosti. '
-        'Před nákupem můžete porovnat stejné balení i u jiných prodejců.</p>',
+        'Před nákupem můžete porovnat stejné balení i u jiných prodejců. '
+        'Cena za 100 g se vztahuje k prášku.</p>',
         quick_pick(chosen, product_kind="whey"),
         '<nav aria-label="Rychlá navigace poradcem"><ul style="padding-left:24px;">'
         '<li><a href="#xfit-need" style="display:inline-block;padding:12px 0;">'
@@ -106,10 +107,9 @@ def build_document(catalog, base, sample):
         'Vybrat podle rozpočtu</a></li>'
         '<li><a href="#xfit-offers" style="display:inline-block;padding:12px 0;">'
         'Porovnat balení a ceny</a></li></ul></nav>',
-        '<p><strong>Jak srovnáváme:</strong> níže používáme cenu za 100 g proteinového '
-        'prášku, nikoli za 100 g skutečných bílkovin. K tomu bychom potřebovali '
-        'spolehlivý údaj o jejich obsahu pro každou variantu; nelze jej odhadovat '
-        'jen z názvu nebo ceny. Ceny se mohou měnit.</p>',
+        '<p><strong>Jak srovnáváme:</strong> pro výpočet ceny za 100 g skutečných '
+        'bílkovin bychom potřebovali spolehlivý údaj o jejich obsahu pro každou '
+        'variantu. Z názvu ani ceny ho nelze odhadnout. Ceny se mohou měnit.</p>',
         '<h2>Než koupíte protein: krátký rozhodovací rozcestník</h2>',
         '<details id="xfit-need" open><summary style="min-height:44px;box-sizing:border-box;padding:12px 0;"><strong>Musím protein kupovat, abych nabral svaly?</strong></summary>'
         '<p>Ne. Proteinový prášek je praktický způsob doplnění bílkovin, pokud je '

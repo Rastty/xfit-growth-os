@@ -28,6 +28,13 @@ class WheyTests(unittest.TestCase):
         self.assertIn("Ceny se mohou měnit",doc["content"])
         self.assertIn('rel="sponsored nofollow noopener noreferrer"',doc["content"])
         self.assertNotIn("Whey gainer",doc["content"])
+    def test_unit_price_basis_is_visible_before_quick_pick_purchase_links(self):
+        body = build_document(self.catalog, BASE, SAMPLE)["content"]
+        notice = "Cena za 100 g se vztahuje k prášku."
+        self.assertEqual(body.count(notice), 1)
+        self.assertLess(body.index(notice), body.index('data-xfit-quick-pick='))
+        self.assertLess(body.index(notice), body.index('rel="sponsored '))
+
     def test_buying_guide_links_to_actual_protein_nutrition_label_method(self):
         body = build_document(self.catalog, BASE, SAMPLE)["content"]
         guide = "https://xfit.cz/xfit-os-cena-proteinu-podle-etikety/"
