@@ -1,0 +1,73 @@
+name: XFIT Legacy Creatine Source Review
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-legacy-creatine-source-review.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Review three explicit buyer pages without any mutation
+        run: |
+          python - <<'PY'
+          import json, re, hashlib
+          from scripts.wp_publish import wp_request, normalized_base, article_visible, normalize_visible, PublishError
+          from scripts.xfit_affiliate_public_audit import read_public_page
+          from scripts.xfit_legacy_commerce_discovery import existing_route
+          from scripts.xfit_editorial_gate import Inspector
+          targets=(
+              (11753,"kreatin-pro-zacatecniky-jaky-druh-kreatinu-si-vybrat-pro-cviceni","xfit-os-kreatin-poradce"),
+              (11863,"porovnani-nejucinnejsich-druhu-kreatinu-pro-sportovce","xfit-os-kreatin-poradce"),
+              (11882,"nejlepsi-kreatin-pro-fitness-jak-vybrat-ten-spravny-pro-vas","xfit-os-kreatin-poradce"),
+          )
+          for pid,slug,target in targets:
+              url="https://xfit.cz/"+slug+"/"
+              out={"state":"LEGACY_BUYER_SOURCE_REVIEW","id":pid,"slug":slug,"wordpress_writes":0}
+              try:
+                  post=wp_request(normalized_base(),f"posts/{pid}?context=edit&_fields=id,slug,status,link,title,content,modified_gmt")
+                  if post.get("id")!=pid or post.get("slug")!=slug or post.get("status")!="publish" or post.get("link")!=url:
+                      raise PublishError("Source identity mismatch")
+                  raw=post["content"]["raw"]
+                  rendered=post["content"].get("rendered")
+                  if not isinstance(raw,str) or not 1500<=len(raw.encode())<=400000 or not isinstance(rendered,str):
+                      raise PublishError("Unexpected source")
+                  public=read_public_page(slug)
+                  public_text,_=article_visible(public)
+                  visible,segments=article_visible(rendered)
+                  # Review only source text independently observed on public URL.
+                  # Never emit raw HTML, query strings, tracking codes or emails.
+                  if not 250<=len(visible)<=35000 or normalize_visible(post["title"]["raw"]) not in public_text or not all(s in public_text for s in segments):
+                      raise PublishError("Public text not proven")
+                  redact=lambda s: re.sub(r"(?i)https?://\S+|\b[^\s@]+@[^\s@]+\.[a-z]{2,}\b|\b(?:a_aid|a_bid|token|key)\s*=\s*\S+","[redacted]",s)
+                  inspector=Inspector()
+                  inspector.feed(raw)
+                  first_h2=re.search(r"<h2(?:\s[^>]*)?>",raw[:10000],re.I)
+                  out.update(source_sha256=hashlib.sha256(raw.encode()).hexdigest(),
+                             modified_gmt=post.get("modified_gmt"),source_bytes=len(raw.encode()),
+                             existing_target=existing_route(raw,url,target),
+                             stale_coupon_code_present="5NM2022" in raw,
+                             headings=[redact(str(h))[:150] for h in inspector.headers[:12]],
+                             early_h2_offset=first_h2.start() if first_h2 else None,
+                             public_text=redact(visible)[:14000],
+                             public_text_truncated=len(visible)>14000)
+              except (PublishError,ValueError,OSError,KeyError,TypeError) as exc:
+                  out["blocked"]=type(exc).__name__
+              print(json.dumps(out,ensure_ascii=False))
+          PY
