@@ -147,7 +147,7 @@ class GuideNavigationTests(unittest.TestCase):
                      "price_czk": 200 + i * 75, "category": category,
                      "merchant": "NaMaximum.cz", "delivery_date": "0",
                      "source_url": f"https://www.namaximum.cz/p/product-{i}?variant={i}"}
-                    for i, mass in enumerate((250, 400, 500, 600, 750, 1000), 1)
+                    for i, mass in enumerate((500, 600, 750, 1000, 1250, 1500), 1)
                 ]}
                 doc = build(catalog, base, sample)
                 self.assertEqual(check_document(doc, commercial=True)["product_cards"], 6)
