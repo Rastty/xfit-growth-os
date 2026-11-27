@@ -1,0 +1,35 @@
+name: XFIT Expanded Legacy Commerce Discovery
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-legacy-commerce-discovery.yml'
+      - 'scripts/xfit_legacy_commerce_discovery.py'
+      - 'tests/test_legacy_commerce_discovery.py'
+  schedule:
+    - cron: '41 8 * * 2'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  discover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate read-only candidate contract
+        run: python -m unittest discover -s tests -v
+      - name: Discover old exact buyer-intent titles missing relevant live route
+        run: python -m scripts.xfit_legacy_commerce_discovery
