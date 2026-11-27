@@ -1,8 +1,9 @@
 """Evidence-only counting of real XFIT WordPress releases from GitHub Actions.
 
-A successful CI run is NOT a publication. Only a success-concluded publisher
-run with an explicit canonical public-verification receipt counts as a site
-change. Read failures remain UNKNOWN. Never expose raw job logs or secrets.
+A successful CI run is NOT a publication. Canonical publisher receipts and
+guarded coupon-wave receipts are separate proof channels. A failed coupon
+wave can still prove individual public updates; unknown outcomes never
+become successes. Never expose raw job logs or secrets.
 """
 import json
 import re
@@ -275,12 +276,160 @@ def inspect_log(log, run):
     return list(unique.values()), noop
 
 
+
+COUPON_WORKFLOW = "XFIT Expired Coupon Cleanup"
+COUPON_APPLY = "python -m scripts.xfit_coupon_cleanup apply"
+COUPON_STATES = {"coupon_wave_verified", "coupon_wave_partial",
+                 "coupon_wave_public_unverified"}
+
+
+def _positive_id_list(values, *, records=False):
+    if not isinstance(values, list) or len(values) > 8:
+        raise ValueError("Invalid bounded coupon ID list")
+    ids = []
+    for value in values:
+        pid = value.get("id") if records and isinstance(value, dict) else value
+        if type(pid) is not int or pid <= 0 or pid in ids:
+            raise ValueError("Invalid or duplicate coupon post ID")
+        ids.append(pid)
+    return ids
+
+
+def inspect_coupon_log(log, run):
+    """Accept only the real guarded apply receipts, never unit-test fixtures.
+
+    IDs, not invented slugs/URLs, identify legacy posts. Shortcode totals are
+    public-confirmed only when every authenticated changed post has public
+    proof; a partial public subset cannot establish its own shortcode total.
+    """
+    if (run.get("name") != COUPON_WORKFLOW
+            or run.get("status") != "completed"
+            or run.get("conclusion") not in {"success", "failure"}):
+        raise ValueError("Coupon run has no final eligible outcome")
+    marker = "##[group]Run set -o pipefail"
+    if log.count(marker) != 1:
+        raise ValueError("Missing or ambiguous actual coupon apply step")
+    tail = log.split(marker, 1)[1]
+    command, sep, output = tail.partition("##[endgroup]")
+    if not sep or COUPON_APPLY not in command:
+        raise ValueError("Unexpected coupon apply command")
+    receipts = [v for line in output.splitlines() if (v := _receipt(line))]
+    reservations = [v for v in receipts if
+                    v.get("state") == "COUPON_ATTEMPTS_RESERVED_BEFORE_WP"]
+    finals = [v for v in receipts if v.get("state") in COUPON_STATES]
+    if len(reservations) != 1 or len(finals) != 1:
+        raise ValueError("Missing or ambiguous coupon reservation/final receipt")
+    reservation, final = reservations[0], finals[0]
+    if receipts.index(reservation) >= receipts.index(final):
+        raise ValueError("Coupon reservation did not precede the final receipt")
+    attempted = reservation.get("new_attempt_ids")
+    total_attempts = reservation.get("total_attempts")
+    changed = final.get("posts_changed")
+    removed = final.get("shortcodes_removed")
+    if (type(attempted) is not int or not 0 <= attempted <= 8
+            or type(total_attempts) is not int or total_attempts < attempted
+            or type(reservation.get("issue")) is not int
+            or reservation["issue"] != 363
+            or type(reservation.get("wordpress_writes")) is not int
+            or reservation["wordpress_writes"] != 0
+            or type(changed) is not int or not 0 <= changed <= attempted
+            or type(removed) is not int or removed < changed
+            or (changed == 0 and removed != 0)
+            or any(type(final.get(k)) is not int or final[k] != 0
+                   for k in ("deletes", "redirects"))):
+        raise ValueError("Coupon count or reservation invariant failed")
+    verified = _positive_id_list(final.get("public_verified_post_ids"))
+    unchanged = _positive_id_list(final.get("unchanged_failures"), records=True)
+    uncertain = _positive_id_list(final.get("uncertain_posts"), records=True)
+    unverified = _positive_id_list(final.get("public_not_verified"), records=True)
+    combined = verified + unchanged + uncertain + unverified
+    if (len(combined) != attempted or len(set(combined)) != attempted
+            or changed != len(verified) + len(unverified)):
+        raise ValueError("Coupon proof does not partition the reserved posts")
+    state = ("coupon_wave_public_unverified" if unverified else
+             "coupon_wave_partial" if unchanged or uncertain else
+             "coupon_wave_verified")
+    expected_conclusion = "success" if state == "coupon_wave_verified" else "failure"
+    if final.get("state") != state or run["conclusion"] != expected_conclusion:
+        raise ValueError("Coupon workflow conclusion disagrees with final proof")
+    return {
+        "run_id": run["id"], "state": state, "attempted": attempted,
+        "public_verified_post_ids": verified,
+        "unchanged_post_ids": unchanged, "uncertain_post_ids": uncertain,
+        "public_unverified_post_ids": unverified,
+        "public_verified_shortcodes": None if unverified else removed,
+    }
+
+
+def coupon_cleanup_evidence(runs, token, *, fetch_jobs, fetch_log=job_log):
+    """Bounded, read-only coupon receipt inventory; no WP requests or retries."""
+    candidates = [r for r in runs if r.get("name") == COUPON_WORKFLOW]
+    waves, unknown, seen = [], [], set()
+    for run in candidates[:15]:
+        rid = run.get("id")
+        if type(rid) is not int or rid <= 0:
+            unknown.append(None)
+            continue
+        if rid in seen:
+            continue
+        seen.add(rid)
+        try:
+            if (run.get("status") != "completed"
+                    or run.get("conclusion") not in {"success", "failure"}):
+                raise ValueError("Coupon wave is not final")
+            joblist = fetch_jobs(rid, token).get("jobs")
+            if not isinstance(joblist, list) or len(joblist) != 1:
+                raise ValueError("Unexpected coupon job inventory")
+            job = joblist[0]
+            if (job.get("name") != "cleanup" or job.get("status") != "completed"
+                    or job.get("conclusion") != run["conclusion"]
+                    or type(job.get("id")) is not int or job["id"] <= 0):
+                raise ValueError("Unexpected coupon job outcome")
+            steps = job.get("steps")
+            if not isinstance(steps, list):
+                raise ValueError("Missing coupon job step proof")
+            required = {
+                "Repository tests": "success",
+                "Read-only paginated preview of up to eight never-attempted coupon posts": "success",
+                "Backup artifact is mandatory before any WordPress writes": "success",
+                "Reserve all post IDs in issue 363 BEFORE any WP POST; then verify public pages":
+                    run["conclusion"],
+            }
+            positions = []
+            for name, conclusion in required.items():
+                matches = [(i, s) for i, s in enumerate(steps) if s.get("name") == name]
+                if (len(matches) != 1 or matches[0][1].get("status") != "completed"
+                        or matches[0][1].get("conclusion") != conclusion):
+                    raise ValueError("Required coupon prewrite/apply proof missing")
+                positions.append(matches[0][0])
+            if positions != sorted(positions) or len(set(positions)) != len(positions):
+                raise ValueError("Coupon backup/apply order invalid")
+            waves.append(inspect_coupon_log(fetch_log(job["id"], token), run))
+        except (KeyError, TypeError, ValueError, OSError, AttributeError,
+                urllib.error.HTTPError, urllib.error.URLError):
+            unknown.append(rid)
+    if len(candidates) > 15:
+        unknown.append(None)
+    verified_ids = {pid for wave in waves for pid in wave["public_verified_post_ids"]}
+    return {
+        "runs_seen": len(candidates), "waves": waves,
+        "unknown_run_ids": unknown,
+        "public_verified_unique_posts": len(verified_ids),
+        "public_verified_update_events": sum(len(w["public_verified_post_ids"]) for w in waves),
+        "known_public_verified_shortcodes": sum(w["public_verified_shortcodes"] or 0
+                                                 for w in waves),
+        "shortcode_count_incomplete": bool(unknown) or any(
+            w["public_verified_shortcodes"] is None for w in waves),
+    }
+
+
 def real_release_evidence(runs, token, *, fetch_jobs, fetch_log=job_log):
     """Inspect only successful publisher jobs; fail closed for inaccessible proof.
 
     Callers supply GitHub REST fetch_jobs returning a jobs-list JSON object.
     No user content, raw logs, URL tracking parameters or secrets are returned.
     """
+    runs = list(runs)
     publishers = [r for r in runs if r.get("name") in PUBLISHER_NAMES]
     changed = []
     nochange = 0
@@ -340,5 +489,7 @@ def real_release_evidence(runs, token, *, fetch_jobs, fetch_log=job_log):
         "verified_no_change_runs": nochange,
         "unverified_runs": unknown,
         "publisher_runs_seen": len(publishers),
-        "proof_scope": "successful_authorized_github_publisher_job_receipts_only",
+        "coupon_cleanup": coupon_cleanup_evidence(
+            runs, token, fetch_jobs=fetch_jobs, fetch_log=fetch_log),
+        "proof_scope": "canonical_publisher_and_separate_guarded_coupon_receipts",
     }

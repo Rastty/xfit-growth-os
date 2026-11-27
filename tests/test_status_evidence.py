@@ -1,10 +1,11 @@
 """Real production receipts, never inferred edits from green CI."""
+import json
 import unittest
 from urllib.request import Request
 
 from scripts.xfit_status_evidence import (
     NoTokenRedirect, PUBLISHER_NAMES, canonical, inspect_log,
-    real_release_evidence,
+    coupon_cleanup_evidence, real_release_evidence,
 )
 from scripts.xfit_status import render
 
@@ -462,6 +463,128 @@ class StatusEvidenceTests(unittest.TestCase):
         self.assertIn("**NEOVĚŘENO: 1 publikačních běhů.**",text)
         self.assertIn("nelze tvrdit, že bylo provedeno 0 změn",text)
 
+
+
+def coupon_run(rid=46017000248, conclusion="failure"):
+    return run(name="XFIT Expired Coupon Cleanup", id=rid, conclusion=conclusion)
+
+
+def coupon_job(conclusion="failure", *, backup="success"):
+    steps = [
+        ("Repository tests", "success"),
+        ("Read-only paginated preview of up to eight never-attempted coupon posts", "success"),
+        ("Backup artifact is mandatory before any WordPress writes", backup),
+        ("Reserve all post IDs in issue 363 BEFORE any WP POST; then verify public pages", conclusion),
+    ]
+    return {"jobs": [{"id": 501, "name": "cleanup", "status": "completed",
+                      "conclusion": conclusion, "steps": [
+                          {"name": name, "status": "completed", "conclusion": result}
+                          for name, result in steps]}]}
+
+
+def coupon_receipt():
+    return {
+        "state": "coupon_wave_partial", "posts_changed": 7, "shortcodes_removed": 21,
+        "unchanged_failures": [{"id": 10409, "stage": "write_request", "state": "unchanged"}],
+        "uncertain_posts": [],
+        "public_verified_post_ids": [10418, 10412, 10406, 10402, 10398, 10396, 10392],
+        "public_not_verified": [], "deletes": 0, "redirects": 0,
+    }
+
+
+def coupon_log(final=None, *, reservation=None):
+    if final is None:
+        final = coupon_receipt()
+    if reservation is None:
+        reservation = {"state": "COUPON_ATTEMPTS_RESERVED_BEFORE_WP", "issue": 363,
+                       "new_attempt_ids": 8, "total_attempts": 126, "wordpress_writes": 0}
+    # A fixture identical to the real result printed by tests BEFORE apply
+    # must not be counted, even when the real step is missing.
+    return "\n".join((
+        json.dumps(final),
+        "2026-11-27T14:33:46Z ##[group]Run set -o pipefail",
+        'python -m scripts.xfit_coupon_cleanup apply | tee -a "$GITHUB_STEP_SUMMARY"',
+        "2026-11-27T14:33:46Z ##[endgroup]",
+        json.dumps(reservation),
+        json.dumps(final),
+    ))
+
+
+class CouponStatusEvidenceTests(unittest.TestCase):
+    def collect(self, log=None, *, conclusion="failure", job=None):
+        return real_release_evidence(
+            [coupon_run(conclusion=conclusion)], "fake",
+            fetch_jobs=lambda *_: job if job is not None else coupon_job(conclusion),
+            fetch_log=lambda *_: coupon_log() if log is None else log)
+
+    def test_partial_wave_counts_only_public_ids_and_keeps_canonical_counts_separate(self):
+        output = self.collect()
+        proof = output["coupon_cleanup"]
+        self.assertEqual(proof["public_verified_unique_posts"], 7)
+        self.assertEqual(proof["public_verified_update_events"], 7)
+        self.assertEqual(proof["known_public_verified_shortcodes"], 21)
+        self.assertFalse(proof["shortcode_count_incomplete"])
+        self.assertEqual(proof["waves"][0]["unchanged_post_ids"], [10409])
+        self.assertEqual(proof["unknown_run_ids"], [])
+        self.assertEqual(output["counts"]["updated"], 0)
+        self.assertEqual(output["counts"]["new"], 0)
+        body = render([coupon_run()], [], __import__("datetime").datetime.now(
+            __import__("datetime").timezone.utc), production=output)
+        self.assertIn("**7/8** veřejně ověřeno", body)
+        self.assertIn("nezměněné 1", body)
+        self.assertIn("kuponů (včetně částečných dávek)", body)
+        self.assertIn("doložené odstraněné shortcode bloky: **21**", body)
+        self.assertNotIn("nebyl zaznamenán žádný schválený publikační běh", body)
+
+    def test_complete_wave_and_public_subset_have_distinct_shortcode_proof(self):
+        final = coupon_receipt()
+        final.update(state="coupon_wave_verified", posts_changed=8, shortcodes_removed=24,
+                     unchanged_failures=[])
+        final["public_verified_post_ids"].append(10409)
+        complete = self.collect(coupon_log(final), conclusion="success")["coupon_cleanup"]
+        self.assertEqual(complete["public_verified_unique_posts"], 8)
+        self.assertEqual(complete["known_public_verified_shortcodes"], 24)
+        final["state"] = "coupon_wave_public_unverified"
+        final["public_verified_post_ids"].remove(10409)
+        final["public_not_verified"] = [{"id": 10409, "state": "EXPIRED_COUPON_VISIBLE"}]
+        partial = self.collect(coupon_log(final))["coupon_cleanup"]
+        self.assertEqual(partial["public_verified_unique_posts"], 7)
+        self.assertEqual(partial["known_public_verified_shortcodes"], 0)
+        self.assertTrue(partial["shortcode_count_incomplete"])
+        self.assertEqual(partial["waves"][0]["public_unverified_post_ids"], [10409])
+
+    def test_malformed_wrong_step_or_backup_cannot_become_proof(self):
+        final = coupon_receipt()
+        bad_logs = [json.dumps(final), coupon_log().replace(
+            "scripts.xfit_coupon_cleanup apply", "scripts.fake apply"),
+            coupon_log().replace('"issue": 363', '"issue": 1'),
+            coupon_log().replace('"wordpress_writes": 0', '"wordpress_writes": 8'),
+            coupon_log().replace('"new_attempt_ids": 8', '"new_attempt_ids": 7')]
+        for patch in (
+            {"posts_changed": 8}, {"shortcodes_removed": 1}, {"deletes": 1},
+            {"public_verified_post_ids": [10418] * 7},
+            {"public_verified_post_ids": [10409, 10412, 10406, 10402, 10398, 10396, 10392]},
+            {"state": "coupon_wave_verified"}, {"uncertain_posts": [{"id": 99999}]},
+            {"public_verified_post_ids": [True, 10412, 10406, 10402, 10398, 10396, 10392]},
+        ):
+            bad_logs.append(coupon_log(dict(final, **patch)))
+        for log in bad_logs:
+            with self.subTest(log=log[-100:]):
+                proof = self.collect(log)["coupon_cleanup"]
+                self.assertEqual(proof["public_verified_unique_posts"], 0)
+                self.assertEqual(proof["unknown_run_ids"], [46017000248])
+                self.assertTrue(proof["shortcode_count_incomplete"])
+        proof = self.collect(job=coupon_job(backup="failure"))["coupon_cleanup"]
+        self.assertEqual(proof["public_verified_unique_posts"], 0)
+        self.assertEqual(proof["unknown_run_ids"], [46017000248])
+
+    def test_duplicate_run_inventory_does_not_double_count(self):
+        proof = coupon_cleanup_evidence(
+            [coupon_run(), coupon_run()], "fake", fetch_jobs=lambda *_: coupon_job(),
+            fetch_log=lambda *_: coupon_log())
+        self.assertEqual(len(proof["waves"]), 1)
+        self.assertEqual(proof["public_verified_unique_posts"], 7)
+        self.assertEqual(proof["known_public_verified_shortcodes"], 21)
 
 if __name__=="__main__":
     unittest.main()

@@ -348,11 +348,40 @@ def render(runs, states, now, lanes=None, production=None, homepage=None, supple
                     run_link = "https://github.com/" + EXPECTED_REPO + "/actions/runs/" + str(item["run_id"])
                     lines.append("- [" + item["name"] + "](" + run_link + ") — " +
                                  "nelze potvrdit výsledek na WordPressu")
-        elif production["publisher_runs_seen"] == 0:
+        elif production["publisher_runs_seen"] == 0 and not production.get("coupon_cleanup", {}).get("runs_seen"):
             lines.append("- V tomto intervalu nebyl zaznamenán žádný " +
                          "schválený publikační běh.")
-        lines.append("- Tyto počty nepokrývají ruční úpravy WordPressu " +
-                     "ani prodeje/affiliate provize.")
+        lines.append("- Tyto počty nezahrnují samostatnou evidenci kuponových dávek, "
+                     "ruční úpravy WordPressu ani prodeje/affiliate provize.")
+        coupon = production.get("coupon_cleanup", {})
+        if coupon.get("runs_seen"):
+            lines += [
+                "",
+                "**Samostatně: ověřené opravy starých kuponů (včetně částečných dávek):**",
+                "- Veřejně ověřené opravy: **" + str(coupon["public_verified_update_events"]) +
+                "** na **" + str(coupon["public_verified_unique_posts"]) +
+                "** různých WP ID; doložené odstraněné shortcode bloky: **" +
+                str(coupon["known_public_verified_shortcodes"]) + "**" +
+                (" (neúplný počet; další výsledek NEOVĚŘENO)." if
+                 coupon["shortcode_count_incomplete"] else "."),
+                "- Jde o úpravy existujících článků, nikoli nové články; "
+                "tyto počty nelze prostě přičíst k unikátním stránkám výše.",
+            ]
+            for wave in coupon["waves"][:8]:
+                ids = ", ".join(str(pid) for pid in wave["public_verified_post_ids"]) or "žádné"
+                link = "https://github.com/" + EXPECTED_REPO + "/actions/runs/" + str(wave["run_id"])
+                lines.append(
+                    "- [Dávka " + str(wave["run_id"]) + "](" + link + "): **" +
+                    str(len(wave["public_verified_post_ids"])) + "/" + str(wave["attempted"]) +
+                    "** veřejně ověřeno; WP ID " + ids +
+                    "; nezměněné " + str(len(wave["unchanged_post_ids"])) +
+                    ", nejisté zápisy " + str(len(wave["uncertain_post_ids"])) +
+                    ", veřejně neověřené " + str(len(wave["public_unverified_post_ids"])) + "."
+                )
+            if coupon["unknown_run_ids"]:
+                lines.append("- **NEOVĚŘENO: " + str(len(coupon["unknown_run_ids"])) +
+                             " kuponových běhů** — chybí kompletní důkaz; nelze je vykázat jako nulu.")
+            lines.append("- Pokusy s nejasným nebo nezměněným výsledkem neopakovat automaticky.")
     if failures:
         lines.append("- **Vyžaduje opravu:** "+", ".join(
             "["+x.get("name","?")+"]("+x.get("html_url","")+")" for x in failures[:5]))
