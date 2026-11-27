@@ -30,7 +30,7 @@ class VerifiedInlinkTests(unittest.TestCase):
             "creatine_safety_2139", "creatine_price_10835",
             "creatine_buyer_10854", "creatine_buyer_10738",
             "whey_training_7363", "creatine_selection_9772",
-            "whey_snacks_7195", "drinkware_snacks_7195", "protein_lactose_25451",
+            "whey_snacks_7195", "drinkware_snacks_7195", "nut_butter_snacks_7195", "protein_lactose_25451",
             "protein_plant_25451",
             "beginner_plant_25458",
             "beginner_plant_commerce_25458",
