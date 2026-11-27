@@ -621,6 +621,106 @@ def coupon_cleanup_evidence(runs, token, *, fetch_jobs, fetch_log=job_log):
     }
 
 
+
+# This is a fixed historical recovery, not a publisher run. Its successful
+# GET-only verification must not turn a failed original workflow into a
+# successful workflow or increment current-period write counts.
+MAT_RECOVERY_NAME = "XFIT Legacy Mat Independent Public Proof"
+MAT_RECOVERY_RUN = 46050853329
+MAT_ORIGINAL_RUN = 46050150293
+MAT_RECOVERY_POSTS = {
+    3377: "vybaveni-do-fitka-jak-vybrat-vhodnou-podlozku-na-pilates-cviceni",
+    7487: "jak-vybrat-spravnou-podlozku-pro-cviceni-pilates",
+}
+MAT_TARGET = "https://xfit.cz/xfit-os-vybaveni-na-domaci-cviceni-nabidky/#xfit-gear-mat"
+MAT_RECOVERY_STEPS = (
+    "Download original prewrite backup 3377 from exact release",
+    "Download original prewrite backup 7487 from exact release",
+    "Independently verify exact stored source and preserved metadata",
+    "Actual public mobile route verification both existing pages",
+)
+
+
+def inspect_mat_recovery_log(log):
+    source_marker = "##[group]Run python - <<'PY'"
+    mobile_marker = "##[group]Run node tests/legacy_mat_mobile.cjs 3377 live"
+    if log.count(source_marker) != 1 or log.count(mobile_marker) != 1:
+        raise ValueError("Missing or ambiguous actual proof steps")
+    command, sep, output = log.split(source_marker, 1)[1].partition("##[endgroup]")
+    if not sep or "prove_prior_release(cfg," not in command:
+        raise ValueError("Unexpected source proof command")
+    source, sep, mobile_tail = output.partition(mobile_marker)
+    mobile_command, end, mobile = mobile_tail.partition("##[endgroup]")
+    if not sep or not end or "node tests/legacy_mat_mobile.cjs 7487 live" not in mobile_command:
+        raise ValueError("Missing both live mobile commands")
+    source_receipts = [v for line in source.splitlines() if (v := _receipt(line))]
+    mobile_receipts = [v for line in mobile.splitlines() if (v := _receipt(line))]
+    metadata = [v for v in source_receipts if v.get("state") == "LEGACY_MAT_STORED_METADATA_CHECK"]
+    proofs = [v for v in source_receipts if v.get("state") == "LEGACY_MAT_PRIOR_RELEASE_READONLY_VERIFIED"]
+    browsers = [v for v in mobile_receipts if v.get("state") == "LEGACY_MAT_MOBILE_LIVE_VERIFIED"]
+    for records in (metadata, proofs, browsers):
+        if len(records) != 2 or {v.get("post_id") for v in records} != set(MAT_RECOVERY_POSTS):
+            raise ValueError("Missing, duplicate or wrong post proof")
+    for pid, slug in MAT_RECOVERY_POSTS.items():
+        m, p, b = [next(v for v in records if v["post_id"] == pid)
+                   for records in (metadata, proofs, browsers)]
+        if (source_receipts.index(m) >= source_receipts.index(p)
+                or m.get("changed_stored_fields") != []
+                or m.get("wordpress_writes") != 0
+                or p.get("slug") != slug or p.get("url") != "https://xfit.cz/" + slug + "/"
+                or p.get("original_run_id") != MAT_ORIGINAL_RUN
+                or p.get("stored_metadata_preserved") is not True
+                or p.get("public_site_modified") is not False
+                or p.get("wordpress_writes") != 0 or p.get("new_posts") != 0
+                or b.get("width") != 375 or b.get("target") != MAT_TARGET
+                or b.get("merchant_clicks") != 0):
+            raise ValueError("Historical proof invariant failed")
+    return sorted(MAT_RECOVERY_POSTS)
+
+
+def mat_recovery_evidence(runs, token, *, fetch_jobs, fetch_log=job_log):
+    candidates = [r for r in runs if r.get("name") == MAT_RECOVERY_NAME]
+    result = {"runs_seen": len(candidates), "verified_post_ids": [],
+              "unknown_run_ids": [], "original_run_id": MAT_ORIGINAL_RUN,
+              "proof_run_id": MAT_RECOVERY_RUN, "new_writes": 0}
+    seen = set()
+    for run in candidates[:5]:
+        rid = run.get("id")
+        if type(rid) is not int or rid <= 0:
+            result["unknown_run_ids"].append(None)
+            continue
+        if rid in seen:
+            continue
+        seen.add(rid)
+        try:
+            if rid != MAT_RECOVERY_RUN or run.get("status") != "completed" or run.get("conclusion") != "success":
+                raise ValueError("Not the exact completed recovery run")
+            jobs = fetch_jobs(rid, token).get("jobs")
+            if not isinstance(jobs, list) or len(jobs) != 1:
+                raise ValueError("Unexpected job inventory")
+            job = jobs[0]
+            if job.get("name") != "verify" or job.get("status") != "completed" or job.get("conclusion") != "success":
+                raise ValueError("Recovery job did not pass")
+            steps = job.get("steps")
+            if not isinstance(steps, list):
+                raise ValueError("Missing step inventory")
+            positions = []
+            for name in MAT_RECOVERY_STEPS:
+                matches = [(i, s) for i, s in enumerate(steps) if s.get("name") == name]
+                if len(matches) != 1 or matches[0][1].get("status") != "completed" or matches[0][1].get("conclusion") != "success":
+                    raise ValueError("Required proof step failed")
+                positions.append(matches[0][0])
+            if positions != sorted(positions) or type(job.get("id")) is not int or job["id"] <= 0:
+                raise ValueError("Proof step order or job identity invalid")
+            result["verified_post_ids"] = inspect_mat_recovery_log(fetch_log(job["id"], token))
+        except (KeyError, TypeError, ValueError, OSError, AttributeError,
+                urllib.error.HTTPError, urllib.error.URLError):
+            result["unknown_run_ids"].append(rid)
+    if len(candidates) > 5:
+        result["unknown_run_ids"].append(None)
+    return result
+
+
 def real_release_evidence(runs, token, *, fetch_jobs, fetch_log=job_log):
     """Inspect only successful publisher jobs; fail closed for inaccessible proof.
 
@@ -689,5 +789,6 @@ def real_release_evidence(runs, token, *, fetch_jobs, fetch_log=job_log):
         "publisher_runs_seen": len(publishers),
         "coupon_cleanup": coupon_cleanup_evidence(
             runs, token, fetch_jobs=fetch_jobs, fetch_log=fetch_log),
-        "proof_scope": "canonical_publisher_and_separate_guarded_coupon_receipts",
+        "mat_recovery": mat_recovery_evidence(runs, token, fetch_jobs=fetch_jobs, fetch_log=fetch_log),
+        "proof_scope": "canonical_publisher_and_separate_guarded_coupon_receipts_and_historical_mat_proof",
     }

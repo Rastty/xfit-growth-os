@@ -355,6 +355,20 @@ def render(runs, states, now, lanes=None, production=None, homepage=None, supple
                          "schválený publikační běh.")
         lines.append("- Tyto počty nezahrnují samostatnou evidenci kuponových dávek, "
                      "ruční úpravy WordPressu ani prodeje/affiliate provize.")
+        recovery = production.get("mat_recovery", {})
+        if recovery.get("runs_seen"):
+            lines.append("")
+            lines.append("**Samostatně: dodatečné ověření dřívější úpravy podložek (bez nového zápisu):**")
+            if recovery.get("verified_post_ids"):
+                ids = ", ".join(str(pid) for pid in recovery["verified_post_ids"])
+                base = "https://github.com/" + EXPECTED_REPO + "/actions/runs/"
+                lines.append("- WP ID " + ids + ": zachovaná metadata, přesný živý obsah a mobil 375 px ověřeny; "
+                             "[původní neúspěšný release](" + base + str(recovery["original_run_id"]) +
+                             "), [nezávislý úspěšný GET-only důkaz](" + base + str(recovery["proof_run_id"]) +
+                             "). 0 nových zápisů; nepřičítat k aktuálním změnám.")
+            if recovery.get("unknown_run_ids"):
+                lines.append("- NEOVĚŘENO: " + str(len(recovery["unknown_run_ids"])) +
+                             " běhů dodatečné kontroly; výsledek nepředpokládat.")
         coupon = production.get("coupon_cleanup", {})
         if coupon.get("runs_seen"):
             lines += [

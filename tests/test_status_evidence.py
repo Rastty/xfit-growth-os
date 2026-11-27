@@ -710,5 +710,48 @@ class NavigationReleaseEvidenceTests(unittest.TestCase):
             self.assertEqual(check(no_op,browser)["verified_no_change_runs"], 1)
 
 
+
+class MatRecoveryEvidenceTests(unittest.TestCase):
+    def test_exact_independent_historical_proof_is_not_a_new_write(self):
+        from scripts.xfit_status_evidence import (MAT_RECOVERY_NAME, MAT_RECOVERY_RUN,
+            MAT_ORIGINAL_RUN, MAT_RECOVERY_POSTS, MAT_RECOVERY_STEPS, MAT_TARGET)
+        row = dict(name=MAT_RECOVERY_NAME,id=MAT_RECOVERY_RUN,status="completed",conclusion="success")
+        source = []
+        browser = []
+        for pid, slug in MAT_RECOVERY_POSTS.items():
+            source += [dict(state="LEGACY_MAT_STORED_METADATA_CHECK",post_id=pid,
+                            changed_stored_fields=[],wordpress_writes=0),
+                       dict(state="LEGACY_MAT_PRIOR_RELEASE_READONLY_VERIFIED",post_id=pid,
+                            slug=slug,url="https://xfit.cz/"+slug+"/",original_run_id=MAT_ORIGINAL_RUN,
+                            stored_metadata_preserved=True,public_site_modified=False,wordpress_writes=0,new_posts=0)]
+            browser.append(dict(state="LEGACY_MAT_MOBILE_LIVE_VERIFIED",post_id=pid,width=375,
+                                target=MAT_TARGET,merchant_clicks=0))
+        job = dict(id=1,name="verify",status="completed",conclusion="success",
+                   steps=[dict(name=n,status="completed",conclusion="success") for n in MAT_RECOVERY_STEPS])
+        def check(src=source, mob=browser, run_row=row, job_row=job, marker=True):
+            log = "\n".join([json.dumps(source[1]),
+                "##[group]Run python - <<'PY'" if marker else "##[group]Run tests",
+                "prove_prior_release(cfg, path)", "##[endgroup]",
+                *map(json.dumps,src),
+                "##[group]Run node tests/legacy_mat_mobile.cjs 3377 live",
+                "node tests/legacy_mat_mobile.cjs 7487 live","##[endgroup]",
+                *map(json.dumps,mob)])
+            return real_release_evidence([run_row,run_row], "fake",
+                fetch_jobs=lambda *_: {"jobs":[job_row]},fetch_log=lambda *_: log)
+        out=check()
+        self.assertEqual(out["mat_recovery"]["verified_post_ids"],[3377,7487])
+        self.assertEqual(out["mat_recovery"]["new_writes"],0)
+        self.assertEqual(out["counts"]["updated"],0)
+        self.assertEqual(out["verified_events"],[])
+        for bad in (check(src=source[:-1]),check(mob=browser[:-1]),check(marker=False),
+                    check(src=[*source[:-1],dict(source[-1],wordpress_writes=1)]),
+                    check(mob=[*browser[:-1],dict(browser[-1],width=390)]),
+                    check(run_row=dict(row,id=123)),
+                    check(job_row=dict(job,steps=job["steps"][1:]))):
+            self.assertEqual(bad["mat_recovery"]["verified_post_ids"],[])
+            self.assertTrue(bad["mat_recovery"]["unknown_run_ids"])
+            self.assertEqual(bad["counts"]["updated"],0)
+
+
 if __name__=="__main__":
     unittest.main()
