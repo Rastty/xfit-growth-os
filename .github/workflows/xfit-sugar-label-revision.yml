@@ -26,7 +26,7 @@ jobs:
           python-version: '3.12'
       - name: Validate full repository and reviewed exact article
         run: python -m unittest discover -s tests -v
-      - name: Verify live target and original published article
+      - name: Verify exact ID 607, reviewed old destinations and live target before write
         run: python -m scripts.xfit_sugar_label_revision snapshot
       - name: Immutable prewrite backup
         uses: actions/upload-artifact@v4
