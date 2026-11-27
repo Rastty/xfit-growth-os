@@ -140,6 +140,7 @@ def build_document(catalog, base, sample):
         model_portion_intro("whey"),
         '<div class="xfit-product-cards">'
     ]
+    lowest_pack_price = min(offer["price_czk"] for offer in chosen)
     for index,item in enumerate(chosen):
         disclosure_id = "xfit-whey-partner-" + str(index + 1)
         title=html.escape(item["title"])
@@ -153,6 +154,9 @@ def build_document(catalog, base, sample):
              '" alt="'+title+'" loading="lazy" width="120" height="120" style="max-width:100%;width:120px;height:120px;object-fit:contain;" /></p>'
              if item["image"] else "")
         label="Nejnižší jednotková cena ve výběru" if index==0 else "Další velikost nebo typ prášku"
+        if item["price_czk"] == lowest_pack_price:
+            label = ("Nejnižší cena balení ve výběru" if index else
+                     label + " · Nejnižší cena balení ve výběru")
         parts.append('<article class="xfit-product-card" id="xfit-offer-'+str(index+1)+'" style="border:1px solid #dce5e8;'
             'border-radius:12px;padding:16px;margin:16px 0;background:#ffffff;overflow-wrap:anywhere;">'
             '<h3>'+title+'</h3>'+img+
