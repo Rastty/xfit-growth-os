@@ -4,13 +4,15 @@ import json
 from pathlib import Path
 import sys
 import re
-from urllib.parse import urlencode
+from urllib.parse import urlencode,urlsplit
 from scripts.wp_publish import normalized_base, wp_request, PublishError, verify_public, article_visible, normalize_visible, editorial_links
 from scripts.xfit_legacy_mat_release import stable_metadata
 from scripts.xfit_coupon_cleanup import QUARANTINE_IDS
 from scripts.xfit_editorial_gate import check_document
 from scripts.xfit_nut_butter_refresh import read_source, URL as TARGET, TITLE as TARGET_TITLE
 
+POST_ID=607
+ORIGINAL_MODIFIED="2021-02-06T07:15:02"
 SLUG="ctyri-zaludne-zdroje-cukru"
 URL="https://xfit.cz/"+SLUG+"/"
 TITLE="Čtyři záludné zdroje cukru, kde byste je nečekali"
@@ -33,7 +35,7 @@ def read():
     if not isinstance(rows,list) or len(rows)!=1:
         raise PublishError("Expected one exact published source")
     row=rows[0]
-    if (type(row.get("id")) is not int or row["id"]<=0 or row["id"] in QUARANTINE_IDS or
+    if (type(row.get("id")) is not int or row["id"]!=POST_ID or row["id"] in QUARANTINE_IDS or
         row.get("slug")!=SLUG or row.get("link")!=URL or row.get("status")!="publish" or
         normalize_visible(row.get("title",{}).get("raw",""))!=normalize_visible(TITLE) or
         not isinstance(row.get("modified_gmt"),str)):
@@ -45,16 +47,25 @@ def reviewed(row,new):
     raw=row["content"]["raw"]
     if raw==new:
         return
-    if not isinstance(raw,str) or not 1500<=len(raw.encode())<=400000 or row["modified_gmt"]>="2026-11-20":
+    if not isinstance(raw,str) or not 1500<=len(raw.encode())<=400000 or row["modified_gmt"]!=ORIGINAL_MODIFIED:
         raise PublishError("Source changed since reviewed older article")
     text,_=article_visible(raw)
     anchors=("Vanilkový jogurt","Mandlové mléko","Ořechová másla","Rajčatová omáčka","Cukr pod jinými názvy",
              "Je již notoricky známé","13 procent","2015")
     if any(normalize_visible(a) not in text for a in anchors) or "5NM2022" in raw or "xfit-sugar-label-revision" in raw:
         raise PublishError("Publicly reviewed old content not matched")
-    # Do not silently drop old inline media or navigation. This rewrite is
-    # authorized only for the observed text-only article.
-    if editorial_links(raw) or re.search(r"<\s*(?:img|iframe|video|audio|figure|script|form)\b|\[(?:gallery|caption|embed)\b",raw,re.I):
+    # Exact two old destinations independently reviewed on the public page:
+    # internal 2016 weight-loss article promotes fat burners; external
+    # prirodni-sladidla returned 404. Replace both with current WHO/EC sources,
+    # never silently discard any additional editorial destination or media.
+    links=editorial_links(raw)
+    observed=[]
+    for href in links:
+        p=urlsplit(href)
+        if p.scheme not in {"http","https"} or p.username or p.password or p.port or p.query or p.fragment:
+            raise PublishError("Unreviewed legacy link")
+        observed.append(((p.hostname or "").removeprefix("www."),p.path.rstrip("/")))
+    if sorted(observed)!=[("dokonala-zena.cz","/prirodni-sladidla"),("xfit.cz","/3-jednoduche-tipy-jak-zhubnout")] or re.search(r"<\s*(?:img|iframe|video|audio|figure|script|form)\b|\[(?:gallery|caption|embed)\b",raw,re.I):
         raise PublishError("Original has unreviewed media or links")
     verify_public(URL,TITLE,row["content"].get("rendered") or raw)
 
