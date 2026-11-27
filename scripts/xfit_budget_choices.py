@@ -29,6 +29,18 @@ def _price(value):
     return price
 
 
+def _checkout_headroom(limit, total):
+    """Exact pack-price remainder, not a quoted merchant shipping charge."""
+    remaining = Decimal(limit) - total
+    if remaining < 0:
+        raise PublishError("Offer exceeds the selected spending limit")
+    if remaining == 0:
+        return (' <strong>Rezerva do limitu: 0,00 Kč.</strong> '
+                'Při jakémkoli dalším poplatku limit překročíte.')
+    return (' <strong>Rezerva do limitu: ' + money(remaining) +
+            '.</strong> Tolik nejvýše zbývá na dopravu a další poplatky.')
+
+
 def budget_choices(selected, limits, *, product_kind):
     """Return two distinct buyer goals inside accessible native budget controls.
 
@@ -54,6 +66,10 @@ def budget_choices(selected, limits, *, product_kind):
     for position, item in enumerate(selected, start=1):
         total = _price(item.get("price_czk"))
         per100 = _price(item.get("price_per_100g_powder_czk"))
+        # Display and subtract the same cent-precise price; never round
+        # an unknown fraction of a cent into spendable checkout headroom.
+        if total > Decimal("1000000") or total != total.quantize(Decimal("0.01")):
+            raise PublishError("Budget price must be bounded and cent-precise")
         grams = item.get("mass_g")
         if (type(grams) is not int or grams < 1 or
                 "tracked_url" not in item and "affiliate_url" not in item):
@@ -68,7 +84,9 @@ def budget_choices(selected, limits, *, product_kind):
         '<strong>co nejméně zaplatit nyní</strong> za celé balení, nebo '
         '<strong>co nejméně zaplatit za 100 g prášku</strong>. '
         'Někdy vyhraje stejný produkt. Počítáme pouze nabídky již '
-        'zobrazené níže, nikoli celý trh. Ceny se mohou změnit.</p>',
+        'zobrazené níže, nikoli celý trh. Rezerva vychází z ceny samotného '
+        'balení; skutečnou dopravu ani poplatky neznáme. '
+        'Konečnou cenu ověřte v košíku. Ceny se mohou změnit.</p>',
     ]
 
     opened_a_choice = False
@@ -113,7 +131,8 @@ def budget_choices(selected, limits, *, product_kind):
             '<a href="#xfit-offer-' + str(pack_pos) + '">' +
             html.escape(pack["title"]) + '</a> — ' + money(pack_total) +
             ' za balení ' + str(pack["mass_g"]) + ' g; ' +
-            money(pack_per100) + ' za 100 g prášku.</p>'
+            money(pack_per100) + ' za 100 g prášku.' +
+            _checkout_headroom(limit, pack_total) + '</p>'
         )
         if unit_pos == pack_pos:
             result.append(
@@ -132,7 +151,8 @@ def budget_choices(selected, limits, *, product_kind):
                 money(unit_total) + ' za balení ' +
                 str(unit["mass_g"]) + ' g. '
                 'Úspornější jednotková cena může vyžadovat vyšší '
-                'jednorázovou útratu.</p>'
+                'jednorázovou útratu.' +
+                _checkout_headroom(limit, unit_total) + '</p>'
             )
         result.append('</details>')
 

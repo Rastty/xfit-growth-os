@@ -5,7 +5,7 @@ pages. Every anchor resolves only to one of the already selected and ranked
 WordPress product cards, never to a new merchant or affiliate URL.
 """
 import html
-from decimal import Decimal
+from decimal import Decimal, ROUND_FLOOR
 
 from scripts.wp_publish import PublishError
 from scripts.xfit_budget_choices import _price, money
@@ -88,6 +88,25 @@ def price_tradeoff(selected, *, product_kind):
         # partial pack, imply two formulas have identical ingredients, or
         # recommend stockpiling for an unverified shelf life.
         small_g, large_g = p_item["mass_g"], u_item["mass_g"]
+        # Compare *usable* powder mass, not doses, protein or a fractional
+        # number of packs. Exact feed pack prices avoid rounded unit-price
+        # errors. A strict whole-gram threshold excludes a tie.
+        if small_g < large_g <= 5 * small_g:
+            threshold = u_total * Decimal(small_g) / p_total
+            minimum_used = int(threshold.to_integral_value(rounding=ROUND_FLOOR)) + 1
+            if (u_total * small_g < p_total * large_g
+                    and small_g < minimum_used <= large_g):
+                parts.append(
+                    '<p data-xfit-tradeoff="usable-mass"><strong>Kolik z většího '
+                    'balení opravdu využijete?</strong> Pokud menší balení '
+                    'využijete celé, vychází větší balení levněji za skutečně '
+                    'využitý gram prášku až při využití alespoň ' +
+                    str(minimum_used) + ' g z ' + str(large_g) + ' g. '
+                    'Nejde o doporučenou spotřebu ani dávkování. '
+                    'Výpočet nezahrnuje dopravu, poplatky, trvanlivost '
+                    'ani rozdílné složení. Pokud takové množství nepotřebujete, '
+                    'nekupujte větší balení jen kvůli jednotkové ceně.</p>'
+                )
         if large_g > small_g and large_g % small_g == 0:
             whole_packs = large_g // small_g
             if 2 <= whole_packs <= 5:

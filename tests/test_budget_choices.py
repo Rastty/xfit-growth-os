@@ -165,6 +165,35 @@ class BudgetChoicesTests(unittest.TestCase):
         with self.assertRaises(PublishError):
             budget_choices(duplicates, (500, 1500), product_kind="creatine")
 
+    def test_checkout_headroom_uses_each_winners_exact_pack_price(self):
+        cards = [
+            offer(1, "Velké", 999.01, 49.95, 2000),
+            offer(2, "Malé", 450.25, 90.05, 500),
+        ]
+        for kind in ("creatine", "whey"):
+            with self.subTest(kind=kind):
+                output = budget_choices(cards, (400, 1000), product_kind=kind)
+                self.assertIn("Do 400 Kč — 0 nabídek", output)
+                self.assertIn("Rezerva do limitu: 549,75 Kč.", output)
+                self.assertIn("Rezerva do limitu: 0,99 Kč.", output)
+                self.assertEqual(output.count("Rezerva do limitu:"), 2)
+                self.assertIn("skutečnou dopravu ani poplatky neznáme", output)
+                self.assertEqual(output.count('href="#xfit-offer-'), 2)
+                self.assertNotIn("https://www.namaximum.cz", output)
+
+    def test_checkout_headroom_zero_and_subcent_guard(self):
+        cards = [
+            offer(1, "Přesně limit", 500, 100, 500),
+            offer(2, "Mimo limit", 800, 80, 1000),
+        ]
+        output = budget_choices(cards, (500,), product_kind="creatine")
+        self.assertIn("Rezerva do limitu: 0,00 Kč.", output)
+        self.assertIn("Při jakémkoli dalším poplatku limit překročíte", output)
+        self.assertEqual(output.count("Rezerva do limitu:"), 1)
+        cards[0]["price_czk"] = "499.999"
+        with self.assertRaises(PublishError):
+            budget_choices(cards, (500,), product_kind="creatine")
+
     def test_equal_unit_prices_use_total_then_card_order(self):
         cards = [
             offer(1, "Velké", 1200, 80),
