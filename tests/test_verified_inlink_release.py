@@ -30,7 +30,7 @@ class VerifiedInlinkTests(unittest.TestCase):
             "creatine_safety_2139", "creatine_price_10835",
             "creatine_buyer_10854", "creatine_buyer_10738",
             "whey_training_7363", "creatine_selection_9772",
-            "whey_snacks_7195", "protein_lactose_25451",
+            "whey_snacks_7195", "drinkware_snacks_7195", "protein_lactose_25451",
             "protein_plant_25451",
             "beginner_plant_25458",
             "beginner_plant_commerce_25458",
@@ -451,3 +451,17 @@ class PlantGuideCatalogHandoffTests(unittest.TestCase):
 
 if __name__=="__main__":
     unittest.main()
+
+class DrinkwareSnacksHandoffTests(unittest.TestCase):
+    def test_exact_reviewed_prior_paragraph_and_no_duplicate(self):
+        cfg=release.ALLOWLIST["drinkware_snacks_7195"]
+        prior=release.ALLOWLIST["whey_snacks_7195"]
+        raw="<h2>Proteinové nápoje</h2>"+"<p>Původní text článku o proteinových nápojích.</p>"*60+prior.paragraph
+        row=dict(id=7195,slug=cfg.slug,status="publish",link=cfg.url,title={"raw":"Jak vybrat protein do nápojů"},content={"raw":raw},modified_gmt="2026-11-15T11:00:00")
+        out=release.prepare(cfg,row)
+        self.assertEqual(out["after"].replace(cfg.paragraph+"\n",""),raw)
+        self.assertEqual(release.real_links(out["after"]),{prior.target,cfg.target})
+        self.assertTrue(release.public_verified(cfg,reader=lambda _:cfg.paragraph))
+        self.assertEqual(release.prepare(cfg,{**row,"content":{"raw":out["after"]}})["mode"],"already_linked")
+        with self.assertRaises(PublishError):
+            release.prepare(cfg,{**row,"content":{"raw":raw.replace(prior.paragraph,"")}})

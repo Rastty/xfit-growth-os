@@ -683,8 +683,9 @@ class EquipmentProductionProofTests(unittest.TestCase):
             receipt = {"state": "PUBLIC_VERIFIED", "post_id": pid,
                        "url": "https://xfit.cz/" + slug + "/", "post_attempts": 1,
                        "posts_changed": 1, "new_posts": 0, "public_site_modified": True}
-            browser = {"state": "EQUIPMENT_HANDOFF_MOBILE_VERIFIED", "width": 375,
-                       "post_id": pid, "target": "https://xfit.cz/xfit-os-vybaveni-na-domaci-cviceni-nabidky/" + fragment}
+            drink = name == "XFIT Drinkware Protein Commerce Onepost"
+            browser = {"state": "DRINKWARE_HANDOFF_MOBILE_VERIFIED" if drink else "EQUIPMENT_HANDOFF_MOBILE_VERIFIED", "width": 375,
+                       "post_id": pid, "target": ("https://xfit.cz/xfit-os-sejkry-a-sportovni-lahve/" if drink else "https://xfit.cz/xfit-os-vybaveni-na-domaci-cviceni-nabidky/") + fragment}
             marker = "##[group]Run set -o pipefail\npython -m scripts.xfit_verified_inlink_release " + key + " apply"
             self.assertEqual(self.evidence(name, receipt, browser, marker)["counts"]["updated"], 1)
             self.assertEqual(self.evidence(name, receipt, dict(browser, target="https://xfit.cz/"), marker)["counts"]["updated"], 0)
