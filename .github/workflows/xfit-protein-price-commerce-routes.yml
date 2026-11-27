@@ -1,4 +1,5 @@
 name: XFIT Protein Price Commerce Routes
+# Recovery after GET-only diagnosis 46047351664. Original whey link must remain.
 on:
   push:
     branches: [main]

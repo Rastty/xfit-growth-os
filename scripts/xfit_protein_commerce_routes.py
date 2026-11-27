@@ -41,7 +41,7 @@ SCOPES = {
     "protein-guide": Scope("protein-guide", 25451, "xfit-os-protein-guide",
         "jak vybrat protein", V2_MARK, TARGETS + (PLANT_URL,)),
     "protein-price": Scope("protein-price", 25541, "xfit-os-cena-proteinu-podle-etikety",
-        "jak porovnat cenu proteinu", PRICE_MARK, (WHEY_URL, PLANT_URL)),
+        "jak porovnat cenu proteinu", PRICE_MARK, (PLANT_URL,)),
 }
 
 
@@ -66,13 +66,12 @@ def guide_panel():
 PRICE_PANEL = (
     '<nav ' + PRICE_MARK + ' aria-label="Skutečné katalogové nabídky proteinů" '
     'style="border:1px solid #dce5e8;border-radius:12px;padding:14px;margin:18px 0;">'
-    '<p><strong>Máte údaje z etikety a chcete porovnat konkrétní balení?</strong> '
-    'Pokud vám stačí běžné potraviny, prášek nemusíte kupovat. Jinak vyberte typ:</p>'
+    '<p><strong>Máte údaje z etikety a hledáte rostlinné proteiny?</strong> '
+    'Pokud vám stačí běžné potraviny, prášek nemusíte kupovat. Vedle stávajícího syrovátkového srovnání můžete využít i rostlinný výběr:</p>'
     '<ul style="list-style:none;padding:0;margin:0;">'
-    + offer_link(WHEY_URL, "Syrovátkové proteiny – ceny a balení")
     + offer_link(PLANT_URL, "Rostlinné proteiny – ceny a balení")
-    + '</ul><p><small>Aktuální přehledy jednoho prodejce obsahují označené partnerské odkazy. '
-    'Uvádějí cenu za prášek, ne za skutečné bílkoviny. Ověřte etiketu přesné varianty, alergeny, '
+    + '</ul><p><small>Aktuální přehled jednoho prodejce obsahuje označené partnerské odkazy. '
+    'Uvádí cenu za prášek, ne za skutečné bílkoviny. Ověřte etiketu přesné varianty, alergeny, '
     'hmotnost, dopravu a konečnou cenu v košíku. Pokud údaj chybí, nic neodhadujte.</small></p></nav>'
 )
 
@@ -106,7 +105,8 @@ def proof(cfg, raw):
         return False
     p = NavLinks(cfg.marker)
     p.feed(raw)
-    return p.navs == 1 and not p.depth and tuple(p.links) == cfg.targets
+    return (p.navs == 1 and not p.depth and tuple(p.links) == cfg.targets
+            and (cfg.key != "protein-price" or WHEY_URL in editorial_links(raw)))
 
 
 def revise(cfg, raw):
@@ -127,12 +127,12 @@ def revise(cfg, raw):
         additions = {PLANT_URL}
     else:
         if (raw.count(PRICE_HEADING) != 1 or raw.count(PRICE_OWNER) != 1
-                or WHEY_URL in old_links or PLANT_URL in old_links):
+                or WHEY_URL not in old_links or PLANT_URL in old_links):
             raise PublishError("Expected reviewed pricing content or unique target unavailable")
         updated = raw.replace(PRICE_HEADING, PRICE_PANEL + "\n" + PRICE_HEADING, 1)
         if updated.replace(PRICE_PANEL + "\n", "", 1) != raw:
             raise PublishError("Nonlocal price guide change")
-        additions = {WHEY_URL, PLANT_URL}
+        additions = {PLANT_URL}
     if (not proof(cfg, updated)
             or set(editorial_links(updated)) != set(old_links) | additions
             or any("namaximum.cz" in url for url in editorial_links(updated))):
