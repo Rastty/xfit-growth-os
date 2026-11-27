@@ -24,6 +24,31 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Inspect blocked sugar article source in the same runner (GET only)
+        continue-on-error: true
+        run: |
+          python - <<'PY'
+          import json,re
+          from urllib.parse import urlencode,urlsplit
+          from scripts.xfit_sugar_label_revision import SLUG,URL,TITLE,FIELDS,read,reviewed,expected
+          from scripts.wp_publish import wp_request,normalized_base,article_visible,normalize_visible,editorial_links,PublishError
+          rows=wp_request(normalized_base(),"posts?"+urlencode({"slug":SLUG,"context":"edit","status":"publish","per_page":2,"_fields":FIELDS}))
+          out={"state":"SUGAR_LABEL_SOURCE_REVIEW","rows":len(rows) if isinstance(rows,list) else None,"wordpress_writes":0}
+          if isinstance(rows,list) and len(rows)==1:
+              row=rows[0]
+              raw=(row.get("content") or {}).get("raw","")
+              text,_=article_visible(raw)
+              anchors=("Vanilkový jogurt","Mandlové mléko","Ořechová másla","Rajčatová omáčka","Cukr pod jinými názvy","Je již notoricky známé","13 procent","2015")
+              out.update(post_id=row.get("id"),modified_gmt=row.get("modified_gmt"),title_matches=normalize_visible((row.get("title") or {}).get("raw",""))==normalize_visible(TITLE),canonical=row.get("link")==URL,missing_anchors=[a for a in anchors if normalize_visible(a) not in text],media=bool(re.search(r"<\s*(?:img|iframe|video|audio|figure|script|form)\b",raw,re.I)),link_count=len(editorial_links(raw)),link_hosts=sorted(set(urlsplit(h).hostname or "relative" for h in editorial_links(raw))),raw_bytes=len(raw.encode()))
+              try:
+                  reviewed(read(),expected())
+                  out["review"]="pass"
+              except PublishError as exc:
+                  # Only the constant application error vocabulary is allowed.
+                  known={"Reviewed source identity drift","Source changed since reviewed older article","Publicly reviewed old content not matched","Original has unreviewed media or links","Public page still shows old/incomplete article body; cache or renderer stale","Expected one exact published source"}
+                  out["review"]=str(exc) if str(exc) in known else "other_source_guard"
+          print(json.dumps(out,ensure_ascii=False))
+          PY
       - name: Validate full repository before onepost
         run: python -m unittest discover -s tests -v
       - name: Require exact live nut butter comparison before linking
