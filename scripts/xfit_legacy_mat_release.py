@@ -19,6 +19,15 @@ class Scope:
     old_sha: str
     modified: str
     file: str
+    lane: str = "mat"
+
+    @property
+    def target(self):
+        return TARGET if self.lane == "mat" else "https://xfit.cz/xfit-os-kreatin-poradce/"
+
+    @property
+    def cta(self):
+        return "Zobrazit aktuální nabídky podložek" if self.lane == "mat" else "Zobrazit aktuální nabídky kreatinu"
 
     @property
     def url(self):
@@ -26,11 +35,11 @@ class Scope:
 
     @property
     def marker(self):
-        return "xfit-legacy-mat-revision-" + str(self.pid) + "-20261127"
+        return "xfit-legacy-" + self.lane + "-revision-" + str(self.pid) + "-20261127"
 
     @property
     def backup(self):
-        return Path("reports/backups/xfit-legacy-mat-" + str(self.pid) + ".json")
+        return Path("reports/backups/xfit-legacy-" + self.lane + "-" + str(self.pid) + ".json")
 
 SCOPES = {
     "3377": Scope(3377, "vybaveni-do-fitka-jak-vybrat-vhodnou-podlozku-na-pilates-cviceni",
@@ -49,7 +58,7 @@ def content(cfg):
     body=doc.get("content")
     if (doc.get("wp_post_id")!=cfg.pid or doc.get("slug")!=cfg.slug
             or not isinstance(body,str) or body.count(cfg.marker)!=1
-            or editorial_links(body).count(TARGET)!=1
+            or editorial_links(body).count(cfg.target)!=1
             or any("namaximum.cz" in u for u in editorial_links(body))
             or "5NM2022" in body
             or re.search(r"<\s*(?:script|iframe|form)\b|\bon\w+\s*=",body,re.I)):
@@ -134,10 +143,24 @@ def prove_prior_release(cfg, backup_path):
 
 
 def snapshot(cfg):
-    gear,_=read_source()
-    verify_public(URL,TITLE,gear)
-    if 'id="xfit-gear-mat"' not in gear:
-        raise PublishError("Missing intended live section")
+    if cfg.lane == "mat":
+        gear,_=read_source()
+        verify_public(URL,TITLE,gear)
+        if 'id="xfit-gear-mat"' not in gear:
+            raise PublishError("Missing intended live section")
+    elif cfg.lane == "creatine":
+        from scripts.xfit_affiliate_public_audit import Cards
+        guide=wp_request(normalized_base(),"posts/25455?context=edit&_fields=id,slug,status,link,title,content")
+        if (guide.get("id")!=25455 or guide.get("slug")!="xfit-os-kreatin-poradce"
+                or guide.get("status")!="publish" or guide.get("link")!=cfg.target):
+            raise PublishError("Missing exact live creatine guide")
+        verify_public(cfg.target,guide["title"]["raw"],guide["content"]["raw"])
+        p=Cards()
+        p.feed(read_public_page("xfit-os-kreatin-poradce"))
+        if not 2<=len(p.cards)<=6:
+            raise PublishError("Missing actual creatine offers")
+    else:
+        raise PublishError("Unknown release lane")
     post=read(cfg)
     raw,new=prepare(cfg,post)
     if cfg.backup.exists():
@@ -145,7 +168,7 @@ def snapshot(cfg):
     cfg.backup.parent.mkdir(parents=True,exist_ok=True)
     cfg.backup.write_text(json.dumps({"schema":1,"id":cfg.pid,"before":post,
         "raw_sha":sha(raw),"after_sha":sha(new),"wordpress_writes":0},ensure_ascii=False),encoding="utf-8")
-    print(json.dumps({"state":"LEGACY_MAT_PREWRITE_BACKUP_READY","post_id":cfg.pid,"wordpress_writes":0,"change_required":raw!=new}))
+    print(json.dumps({"state":"LEGACY_"+cfg.lane.upper()+"_PREWRITE_BACKUP_READY","post_id":cfg.pid,"wordpress_writes":0,"change_required":raw!=new}))
 
 def apply(cfg):
     saved=json.loads(cfg.backup.read_text(encoding="utf-8"))
@@ -164,9 +187,9 @@ def apply(cfg):
             raise PublishError("Exact source and metadata not verified; no retry")
     verify_public(cfg.url,before["title"]["raw"],new)
     public=read_public_page(cfg.slug)
-    if TARGET not in editorial_links(public) or "Zobrazit aktuální nabídky podložek" not in public:
+    if cfg.target not in editorial_links(public) or cfg.cta not in public:
         raise PublishError("Exact public buyer route not verified")
-    print(json.dumps({"state":"PUBLIC_LEGACY_MAT_REVISION_VERIFIED","post_id":cfg.pid,"slug":cfg.slug,
+    print(json.dumps({"state":"PUBLIC_LEGACY_"+cfg.lane.upper()+"_REVISION_VERIFIED","post_id":cfg.pid,"slug":cfg.slug,
         "url":cfg.url,"post_attempts":int(raw!=new),"posts_changed":int(raw!=new),
         "new_posts":0,"deletes":0,"redirects":0,"public_site_modified":raw!=new}))
 
