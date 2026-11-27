@@ -31,6 +31,7 @@ SLUGS=[
     ("xfit-os-doplnky-pro-zacatecniky","Doplňky pro začátečníky"),
     ("xfit-os-kreatin-poradce","Výběr kreatinu"),
     ("xfit-os-syrovatkovy-protein-porovnani","Porovnání syrovátkových proteinů"),
+    ("xfit-os-rostlinne-proteiny-porovnani","Porovnání rostlinných proteinů"),
     ("jaky-je-rozdil-mezi-klasickym-pilates-a-power-pilates","Pilates přehled")
 ]
 EXPECTED_REPO="Rastty/xfit-growth-os"

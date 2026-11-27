@@ -33,6 +33,7 @@ class VerifiedInlinkTests(unittest.TestCase):
             "whey_snacks_7195", "protein_lactose_25451",
             "protein_plant_25451",
             "beginner_plant_25458",
+            "beginner_plant_commerce_25458",
             "creatine_protein_vegan_25504",
             "creatine_protein_joint_4763",
         })
@@ -362,6 +363,30 @@ class JointCreatineProteinHandoffTests(unittest.TestCase):
                 with self.assertRaises(PublishError):
                     release.apply(JOINT)
                 wp.assert_not_called()
+
+
+class PlantCommerceHandoffTests(unittest.TestCase):
+    def test_exact_contextual_link_preserves_all_original_html(self):
+        cfg = release.ALLOWLIST["beginner_plant_commerce_25458"]
+        before = ('<p>Původní průvodce: pokud stačí běžné potraviny, nic nekupovat.</p>' * 35
+                  + cfg.before_heading + "Rozhodnutí</h2>"
+                  + '<p>Další původní text.</p>')
+        original = {"id": 25458, "slug": cfg.slug, "link": cfg.url, "status": "publish",
+                    "title": {"raw": "Doplňky stravy pro začátečníky"},
+                    "content": {"raw": before}, "modified_gmt": "2026-11-27T14:00:00"}
+        state = release.prepare(cfg, original)
+        self.assertEqual(state["after"].replace(cfg.paragraph + "\n", ""), before)
+        self.assertEqual(state["after"].count(cfg.target), 1)
+        self.assertIn("označené partnerské odkazy", cfg.paragraph)
+        self.assertIn("nezaručuje vhodnost při alergii", cfg.paragraph)
+        self.assertIn("nekupujte žádný prášek", cfg.paragraph)
+        self.assertNotIn("namaximum.cz", cfg.paragraph)
+        self.assertTrue(release.public_verified(cfg, reader=lambda _: cfg.paragraph))
+        self.assertEqual(release.prepare(cfg, {**original, "content": {
+            "raw": state["after"]}})["mode"], "already_linked")
+        with self.assertRaises(PublishError):
+            release.prepare(cfg, {**original, "content": {"raw": before.replace(
+                cfg.before_heading, "<h2>")}})
 
 
 if __name__=="__main__":
