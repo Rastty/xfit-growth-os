@@ -102,6 +102,9 @@ TOPIC_TERMS={
 SEARCH_TERMS={
     "kreatin":("kreatin","creatine"),
     "protein":("protein","bílkovin","bilkovin"),
+    "plant":("rostlinn","hrachov","sojov","sójov","ryzov","rýžov"),
+    "mat":("podlož","podloz"),
+    "band":("odporov","posilovací gum","posilovaci gum"),
 }
 # Safety/medical-intent posts should lead to independent explanations,
 # never automatically to a commercial offer comparison.
@@ -217,7 +220,7 @@ def fetch_topic_posts(topic, *, request=None, base=None,
     """
     if search_term is None:
         search_term=topic  # Preserve callers of the original single-term scan.
-    if (topic not in CAMPAIGNS or search_term not in SEARCH_TERMS[topic]
+    if (topic not in SEARCH_TERMS or search_term not in SEARCH_TERMS[topic]
             or type(page_size) is not int
             or not 1<=page_size<=100 or type(max_pages) is not int
             or not 1<=max_pages<=MAX_SEARCH_PAGES):
