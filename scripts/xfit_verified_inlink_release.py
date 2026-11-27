@@ -389,7 +389,30 @@ _EQUIPMENT_BAND = Handoff(
     ),
 )
 
+_PLANT_GUIDE_COMMERCE = Handoff(
+    key="plant_guide_commerce_25987", post_id=25987,
+    slug="xfit-os-jak-vybrat-rostlinny-protein", title_term="rostlinný protein",
+    target="https://xfit.cz/xfit-os-rostlinne-proteiny-porovnani/",
+    marker="xfit-plant-guide-commerce-25987-20261127",
+    sentence="Chcete porovnat konkrétní balení rostlinného proteinu",
+    before_first_h2=True, intro_terms=(r"rostlinn", r"protein", r"cen"),
+    required_source_marker="xfit-ai-plant-protein-label-choice-v1",
+    paragraph=(
+        '<p data-xfit-handoff="xfit-plant-guide-commerce-25987-20261127">'
+        '<strong>Chcete porovnat konkrétní balení rostlinného proteinu?</strong> '
+        'Pokud jste se rozhodli pro prášek, otevřete si '
+        '<a href="https://xfit.cz/xfit-os-rostlinne-proteiny-porovnani/">'
+        'aktuální katalogové srovnání cen a balení rostlinných proteinů</a>. '
+        'Přehled jednoho prodejce s označenými partnerskými odkazy rozlišuje '
+        'cenu balení a cenu za 100 g prášku, nikoli za 100 g čistých bílkovin. '
+        'Ověřte složení, alergeny, podíl bílkovin a cenu včetně dopravy; '
+        'pokud vám stačí běžné potraviny, prášek nekupujte. '
+        'tento odkaz není doporučení k nákupu.</p>'
+    ),
+)
+
 ALLOWLIST = {
+    _PLANT_GUIDE_COMMERCE.key: _PLANT_GUIDE_COMMERCE,
     _EQUIPMENT_MAT.key: _EQUIPMENT_MAT,
     _EQUIPMENT_BAND.key: _EQUIPMENT_BAND,
     _BEGINNER_PLANT_COMMERCE.key: _BEGINNER_PLANT_COMMERCE,
