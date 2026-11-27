@@ -52,10 +52,16 @@ def hub_choice_readiness(source, public):
     heading alone nor a matching theme-wide href is evidence that all four
     user choices appear inside the reviewed section.
     """
+    # The source version decides expected route set; do not treat a stale
+    # four-route cache as valid after the reviewed six-route release.
+    from scripts.xfit_beginner_four_lane_hub import V2_CHOICES, V2_MARKER
+    expected = V2_CHOICES if V2_MARKER in source else CHOICES
+
     def inspect(document):
         parser = PublicChoiceLinks()
         parser.feed(document)
-        return (tuple(parser.hrefs) == tuple(CHOICES)
+        return (tuple(parser.hrefs) == tuple(expected)
+                and (expected == CHOICES or document.count(V2_MARKER) == 1)
                 and visible_has(document, "Co potřebujete právě teď?")
                 and document.count('id="xfit-rychla-volba-20261121"') == 1), len(parser.hrefs)
 
