@@ -8,6 +8,7 @@ from scripts.xfit_status_evidence import (
     coupon_cleanup_evidence, real_release_evidence,
     PLANT_FIRST, PLANT_DAILY, PLANT_HANDOFF,
     EQUIPMENT_FIRST, EQUIPMENT_DAILY, EQUIPMENT_HANDOFFS, ROUTE_RELEASES,
+    CREATINE_LEGACY_NAME, CREATINE_LEGACY_TARGETS, CREATINE_LEGACY_STEPS,
 )
 from scripts.xfit_status import render
 
@@ -755,3 +756,42 @@ class MatRecoveryEvidenceTests(unittest.TestCase):
 
 if __name__=="__main__":
     unittest.main()
+
+class LegacyCreatineMatrixEvidenceTests(unittest.TestCase):
+    def fixtures(self, failure=None, malformed=None):
+        def fake_jobs(_rid,_token):
+            return {"jobs":[{"id":pid,"name":"publish ("+str(pid)+")",
+                "status":"completed","conclusion":"failure" if pid==failure else "success",
+                "steps":[{"name":step,"status":"completed","conclusion":"success"}
+                         for step in CREATINE_LEGACY_STEPS]}
+                for pid in CREATINE_LEGACY_TARGETS]}
+        def fake_log(pid,_token):
+            slug=CREATINE_LEGACY_TARGETS[pid]
+            common={"post_id":pid,"width":375,"target":"https://xfit.cz/xfit-os-kreatin-poradce/","merchant_clicks":0}
+            steps=[
+                ('python -m scripts.xfit_legacy_creatine_release "$POST_ID" snapshot',
+                 {"state":"LEGACY_CREATINE_PREWRITE_BACKUP_READY","post_id":pid,"wordpress_writes":0,"change_required":True}),
+                ('node tests/legacy_creatine_mobile.cjs "$POST_ID" preview',
+                 {"state":"LEGACY_CREATINE_MOBILE_PREVIEW_VERIFIED",**common}),
+                ('python -m scripts.xfit_legacy_creatine_release "$POST_ID" apply',
+                 {"state":"PUBLIC_LEGACY_CREATINE_REVISION_VERIFIED","post_id":pid,"slug":slug,
+                  "url":"https://xfit.cz/"+slug+"/","post_attempts":1,"posts_changed":1,
+                  "new_posts":0,"deletes":0,"redirects":0,"public_site_modified":True}),
+                ('node tests/legacy_creatine_mobile.cjs "$POST_ID" live',
+                 {"state":"LEGACY_CREATINE_MOBILE_LIVE_VERIFIED",**common}),
+            ]
+            if pid==malformed:
+                steps[-1][1]["post_id"]=999
+            return "\n".join("##[group]Run "+cmd+"\n##[endgroup]\n"+json.dumps(value) for cmd,value in steps)
+        return fake_jobs,fake_log
+
+    def test_completed_matrix_counts_once_and_failed_sibling_does_not_erase_proof(self):
+        for failure,malformed,n in [(None,None,3),(11882,None,2),(None,11863,2)]:
+            j,l=self.fixtures(failure,malformed)
+            r=run(name=CREATINE_LEGACY_NAME,conclusion="failure" if failure else "success")
+            out=real_release_evidence([r,r],"fake",fetch_jobs=j,fetch_log=l)
+            self.assertEqual(out["counts"]["updated"],n)
+            self.assertEqual(out["counts"]["new"],0)
+            self.assertEqual(len(out["unverified_runs"]),int(n!=3))
+            if n!=3:
+                self.assertEqual(out["unverified_runs"][0]["unverified_post_ids"],[failure or malformed])
