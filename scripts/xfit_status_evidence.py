@@ -15,6 +15,9 @@ REPO = "Rastty/xfit-growth-os"
 PUBLISHER_NAMES = frozenset({
     "XFIT Creatine Advisor Live",
     "XFIT Whey Advisor Live",
+    "XFIT Plant Protein Comparison First Live Release",
+    "XFIT Plant Protein Daily Live Refresh",
+    "XFIT Beginner Plant Commerce Onepost",
     "XFIT Direct Publish",
     "XFIT Autonomous Approved Editorial Publish",
     "XFIT AI Author and Source-Bound Live Publisher",
@@ -32,6 +35,7 @@ PUBLISHER_NAMES = frozenset({
 COMMERCIAL = {
     "xfit-os-kreatin-poradce": 25455,
     "xfit-os-syrovatkovy-protein-porovnani": 25456,
+    "xfit-os-rostlinne-proteiny-porovnani": 26152,
 }
 NO_CHANGE = {"ALL_PINNED_ARTICLES_PUBLIC_VERIFIED",
              "NO_APPROVED_TARGET", "unchanged_public_verified",
@@ -99,7 +103,75 @@ def canonical(slug, url, post_id):
     return "https://xfit.cz/" + slug + "/"
 
 
+PLANT_FIRST = "XFIT Plant Protein Comparison First Live Release"
+PLANT_DAILY = "XFIT Plant Protein Daily Live Refresh"
+PLANT_HANDOFF = "XFIT Beginner Plant Commerce Onepost"
+PLANT_NAMES = frozenset({PLANT_FIRST, PLANT_DAILY, PLANT_HANDOFF})
+
+
+def inspect_plant_log(log, run):
+    """Actual apply and later live browser evidence only; ignore unit fixtures."""
+    name = run.get("name")
+    if name not in PLANT_NAMES:
+        return [], False
+    marker = {
+        PLANT_FIRST: "##[group]Run python -m scripts.xfit_plant_comparison apply",
+        PLANT_DAILY: "##[group]Run python -m scripts.xfit_plant_refresh apply",
+        PLANT_HANDOFF: "##[group]Run set -o pipefail",
+    }[name]
+    if log.count(marker) != 1:
+        return [], False
+    command, sep, output = log.split(marker, 1)[1].partition("##[endgroup]")
+    if not sep or (name == PLANT_HANDOFF and
+            "python -m scripts.xfit_verified_inlink_release beginner_plant_commerce_25458 apply" not in command):
+        return [], False
+    receipts = [v for line in output.splitlines() if (v := _receipt(line))]
+    expected_id, slug = ((25458, "xfit-os-doplnky-pro-zacatecniky") if name == PLANT_HANDOFF
+                         else (26152, "xfit-os-rostlinne-proteiny-porovnani"))
+    url = "https://xfit.cz/" + slug + "/"
+    result_states = {"PUBLIC_VERIFIED_NEW_POST", "live_verified", "PUBLIC_VERIFIED",
+                     "unchanged_public_verified", "ALREADY_LINKED_NO_WRITE"}
+    final = [v for v in receipts if v.get("state") in result_states]
+    mobile_state = "PLANT_BEGINNER_MOBILE_VERIFIED" if name == PLANT_HANDOFF else "PLANT_MOBILE_LIVE_VERIFIED"
+    mobile = [v for v in receipts if v.get("state") == mobile_state]
+    if len(final) != 1 or len(mobile) != 1 or receipts.index(final[0]) >= receipts.index(mobile[0]):
+        return [], False
+    v, browser = final[0], mobile[0]
+    if (v.get("post_id") != expected_id or v.get("url") != url or
+            v.get("slug", slug) != slug or browser.get("width") != 375):
+        return [], False
+    if name == PLANT_HANDOFF:
+        if browser.get("target") != "https://xfit.cz/xfit-os-rostlinne-proteiny-porovnani/":
+            return [], False
+    elif (type(browser.get("cards")) is not int or not 2 <= browser["cards"] <= 6
+            or browser.get("clicked_merchant_links") != 0):
+        return [], False
+    if v.get("state") == ("ALREADY_LINKED_NO_WRITE" if name == PLANT_HANDOFF else "unchanged_public_verified"):
+        if (v.get("public_site_modified") is False
+                and (name == PLANT_FIRST or v.get("post_attempts") == 0)):
+            return [], True
+        return [], False
+    if v.get("public_site_modified") is not True:
+        return [], False
+    if name == PLANT_FIRST:
+        if v.get("state") != "PUBLIC_VERIFIED_NEW_POST" or v.get("new_posts") != 1:
+            return [], False
+        kind = "new"
+    else:
+        if (v.get("state") != ("PUBLIC_VERIFIED" if name == PLANT_HANDOFF else "live_verified")
+                or v.get("posts_changed") != 1 or v.get("post_attempts") != 1
+                or v.get("new_posts") != 0):
+            return [], False
+        if name == PLANT_DAILY and (v.get("deletes") != 0 or v.get("redirects") != 0):
+            return [], False
+        kind = "updated"
+    return [{"kind": kind, "slug": slug, "post_id": expected_id, "url": url,
+             "run_id": run["id"], "run_url": "https://github.com/" + REPO + "/actions/runs/" + str(run["id"])}], False
+
+
 def inspect_log(log, run):
+    if run.get("name") in PLANT_NAMES:
+        return inspect_plant_log(log, run)
     events = []
     noop = False
     production_apply = {

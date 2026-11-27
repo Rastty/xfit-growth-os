@@ -323,7 +323,32 @@ _CREATINE_PROTEIN_JOINT_4763 = Handoff(
 )
 
 
+_BEGINNER_PLANT_COMMERCE = Handoff(
+    key="beginner_plant_commerce_25458",
+    post_id=25458,
+    slug="xfit-os-doplnky-pro-zacatecniky",
+    title_term="doplňky",
+    target="https://xfit.cz/xfit-os-rostlinne-proteiny-porovnani/",
+    marker="xfit-beginner-plant-commerce-25458-20261127",
+    sentence="Chcete porovnat konkrétní rostlinné proteiny podle ceny",
+    before_heading='<h2 id="zacatecnik-rozhodnuti">',
+    paragraph=(
+        '<p data-xfit-handoff="xfit-beginner-plant-commerce-25458-20261127">'
+        '<strong>Chcete porovnat konkrétní rostlinné proteiny podle ceny?</strong> '
+        'Pokud jste se již rozhodli pro prášek, využijte '
+        '<a href="https://xfit.cz/xfit-os-rostlinne-proteiny-porovnani/">'
+        'srovnání cen a balení rostlinných proteinů</a>. '
+        'Přehled obsahuje katalogové nabídky jednoho prodejce a označené partnerské odkazy. '
+        'U konkrétní varianty ověřte etiketu, alergeny a cenu včetně dopravy; '
+        'rostlinný název nezaručuje vhodnost při alergii. '
+        'Pokud vám stačí jídlo, nekupujte žádný prášek; '
+        'tento odkaz není doporučení k nákupu.</p>'
+    ),
+)
+
+
 ALLOWLIST = {
+    _BEGINNER_PLANT_COMMERCE.key: _BEGINNER_PLANT_COMMERCE,
     _CREATINE_PROTEIN_JOINT_4763.key: _CREATINE_PROTEIN_JOINT_4763,
     _CREATINE_PROTEIN_VEGAN_25504.key: _CREATINE_PROTEIN_VEGAN_25504,
     _BEGINNER_PLANT_25458.key: _BEGINNER_PLANT_25458,

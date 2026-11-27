@@ -6,6 +6,7 @@ from urllib.request import Request
 from scripts.xfit_status_evidence import (
     NoTokenRedirect, PUBLISHER_NAMES, canonical, inspect_log,
     coupon_cleanup_evidence, real_release_evidence,
+    PLANT_FIRST, PLANT_DAILY, PLANT_HANDOFF,
 )
 from scripts.xfit_status import render
 
@@ -596,6 +597,61 @@ class CouponStatusEvidenceTests(unittest.TestCase):
         self.assertEqual(len(proof["waves"]), 1)
         self.assertEqual(proof["public_verified_unique_posts"], 7)
         self.assertEqual(proof["known_public_verified_shortcodes"], 21)
+
+class PlantProductionProofTests(unittest.TestCase):
+    def evidence(self, name, receipt, browser, *, marker=None):
+        mark = marker or {
+            PLANT_FIRST: "##[group]Run python -m scripts.xfit_plant_comparison apply",
+            PLANT_DAILY: "##[group]Run python -m scripts.xfit_plant_refresh apply",
+            PLANT_HANDOFF: "##[group]Run set -o pipefail\npython -m scripts.xfit_verified_inlink_release beginner_plant_commerce_25458 apply",
+        }[name]
+        log = "\n".join((json.dumps(receipt), mark, "##[endgroup]", json.dumps(receipt), json.dumps(browser)))
+        return real_release_evidence([run(name=name)], "fake", fetch_jobs=jobs,
+                                     fetch_log=lambda *_: log)
+
+    def test_initial_release_requires_exact_new_id_and_mobile_proof(self):
+        receipt = {"state": "PUBLIC_VERIFIED_NEW_POST", "post_id": 26152,
+                   "slug": "xfit-os-rostlinne-proteiny-porovnani",
+                   "url": "https://xfit.cz/xfit-os-rostlinne-proteiny-porovnani/",
+                   "new_posts": 1, "public_site_modified": True}
+        browser = {"state": "PLANT_MOBILE_LIVE_VERIFIED", "cards": 6, "width": 375,
+                   "clicked_merchant_links": 0}
+        self.assertEqual(self.evidence(PLANT_FIRST, receipt, browser)["counts"]["new"], 1)
+        for bad in (dict(receipt, post_id=999), dict(receipt, new_posts=2),
+                    dict(receipt, public_site_modified=False)):
+            self.assertEqual(self.evidence(PLANT_FIRST, bad, browser)["counts"]["new"], 0)
+        self.assertEqual(self.evidence(PLANT_FIRST, receipt, dict(browser, cards=1))["counts"]["new"], 0)
+        self.assertEqual(self.evidence(PLANT_FIRST, receipt, browser,
+                                       marker="##[group]Run unit tests")["counts"]["new"], 0)
+
+    def test_daily_noop_and_update_are_distinct(self):
+        receipt = {"state": "unchanged_public_verified", "post_id": 26152,
+                   "slug": "xfit-os-rostlinne-proteiny-porovnani",
+                   "url": "https://xfit.cz/xfit-os-rostlinne-proteiny-porovnani/",
+                   "public_site_modified": False, "post_attempts": 0}
+        browser = {"state": "PLANT_MOBILE_LIVE_VERIFIED", "cards": 6, "width": 375,
+                   "clicked_merchant_links": 0}
+        out = self.evidence(PLANT_DAILY, receipt, browser)
+        self.assertEqual(out["counts"]["updated"], 0)
+        self.assertEqual(out["verified_no_change_runs"], 1)
+        receipt.update(state="live_verified", public_site_modified=True, post_attempts=1,
+                       posts_changed=1, new_posts=0, deletes=0, redirects=0)
+        self.assertEqual(self.evidence(PLANT_DAILY, receipt, browser)["counts"]["updated"], 1)
+        self.assertEqual(self.evidence(PLANT_DAILY, dict(receipt, post_attempts=2),
+                                       browser)["counts"]["updated"], 0)
+
+    def test_beginner_inlink_is_an_existing_page_update(self):
+        receipt = {"state": "PUBLIC_VERIFIED", "post_id": 25458,
+                   "url": "https://xfit.cz/xfit-os-doplnky-pro-zacatecniky/",
+                   "post_attempts": 1, "posts_changed": 1, "new_posts": 0,
+                   "public_site_modified": True}
+        browser = {"state": "PLANT_BEGINNER_MOBILE_VERIFIED", "width": 375,
+                   "target": "https://xfit.cz/xfit-os-rostlinne-proteiny-porovnani/"}
+        out = self.evidence(PLANT_HANDOFF, receipt, browser)
+        self.assertEqual(out["counts"]["new"], 0)
+        self.assertEqual(out["counts"]["updated"], 1)
+        self.assertEqual(self.evidence(PLANT_HANDOFF, receipt, dict(browser, target="https://xfit.cz/"))["counts"]["updated"], 0)
+
 
 if __name__=="__main__":
     unittest.main()
