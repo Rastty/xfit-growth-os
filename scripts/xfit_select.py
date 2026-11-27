@@ -16,6 +16,7 @@ import json
 import math
 import re
 import sys
+import unicodedata
 from pathlib import Path
 from urllib.parse import urlsplit
 from scripts.xfit_availability import delivery_state
@@ -73,7 +74,34 @@ def safe_merchant(url):
     p = urlsplit(url or "")
     return p.scheme == "https" and p.hostname in ("namaximum.cz", "www.namaximum.cz") and not p.username and not p.password
 
+def folded(value):
+    """Accent-insensitive Czech/Slovak matching; retain original source title."""
+    return "".join(c for c in unicodedata.normalize("NFKD", value.casefold())
+                   if not unicodedata.combining(c))
+
+
+def plant_powder(item):
+    title = folded(item.get("title") or "")
+    category = folded(item.get("category") or "")
+    # Require explicit protein AND plant identity. A generic vegan supplement,
+    # plant extract, flour, bar, capsule or blended dairy powder is not a match.
+    protein = bool(re.search(r"\b(?:protein\w*|bilkovin\w*)\b", title))
+    plant = bool(re.search(
+        r"\b(?:vegan\w*|rostlinn\w*|rastlinn\w*|sojov\w*|soy|"
+        r"hrachov\w*|pea|ryzov\w*|rice|konopn\w*|hemp|plant)\b", title))
+    category_ok = ("protein" in category or
+                   category.strip() in {"rostlinne", "rastlinne", "veganske"})
+    banned = ("whey", "syrovatk", "mlecn", "mliecn", "casein", "kasein",
+              "collagen", "kolagen", "gainer", "mass gain", "tycink", "bar ",
+              "protein bar", "kapsl", "capsul", "tablet", "mouka", "muka",
+              "flour", "extrakt", "extract", "creatine", "kreatin",
+              "pre-workout", "pre workout", "bcaa", "eaa")
+    return protein and plant and category_ok and not any(word in title for word in banned)
+
+
 def matches_kind(item, kind):
+    if kind == "plant_protein":
+        return plant_powder(item)
     title = (item.get("title") or "").casefold()
     category = (item.get("category") or "").casefold()
     spec = KINDS[kind]
