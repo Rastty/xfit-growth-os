@@ -250,7 +250,7 @@ ROUTE_RELEASES = {
     "XFIT Protein Guide Commerce Routes": (25451, "xfit-os-protein-guide", 4,
         "python -m scripts.xfit_protein_commerce_routes protein-guide apply", "PUBLIC_PROTEIN_ROUTES_VERIFIED",
         "PROTEIN_ROUTES_MOBILE_LIVE_VERIFIED", "choices"),
-    "XFIT Protein Price Commerce Routes": (25541, "xfit-os-cena-proteinu-podle-etikety", 2,
+    "XFIT Protein Price Commerce Routes": (25541, "xfit-os-cena-proteinu-podle-etikety", 1,
         "python -m scripts.xfit_protein_commerce_routes protein-price apply", "PUBLIC_PROTEIN_ROUTES_VERIFIED",
         "PROTEIN_ROUTES_MOBILE_LIVE_VERIFIED", "choices"),
 }

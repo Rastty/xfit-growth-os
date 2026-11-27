@@ -703,7 +703,7 @@ class NavigationReleaseEvidenceTests(unittest.TestCase):
                 return real_release_evidence([run(name=name)], "fake", fetch_jobs=jobs,
                                              fetch_log=lambda *_: log)
             self.assertEqual(check(receipt,browser)["counts"]["updated"], 1)
-            self.assertEqual(check(receipt,dict(browser,choices=1))["counts"]["updated"], 0)
+            self.assertEqual(check(receipt,dict(browser,choices=n+1))["counts"]["updated"], 0)
             self.assertEqual(check(dict(receipt,post_id=999),browser)["counts"]["updated"], 0)
             self.assertEqual(check(receipt,browser,"##[group]Run unit tests")["counts"]["updated"], 0)
             no_op=dict(receipt,public_site_modified=False,posts_changed=0,post_attempts=0)

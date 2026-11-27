@@ -22,14 +22,17 @@ class ProteinCommerceRoutesTests(unittest.TestCase):
         self.assertEqual(revise(cfg, new), new)
     def test_price_guide_two_real_choices_and_no_buy(self):
         cfg = SCOPES["protein-price"]
-        old = MARKER + '<section data-xfit-ai-edit="' + PRICE_OWNER + '">' + article() + '</section>' + PRICE_HEADING
+        old = (MARKER + '<section data-xfit-ai-edit="' + PRICE_OWNER + '">' + article() + '</section>' + PRICE_HEADING
+               + '<p><a href="' + WHEY_URL + '">Původní syrovátkové srovnání</a></p>')
         new = revise(cfg, old)
         self.assertTrue(proof(cfg, new))
         self.assertEqual(new.replace(PRICE_PANEL + "\n", "", 1), old)
-        self.assertEqual(set(editorial_links(new)), set(editorial_links(old)) | {WHEY_URL, PLANT_URL})
+        self.assertEqual(set(editorial_links(new)), set(editorial_links(old)) | {PLANT_URL})
         self.assertIn("prášek nemusíte kupovat", new)
+        self.assertEqual(editorial_links(new).count(WHEY_URL), editorial_links(old).count(WHEY_URL))
         self.assertEqual(revise(cfg, new), new)
         for bad in (old.replace(PRICE_OWNER,"other"), old + PRICE_HEADING,
+                    old.replace(WHEY_URL,"https://xfit.cz/other/"),
                     old + '<a href="' + PLANT_URL + '">Already linked</a>'):
             with self.assertRaises(PublishError):
                 revise(cfg, bad)
