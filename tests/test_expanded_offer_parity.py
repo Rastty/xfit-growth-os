@@ -6,6 +6,8 @@ from scripts.xfit_plant_comparison import build_document as plant_doc, SLUG as P
 from scripts.xfit_equipment_comparison import build_document as gear_doc, SLUG as GEAR
 from test_plant_comparison import BASE, SAMPLE, catalog, item as plant_item
 from test_equipment_comparison import item as gear_item
+from scripts.xfit_drinkware_comparison import build_document as drink_doc, SLUG as DRINK
+from test_drinkware_comparison import row as drink_item
 
 
 def fixture():
@@ -14,11 +16,15 @@ def fixture():
         plant_item(12, "Rýžový protein 1 kg", 399, path="ryze"),
         gear_item(21, "Yoga Mat", 499, path="mat"),
         gear_item(22, "Resistance Band", 349, path="band"),
+        drink_item(31, "Shaker A", 74, path="shaker-a"),
+        drink_item(32, "Šejkr B", 119, path="shaker-b"),
+        drink_item(33, "Láhev C", 75, path="bottle-c"),
     ]
     feed = catalog(*rows)
     plant = plant_doc(feed, BASE, SAMPLE)["content"]
     gear = gear_doc(feed, BASE, SAMPLE)["content"]
-    return rows, {PLANT: (plant, plant), GEAR: (gear, gear)}
+    drink = drink_doc(feed, BASE, SAMPLE)["content"]
+    return rows, {PLANT: (plant, plant), GEAR: (gear, gear), DRINK: (drink, drink)}
 
 
 class ExpandedParityTests(unittest.TestCase):
@@ -26,7 +32,7 @@ class ExpandedParityTests(unittest.TestCase):
         rows, pages = fixture()
         result = inspect_expanded(rows, pages, BASE, SAMPLE)
         self.assertEqual(result["state"], "EXPANDED_SOURCE_FEED_PARITY_OBSERVED")
-        self.assertEqual([p["exact_current_feed_match"] for p in result["pages"]], [2, 2])
+        self.assertEqual([p["exact_current_feed_match"] for p in result["pages"]], [2, 2, 3])
         self.assertEqual(result["wordpress_writes"], 0)
         self.assertFalse(result["merchant_checkout_stock_verified"])
         for sensitive in ("Sójový protein", "variant=", "DEMO", "249", "namaximum.cz/p/"):
