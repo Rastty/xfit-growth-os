@@ -119,6 +119,27 @@ class TradeoffTests(unittest.TestCase):
         body=price_tradeoff(cards,product_kind="creatine")
         self.assertIn('data-xfit-tradeoff="difference"',body)
         self.assertNotIn('data-xfit-tradeoff="same-mass"',body)
+        self.assertIn('data-xfit-tradeoff="usable-mass"',body)
+        self.assertIn("alespoň 817 g z 1000 g",body)
+        self.assertIn("Nejde o doporučenou spotřebu ani dávkování",body)
+
+    def test_usable_mass_threshold_strictly_excludes_tie_and_uses_exact_cents(self):
+        cards=[
+            selected(201,"Whey 1 kg",750,1000,75),
+            selected(202,"Whey 500 g",500,500,100),
+        ]
+        for kind in ("creatine", "whey"):
+            body=price_tradeoff(cards,product_kind=kind)
+            self.assertIn("alespoň 751 g z 1000 g",body)
+            self.assertIn("nezahrnuje dopravu, poplatky, trvanlivost",body)
+        # 750.01 / 500.01 * 500 = 749.995... g; 750 g is enough.
+        cards=[
+            selected(201,"Whey 1 kg",750.01,1000,75),
+            selected(202,"Whey 500 g",500.01,500,100),
+        ]
+        body=price_tradeoff(cards,product_kind="whey")
+        self.assertIn("alespoň 750 g z 1000 g",body)
+        self.assertNotIn("alespoň 751 g",body)
 
     def test_more_than_five_small_packs_does_not_promote_bulk_stockpiling(self):
         cards=[
@@ -127,6 +148,7 @@ class TradeoffTests(unittest.TestCase):
         ]
         body=price_tradeoff(cards,product_kind="creatine")
         self.assertNotIn('data-xfit-tradeoff="same-mass"',body)
+        self.assertNotIn('data-xfit-tradeoff="usable-mass"',body)
 
     def test_same_winner_has_no_duplicate_link_or_misleading_saving(self):
         cards=[
@@ -215,6 +237,8 @@ class TradeoffTests(unittest.TestCase):
                 self.assertTrue(all(a in parsed.ids for a in parsed.anchors))
                 self.assertEqual(body.count('rel="sponsored nofollow'),5)
                 self.assertIn('id="xfit-vyber-podle-rozpoctu"',body)
+                self.assertIn("Rezerva do limitu:",body)
+                self.assertIn('data-xfit-tradeoff="usable-mass"',body)
 
 
 if __name__=="__main__":
