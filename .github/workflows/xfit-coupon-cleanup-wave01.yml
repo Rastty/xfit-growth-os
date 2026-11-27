@@ -5,10 +5,12 @@ on:
     branches: [main]
     paths: ['.github/workflows/xfit-coupon-cleanup-wave01.yml']
   schedule:
-    # 4 bounded, serialized 8-post waves/day. Last four successful scheduled
-    # runs each publicly verified 8 posts / 24 obsolete shortcode removals.
-    # Keep MAX_COUNT=8, excluded one-post recoveries and mandatory prewrite artifact.
-    - cron: '17 2,8,14,20 * * *'
+    # TURBO 2026-11-27: 8 bounded, serialized waves/day after publicly verified
+    # 8/8 posts and 24 shortcode removals in run 46015361054. Each wave still
+    # changes at most eight NEVER-attempted posts, reserves IDs in issue #363,
+    # uploads the immutable rollback BEFORE POST, and verifies public readback.
+    # Do not increase MAX_COUNT=8 or retry ambiguous/failed posts.
+    - cron: '17 2,5,8,11,14,17,20,23 * * *'
 permissions:
   contents: read
   issues: write   # Dedicated issue #363: reserve post IDs, never raw WP content

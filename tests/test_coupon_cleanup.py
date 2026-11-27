@@ -24,7 +24,8 @@ class CouponCleanupTests(unittest.TestCase):
         workflow = Path(".github/workflows/xfit-coupon-cleanup-wave01.yml").read_text(
             encoding="utf-8"
         )
-        self.assertIn("cron: '17 2,8,14,20 * * *'", workflow)
+        self.assertIn("cron: '17 2,5,8,11,14,17,20,23 * * *'", workflow)
+        self.assertEqual(workflow.count("    - cron:"), 1)
         self.assertEqual(c.MAX_COUNT, 8)
         self.assertIn("xfit-wp-heavy-reads", workflow)
         self.assertIn("xfit_coupon_cleanup snapshot", workflow)
