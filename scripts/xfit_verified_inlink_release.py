@@ -456,7 +456,30 @@ _NUT_BUTTER_SNACKS_7195 = Handoff(
 )
 
 
+_MAIN_PROTEIN_SHAKER = Handoff(
+    key="main_protein_shaker_25451", post_id=25451,
+    slug="xfit-os-protein-guide", title_term="protein",
+    target="https://xfit.cz/xfit-os-sejkry-a-sportovni-lahve/#xfit-drink-shaker",
+    marker="xfit-main-protein-shaker-25451-20261127",
+    sentence="Potřebujete k proteinu také šejkr",
+    before_heading="<h2>7. Komu se hodí individuální rada?</h2>",
+    required_source_marker='data-xfit-choice="protein-guide-v2"',
+    paragraph=(
+        '<p data-xfit-handoff="xfit-main-protein-shaker-25451-20261127">'
+        '<strong>Potřebujete k proteinu také šejkr?</strong> '
+        'Pokud doma máte vyhovující nádobu určenou pro kontakt s potravinami, '
+        'novou nekupujte. Jestli chcete míchat nápoj mimo domov, '
+        '<a href="https://xfit.cz/xfit-os-sejkry-a-sportovni-lahve/#xfit-drink-shaker">'
+        'porovnejte katalogové nabídky šejkrů</a> podle provedení, ceny a dopravy. '
+        'Ověřte použitelný objem, uzávěr a pokyny pro čištění. '
+        'Šejkr nenahrazuje vážení prášku ani kontrolu etikety. '
+        'Přehled jednoho prodejce obsahuje označené partnerské odkazy; '
+        'tento odkaz není doporučení k nákupu.</p>'
+    ),
+)
+
 ALLOWLIST = {
+    _MAIN_PROTEIN_SHAKER.key: _MAIN_PROTEIN_SHAKER,
     _NUT_BUTTER_SNACKS_7195.key: _NUT_BUTTER_SNACKS_7195,
     _DRINKWARE_SNACKS_7195.key: _DRINKWARE_SNACKS_7195,
     _PLANT_GUIDE_COMMERCE.key: _PLANT_GUIDE_COMMERCE,
