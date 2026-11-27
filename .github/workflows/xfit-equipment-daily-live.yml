@@ -1,0 +1,105 @@
+name: XFIT Home Equipment Daily Live Refresh
+on:
+  schedule:
+    - cron: '23 6 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-equipment-daily-live.yml'
+      - 'scripts/xfit_equipment_refresh.py'
+      - 'tests/test_equipment_refresh.py'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  refresh:
+    if: ${{ vars.XFIT_AFFIL_FEED_ENABLED == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+      XFIT_NAMAXIMUM_FEED_URL: ${{ secrets.XFIT_NAMAXIMUM_FEED_URL || secrets.XFIT_GREENMEDICAL_FEED_URL }}
+      XFIT_AFFIL_DEFAULT_LINK: ${{ secrets.XFIT_AFFIL_DEFAULT_LINK }}
+      XFIT_AFFIL_SAMPLE_PRODUCT_LINK: ${{ secrets.XFIT_AFFIL_SAMPLE_PRODUCT_LINK }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate source and release regression tests
+        run: python -m unittest discover -s tests -v
+      - name: Fetch fresh authenticated equipment catalog
+        run: python scripts/xfit_feed_ingest.py
+      - name: Validate campaign sample without clicks
+        run: python scripts/xfit_affil_deeplink.py
+      - name: Prepare exact new commercial block
+        run: python -m scripts.xfit_equipment_comparison prepare
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Verify generated layout before any write
+        run: node tests/equipment_comparison_mobile.cjs preview
+      - name: Capture current pinned post and planned generated block
+        run: python -m scripts.xfit_equipment_refresh snapshot
+      - name: Immutable prewrite rollback backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: equipment-original-before-refresh
+          path: reports/backups/xfit-equipment-before-refresh.json
+          retention-days: 7
+          if-no-files-found: error
+      - name: Refresh only generated sections and verify live
+        run: python -m scripts.xfit_equipment_refresh apply
+      - name: Verify live card hrefs and mobile layout
+        run: node tests/equipment_comparison_mobile.cjs live
+      - name: Discover existing exact guide identities for future reviewed handoff (read-only)
+        run: |
+          python - <<'PY'
+          from urllib.parse import urlencode
+          from scripts.wp_publish import normalized_base, wp_request
+          from scripts.xfit_ai_editorial import public_proof
+          import json
+          targets = (
+              ("xfit-os-vyber-podlozky-na-cviceni", "xfit-ai-exercise-mat-selector-v1"),
+              ("xfit-os-vyber-odporove-gumy", "xfit-ai-resistance-band-decision-v1"),
+          )
+          for slug, marker in targets:
+              url = "https://xfit.cz/" + slug + "/"
+              rows = wp_request(normalized_base(), "posts?" + urlencode({
+                  "slug": slug, "context": "edit", "status": "publish",
+                  "per_page": 2, "_fields": "id,slug,link,status,title,content"}))
+              if not isinstance(rows, list) or len(rows) != 1:
+                  print(json.dumps({"state": "EQUIPMENT_GUIDE_IDENTITY_UNKNOWN", "slug": slug}))
+                  continue
+              row = rows[0]
+              if (row.get("slug") != slug or row.get("status") != "publish"
+                      or row.get("link") != url or type(row.get("id")) is not int
+                      or marker not in (row.get("content") or {}).get("raw", "")):
+                  print(json.dumps({"state": "EQUIPMENT_GUIDE_IDENTITY_UNKNOWN", "slug": slug}))
+                  continue
+              if not public_proof(url, marker, kind="create"):
+                  print(json.dumps({"state": "EQUIPMENT_GUIDE_IDENTITY_UNKNOWN", "slug": slug}))
+                  continue
+              print(json.dumps({"state": "EQUIPMENT_GUIDE_PUBLIC_IDENTITY", "slug": slug,
+                                "post_id": row["id"], "wordpress_writes": 0}))
+          PY
+      - name: Preserve mobile screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: equipment-refresh-mobile
+          path: reports/browser-qa/equipment-*.png
+          retention-days: 7
+          if-no-files-found: ignore
