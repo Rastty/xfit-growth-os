@@ -22,6 +22,9 @@ PUBLISHER_NAMES = frozenset({
     "XFIT Home Equipment Daily Live Refresh",
     "XFIT Equipment Mat Commerce Onepost",
     "XFIT Equipment Band Commerce Onepost",
+    "XFIT Beginner Four Lane Hub Onepost",
+    "XFIT Protein Guide Commerce Routes",
+    "XFIT Protein Price Commerce Routes",
     "XFIT Direct Publish",
     "XFIT Autonomous Approved Editorial Publish",
     "XFIT AI Author and Source-Bound Live Publisher",
@@ -240,7 +243,54 @@ def inspect_equipment_log(log, run):
              "run_url": "https://github.com/" + REPO + "/actions/runs/" + str(run["id"])}], False
 
 
+ROUTE_RELEASES = {
+    "XFIT Beginner Four Lane Hub Onepost": (25458, "xfit-os-doplnky-pro-zacatecniky", 6,
+        "python -m scripts.xfit_beginner_four_lane_hub apply", "PUBLIC_FOUR_LANE_HUB_VERIFIED",
+        "FOUR_LANE_MOBILE_LIVE_VERIFIED", "public_choices"),
+    "XFIT Protein Guide Commerce Routes": (25451, "xfit-os-protein-guide", 4,
+        "python -m scripts.xfit_protein_commerce_routes protein-guide apply", "PUBLIC_PROTEIN_ROUTES_VERIFIED",
+        "PROTEIN_ROUTES_MOBILE_LIVE_VERIFIED", "choices"),
+    "XFIT Protein Price Commerce Routes": (25541, "xfit-os-cena-proteinu-podle-etikety", 2,
+        "python -m scripts.xfit_protein_commerce_routes protein-price apply", "PUBLIC_PROTEIN_ROUTES_VERIFIED",
+        "PROTEIN_ROUTES_MOBILE_LIVE_VERIFIED", "choices"),
+}
+
+
+def inspect_route_log(log, run):
+    pid, slug, count, command, state, mobile_state, count_key = ROUTE_RELEASES[run["name"]]
+    marker = "##[group]Run " + command
+    if log.count(marker) != 1:
+        return [], False
+    _, sep, output = log.split(marker, 1)[1].partition("##[endgroup]")
+    if not sep:
+        return [], False
+    receipts = [v for line in output.splitlines() if (v := _receipt(line))]
+    final = [v for v in receipts if v.get("state") == state]
+    mobile = [v for v in receipts if v.get("state") == mobile_state]
+    url = "https://xfit.cz/" + slug + "/"
+    if len(final) != 1 or len(mobile) != 1 or receipts.index(final[0]) >= receipts.index(mobile[0]):
+        return [], False
+    v, browser = final[0], mobile[0]
+    if (v.get("post_id") != pid or v.get("url") != url or v.get(count_key) != count
+            or v.get("new_posts") != 0 or browser.get("width") != 375
+            or browser.get("choices") != count or browser.get("merchant_clicks") != 0):
+        return [], False
+    if pid == 25458:
+        if v.get("home_rank") != 1 or v.get("category_rank") != 1:
+            return [], False
+    elif browser.get("post_id") != pid:
+        return [], False
+    if v.get("public_site_modified") is False:
+        return [], v.get("post_attempts") == 0 and v.get("posts_changed") == 0
+    if v.get("public_site_modified") is not True or v.get("post_attempts") != 1 or v.get("posts_changed") != 1:
+        return [], False
+    return [{"kind": "updated", "slug": slug, "post_id": pid, "url": url,
+             "run_id": run["id"], "run_url": "https://github.com/" + REPO + "/actions/runs/" + str(run["id"])}], False
+
+
 def inspect_log(log, run):
+    if run.get("name") in ROUTE_RELEASES:
+        return inspect_route_log(log, run)
     if run.get("name") in EQUIPMENT_NAMES:
         return inspect_equipment_log(log, run)
     if run.get("name") in PLANT_NAMES:

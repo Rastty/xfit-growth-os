@@ -7,7 +7,7 @@ from scripts.xfit_status_evidence import (
     NoTokenRedirect, PUBLISHER_NAMES, canonical, inspect_log,
     coupon_cleanup_evidence, real_release_evidence,
     PLANT_FIRST, PLANT_DAILY, PLANT_HANDOFF,
-    EQUIPMENT_FIRST, EQUIPMENT_DAILY, EQUIPMENT_HANDOFFS,
+    EQUIPMENT_FIRST, EQUIPMENT_DAILY, EQUIPMENT_HANDOFFS, ROUTE_RELEASES,
 )
 from scripts.xfit_status import render
 
@@ -688,6 +688,26 @@ class EquipmentProductionProofTests(unittest.TestCase):
             self.assertEqual(self.evidence(name, receipt, browser, marker)["counts"]["updated"], 1)
             self.assertEqual(self.evidence(name, receipt, dict(browser, target="https://xfit.cz/"), marker)["counts"]["updated"], 0)
             self.assertEqual(self.evidence(name, receipt, browser, "##[group]Run unit tests")["counts"]["updated"], 0)
+
+
+class NavigationReleaseEvidenceTests(unittest.TestCase):
+    def test_only_exact_actual_apply_and_later_mobile_proof(self):
+        for name, (pid, slug, n, command, state, mobile, count_key) in ROUTE_RELEASES.items():
+            receipt = {"state": state, "post_id": pid, "url": "https://xfit.cz/" + slug + "/",
+                       count_key: n, "new_posts": 0, "posts_changed": 1, "post_attempts": 1,
+                       "public_site_modified": True, "home_rank": 1, "category_rank": 1}
+            browser = {"state": mobile, "post_id": pid, "width": 375, "choices": n, "merchant_clicks": 0}
+            marker = "##[group]Run " + command
+            def check(a,b,step=marker):
+                log = "\n".join((json.dumps(a), step, "##[endgroup]", json.dumps(a), json.dumps(b)))
+                return real_release_evidence([run(name=name)], "fake", fetch_jobs=jobs,
+                                             fetch_log=lambda *_: log)
+            self.assertEqual(check(receipt,browser)["counts"]["updated"], 1)
+            self.assertEqual(check(receipt,dict(browser,choices=1))["counts"]["updated"], 0)
+            self.assertEqual(check(dict(receipt,post_id=999),browser)["counts"]["updated"], 0)
+            self.assertEqual(check(receipt,browser,"##[group]Run unit tests")["counts"]["updated"], 0)
+            no_op=dict(receipt,public_site_modified=False,posts_changed=0,post_attempts=0)
+            self.assertEqual(check(no_op,browser)["verified_no_change_runs"], 1)
 
 
 if __name__=="__main__":

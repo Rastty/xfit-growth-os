@@ -1,0 +1,64 @@
+name: XFIT Protein Guide Commerce Routes
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-protein-guide-commerce-routes.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate full repository
+        run: python -m unittest discover -s tests -v
+      - name: Confirm live destinations and snapshot exact source
+        run: python -m scripts.xfit_protein_commerce_routes protein-guide snapshot
+      - name: Immutable original before POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: protein-guide-commerce-original
+          path: reports/backups/xfit-protein-guide-commerce-routes.json
+          retention-days: 90
+          if-no-files-found: error
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Mobile preview before source write
+        run: |
+          python - <<'PY'
+          from scripts.xfit_protein_commerce_routes import guide_panel, PRICE_PANEL
+          from pathlib import Path
+          Path("reports/protein-route-preview.html").write_text(guide_panel(), encoding="utf-8")
+          PY
+          node tests/protein_commerce_routes_mobile.cjs protein-guide preview
+      - name: One guarded content-only update
+        run: python -m scripts.xfit_protein_commerce_routes protein-guide apply
+      - name: Verify live exact mobile navigation
+        run: node tests/protein_commerce_routes_mobile.cjs protein-guide live
+      - name: Preserve mobile evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: protein-guide-commerce-mobile
+          path: reports/browser-qa/protein-route-*.png
+          retention-days: 7
+          if-no-files-found: ignore
