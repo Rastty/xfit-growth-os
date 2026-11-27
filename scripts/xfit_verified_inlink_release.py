@@ -411,7 +411,31 @@ _PLANT_GUIDE_COMMERCE = Handoff(
     ),
 )
 
+_DRINKWARE_SNACKS_7195 = Handoff(
+    key="drinkware_snacks_7195",
+    post_id=7195,
+    slug=_WHEY_SNACKS_7195.slug,
+    title_term="protein",
+    target="https://xfit.cz/xfit-os-sejkry-a-sportovni-lahve/#xfit-drink-shaker",
+    marker="xfit-drinkware-snacks-7195-20261127",
+    sentence="Potřebujete vůbec nový šejkr",
+    before_heading=_WHEY_SNACKS_7195.paragraph,
+    required_source_marker=_WHEY_SNACKS_7195.marker,
+    paragraph=(
+        '<p data-xfit-handoff="xfit-drinkware-snacks-7195-20261127">'
+        '<strong>Potřebujete vůbec nový šejkr?</strong> '
+        'Pokud vám vyhovuje stávající nádoba určená pro kontakt s potravinami, '
+        'nekupujte další. Jestliže hledáte nádobu na míchání nápojů, '
+        '<a href="https://xfit.cz/xfit-os-sejkry-a-sportovni-lahve/#xfit-drink-shaker">'
+        'porovnejte aktuální nabídky šejkrů</a>. '
+        'Před objednávkou ověřte objem, uzávěr, čištění a celkovou cenu včetně dopravy; '
+        'tento odkaz není doporučení k nákupu.</p>'
+    ),
+)
+
+
 ALLOWLIST = {
+    _DRINKWARE_SNACKS_7195.key: _DRINKWARE_SNACKS_7195,
     _PLANT_GUIDE_COMMERCE.key: _PLANT_GUIDE_COMMERCE,
     _EQUIPMENT_MAT.key: _EQUIPMENT_MAT,
     _EQUIPMENT_BAND.key: _EQUIPMENT_BAND,

@@ -28,6 +28,7 @@ PUBLISHER_NAMES = frozenset({
     "XFIT Legacy Creatine Editorial Revision",
     "XFIT Drinkware Comparison First Live Release",
     "XFIT Drinkware Daily Live Refresh",
+    "XFIT Drinkware Protein Commerce Onepost",
     "XFIT Direct Publish",
     "XFIT Autonomous Approved Editorial Publish",
     "XFIT AI Author and Source-Bound Live Publisher",
@@ -183,6 +184,7 @@ def inspect_plant_log(log, run):
 EQUIPMENT_FIRST = "XFIT Home Equipment Comparison First Live Release"
 EQUIPMENT_DAILY = "XFIT Home Equipment Daily Live Refresh"
 EQUIPMENT_HANDOFFS = {
+    "XFIT Drinkware Protein Commerce Onepost": (7195, "jaky-typ-proteinu-si-vybrat-pro-pripravu-proteinovych-snacku-a-napoju", "drinkware_snacks_7195", "#xfit-drink-shaker"),
     "XFIT Equipment Mat Commerce Onepost": (25554, "xfit-os-vyber-podlozky-na-cviceni", "equipment_mat_25554", "#xfit-gear-mat"),
     "XFIT Equipment Band Commerce Onepost": (25561, "xfit-os-vyber-odporove-gumy", "equipment_band_25561", "#xfit-gear-band"),
 }
@@ -197,6 +199,7 @@ def inspect_equipment_log(log, run):
         return [], False
     handoff = EQUIPMENT_HANDOFFS.get(name)
     drinkware = name in {DRINKWARE_FIRST, DRINKWARE_DAILY}
+    drinkware_handoff = name == "XFIT Drinkware Protein Commerce Onepost"
     first = name in {EQUIPMENT_FIRST, DRINKWARE_FIRST}
     if drinkware:
         pid, slug = 26176, "xfit-os-sejkry-a-sportovni-lahve"
@@ -221,7 +224,8 @@ def inspect_equipment_log(log, run):
         "PUBLIC_VERIFIED_NEW_POST", "live_verified", "PUBLIC_VERIFIED",
         "unchanged_public_verified", "ALREADY_LINKED_NO_WRITE"}]
     mobile = [v for v in receipts if v.get("state") ==
-              ("DRINKWARE_MOBILE_LIVE_VERIFIED" if drinkware else
+              ("DRINKWARE_HANDOFF_MOBILE_VERIFIED" if drinkware_handoff else
+               "DRINKWARE_MOBILE_LIVE_VERIFIED" if drinkware else
                "EQUIPMENT_HANDOFF_MOBILE_VERIFIED" if handoff else "EQUIPMENT_MOBILE_LIVE_VERIFIED")]
     if len(final) != 1 or len(mobile) != 1 or receipts.index(final[0]) >= receipts.index(mobile[0]):
         return [], False
@@ -230,7 +234,8 @@ def inspect_equipment_log(log, run):
         return [], False
     if handoff:
         if browser.get("post_id") != pid or browser.get("target") != (
-                "https://xfit.cz/xfit-os-vybaveni-na-domaci-cviceni-nabidky/" + fragment):
+                ("https://xfit.cz/xfit-os-sejkry-a-sportovni-lahve/" if drinkware_handoff else
+                 "https://xfit.cz/xfit-os-vybaveni-na-domaci-cviceni-nabidky/") + fragment):
             return [], False
     elif (type(browser.get("cards")) is not int or not (3 if drinkware else 2) <= browser["cards"] <= (8 if drinkware else 6)
             or browser.get("clicked_merchant_links") != 0):
