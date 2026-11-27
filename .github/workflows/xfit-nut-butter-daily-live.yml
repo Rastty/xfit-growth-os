@@ -1,0 +1,74 @@
+name: XFIT Nut Butter Daily Live Refresh
+on:
+  schedule:
+    - cron: '37 6 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-nut-butter-daily-live.yml'
+      - 'scripts/xfit_nut_butter_refresh.py'
+      - 'tests/test_nut_butter_refresh.py'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  refresh:
+    if: ${{ vars.XFIT_AFFIL_FEED_ENABLED == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+      XFIT_NAMAXIMUM_FEED_URL: ${{ secrets.XFIT_NAMAXIMUM_FEED_URL || secrets.XFIT_GREENMEDICAL_FEED_URL }}
+      XFIT_AFFIL_DEFAULT_LINK: ${{ secrets.XFIT_AFFIL_DEFAULT_LINK }}
+      XFIT_AFFIL_SAMPLE_PRODUCT_LINK: ${{ secrets.XFIT_AFFIL_SAMPLE_PRODUCT_LINK }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate source and release regression tests
+        run: python -m unittest discover -s tests -v
+      - name: Fetch fresh authenticated nut butter catalog
+        run: python scripts/xfit_feed_ingest.py
+      - name: Validate campaign sample without clicks
+        run: python scripts/xfit_affil_deeplink.py
+      - name: Prepare exact new commercial block
+        run: python -m scripts.xfit_nut_butter_comparison prepare
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Verify generated layout before any write
+        run: node tests/nut_butter_comparison_mobile.cjs preview
+      - name: Capture current pinned post and planned generated block
+        run: python -m scripts.xfit_nut_butter_refresh snapshot
+      - name: Immutable prewrite rollback backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: nut-butter-original-before-refresh
+          path: reports/backups/xfit-nut-butter-before-refresh.json
+          retention-days: 7
+          if-no-files-found: error
+      - name: Refresh only generated sections and verify live
+        run: python -m scripts.xfit_nut_butter_refresh apply
+      - name: Verify live card hrefs and mobile layout
+        run: node tests/nut_butter_comparison_mobile.cjs live
+      - name: Preserve mobile screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nut-butter-refresh-mobile
+          path: reports/browser-qa/nut-butter-*.png
+          retention-days: 7
+          if-no-files-found: ignore

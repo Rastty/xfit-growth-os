@@ -434,7 +434,30 @@ _DRINKWARE_SNACKS_7195 = Handoff(
 )
 
 
+_NUT_BUTTER_SNACKS_7195 = Handoff(
+    key="nut_butter_snacks_7195",
+    post_id=7195,
+    slug=_WHEY_SNACKS_7195.slug,
+    title_term="protein",
+    target="https://xfit.cz/xfit-os-arasidova-a-orechova-masla/",
+    marker="xfit-nut-butter-snacks-7195-20261127",
+    sentence="Svačina z běžných surovin",
+    before_heading=_DRINKWARE_SNACKS_7195.paragraph,
+    required_source_marker=_DRINKWARE_SNACKS_7195.marker,
+    paragraph=(
+        '<p data-xfit-handoff="xfit-nut-butter-snacks-7195-20261127">'
+        '<strong>Svačina z běžných surovin.</strong> Proteinový prášek není povinný. '
+        'Do kaše, jogurtu nebo na pečivo můžete podle chuti použít běžné potraviny. '
+        'Pokud právě vybíráte arašídové či ořechové máslo, '
+        '<a href="https://xfit.cz/xfit-os-arasidova-a-orechova-masla/">porovnejte balení a cenu za 100 g</a>. '
+        'Ověřte úplné složení a alergeny; máslo není rovnocenná náhrada prášku. '
+        'Pokud vhodnou surovinu už máte, nic nekupujte; tento odkaz není doporučení k nákupu.</p>'
+    ),
+)
+
+
 ALLOWLIST = {
+    _NUT_BUTTER_SNACKS_7195.key: _NUT_BUTTER_SNACKS_7195,
     _DRINKWARE_SNACKS_7195.key: _DRINKWARE_SNACKS_7195,
     _PLANT_GUIDE_COMMERCE.key: _PLANT_GUIDE_COMMERCE,
     _EQUIPMENT_MAT.key: _EQUIPMENT_MAT,

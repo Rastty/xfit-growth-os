@@ -1,0 +1,50 @@
+name: XFIT Sugar Label Existing Article Revision
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-sugar-label-revision.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate full repository and reviewed exact article
+        run: python -m unittest discover -s tests -v
+      - name: Verify live target and original published article
+        run: python -m scripts.xfit_sugar_label_revision snapshot
+      - name: Immutable prewrite backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: sugar-label-original
+          path: reports/backups/xfit-sugar-label-original.json
+          retention-days: 90
+          if-no-files-found: error
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Preview and verify exact mobile navigation
+        run: node tests/sugar_label_mobile.cjs preview
+      - name: Update reviewed existing article and verify public content
+        run: python -m scripts.xfit_sugar_label_revision apply
+      - name: Actual public mobile navigation
+        run: node tests/sugar_label_mobile.cjs live
