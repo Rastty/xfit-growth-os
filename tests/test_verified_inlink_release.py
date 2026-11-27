@@ -34,6 +34,7 @@ class VerifiedInlinkTests(unittest.TestCase):
             "protein_plant_25451",
             "beginner_plant_25458",
             "beginner_plant_commerce_25458",
+            "equipment_mat_25554", "equipment_band_25561",
             "creatine_protein_vegan_25504",
             "creatine_protein_joint_4763",
         })
@@ -387,6 +388,34 @@ class PlantCommerceHandoffTests(unittest.TestCase):
         with self.assertRaises(PublishError):
             release.prepare(cfg, {**original, "content": {"raw": before.replace(
                 cfg.before_heading, "<h2>")}})
+
+
+class EquipmentCommerceHandoffTests(unittest.TestCase):
+    def test_exact_owned_guides_get_one_early_purpose_specific_link(self):
+        for key, title, source_term in (
+            ("equipment_mat_25554", "Jak vybrat podložku na domácí cvičení", "podložka"),
+            ("equipment_band_25561", "Jak vybrat odporovou gumu domů", "guma"),
+        ):
+            cfg = release.ALLOWLIST[key]
+            with self.subTest(key=key):
+                before = ('<section data-xfit-ai-edit="' + cfg.required_source_marker + '">'
+                          + ('<p>Vybíráte ' + source_term + ' pro domácí trénink.</p>') * 55
+                          + '<h2>Jak vybírat</h2><p>Další původní text.</p></section>')
+                original = {"id": cfg.post_id, "slug": cfg.slug, "link": cfg.url,
+                            "status": "publish", "title": {"raw": title},
+                            "content": {"raw": before}, "modified_gmt": "2026-11-27T14:00:00"}
+                state = release.prepare(cfg, original)
+                self.assertEqual(state["after"].replace(cfg.paragraph + "\n", ""), before)
+                self.assertLess(state["after"].index(cfg.marker), state["after"].index("<h2>"))
+                self.assertEqual(state["after"].count(cfg.target), 1)
+                self.assertIn("nic nekupujte", cfg.paragraph)
+                self.assertTrue(release.public_verified(cfg, reader=lambda _: cfg.paragraph))
+                self.assertEqual(release.prepare(cfg, {**original, "content": {
+                    "raw": state["after"]}})["mode"], "already_linked")
+                for bad in (before.replace(cfg.required_source_marker, "foreign"),
+                            before.replace(source_term, "jiný produkt")):
+                    with self.assertRaises(PublishError):
+                        release.prepare(cfg, {**original, "content": {"raw": bad}})
 
 
 if __name__=="__main__":

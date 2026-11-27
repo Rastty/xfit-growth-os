@@ -18,6 +18,10 @@ PUBLISHER_NAMES = frozenset({
     "XFIT Plant Protein Comparison First Live Release",
     "XFIT Plant Protein Daily Live Refresh",
     "XFIT Beginner Plant Commerce Onepost",
+    "XFIT Home Equipment Comparison First Live Release",
+    "XFIT Home Equipment Daily Live Refresh",
+    "XFIT Equipment Mat Commerce Onepost",
+    "XFIT Equipment Band Commerce Onepost",
     "XFIT Direct Publish",
     "XFIT Autonomous Approved Editorial Publish",
     "XFIT AI Author and Source-Bound Live Publisher",
@@ -36,6 +40,7 @@ COMMERCIAL = {
     "xfit-os-kreatin-poradce": 25455,
     "xfit-os-syrovatkovy-protein-porovnani": 25456,
     "xfit-os-rostlinne-proteiny-porovnani": 26152,
+    "xfit-os-vybaveni-na-domaci-cviceni-nabidky": 26154,
 }
 NO_CHANGE = {"ALL_PINNED_ARTICLES_PUBLIC_VERIFIED",
              "NO_APPROVED_TARGET", "unchanged_public_verified",
@@ -169,7 +174,75 @@ def inspect_plant_log(log, run):
              "run_id": run["id"], "run_url": "https://github.com/" + REPO + "/actions/runs/" + str(run["id"])}], False
 
 
+EQUIPMENT_FIRST = "XFIT Home Equipment Comparison First Live Release"
+EQUIPMENT_DAILY = "XFIT Home Equipment Daily Live Refresh"
+EQUIPMENT_HANDOFFS = {
+    "XFIT Equipment Mat Commerce Onepost": (25554, "xfit-os-vyber-podlozky-na-cviceni", "equipment_mat_25554", "#xfit-gear-mat"),
+    "XFIT Equipment Band Commerce Onepost": (25561, "xfit-os-vyber-odporove-gumy", "equipment_band_25561", "#xfit-gear-band"),
+}
+EQUIPMENT_NAMES = frozenset({EQUIPMENT_FIRST, EQUIPMENT_DAILY, *EQUIPMENT_HANDOFFS})
+
+
+def inspect_equipment_log(log, run):
+    name = run.get("name")
+    if name not in EQUIPMENT_NAMES:
+        return [], False
+    handoff = EQUIPMENT_HANDOFFS.get(name)
+    if handoff:
+        pid, slug, key, fragment = handoff
+        marker = "##[group]Run set -o pipefail"
+    else:
+        pid, slug = 26154, "xfit-os-vybaveni-na-domaci-cviceni-nabidky"
+        marker = ("##[group]Run python -m scripts.xfit_equipment_comparison apply"
+                  if name == EQUIPMENT_FIRST else
+                  "##[group]Run python -m scripts.xfit_equipment_refresh apply")
+    if log.count(marker) != 1:
+        return [], False
+    command, sep, output = log.split(marker, 1)[1].partition("##[endgroup]")
+    if not sep or (handoff and ("python -m scripts.xfit_verified_inlink_release " + key + " apply") not in command):
+        return [], False
+    receipts = [v for line in output.splitlines() if (v := _receipt(line))]
+    url = "https://xfit.cz/" + slug + "/"
+    final = [v for v in receipts if v.get("state") in {
+        "PUBLIC_VERIFIED_NEW_POST", "live_verified", "PUBLIC_VERIFIED",
+        "unchanged_public_verified", "ALREADY_LINKED_NO_WRITE"}]
+    mobile = [v for v in receipts if v.get("state") ==
+              ("EQUIPMENT_HANDOFF_MOBILE_VERIFIED" if handoff else "EQUIPMENT_MOBILE_LIVE_VERIFIED")]
+    if len(final) != 1 or len(mobile) != 1 or receipts.index(final[0]) >= receipts.index(mobile[0]):
+        return [], False
+    v, browser = final[0], mobile[0]
+    if v.get("post_id") != pid or v.get("url") != url or v.get("slug", slug) != slug or browser.get("width") != 375:
+        return [], False
+    if handoff:
+        if browser.get("post_id") != pid or browser.get("target") != (
+                "https://xfit.cz/xfit-os-vybaveni-na-domaci-cviceni-nabidky/" + fragment):
+            return [], False
+    elif (type(browser.get("cards")) is not int or not 2 <= browser["cards"] <= 6
+            or browser.get("clicked_merchant_links") != 0):
+        return [], False
+    if v.get("state") == ("ALREADY_LINKED_NO_WRITE" if handoff else "unchanged_public_verified"):
+        return [], (v.get("public_site_modified") is False
+                    and (name == EQUIPMENT_FIRST or v.get("post_attempts") == 0))
+    if v.get("public_site_modified") is not True:
+        return [], False
+    if name == EQUIPMENT_FIRST:
+        if v.get("state") != "PUBLIC_VERIFIED_NEW_POST" or v.get("new_posts") != 1:
+            return [], False
+        kind = "new"
+    else:
+        if (v.get("state") != ("PUBLIC_VERIFIED" if handoff else "live_verified")
+                or v.get("post_attempts") != 1 or v.get("posts_changed") != 1 or v.get("new_posts") != 0):
+            return [], False
+        if not handoff and (v.get("deletes") != 0 or v.get("redirects") != 0):
+            return [], False
+        kind = "updated"
+    return [{"kind": kind, "slug": slug, "post_id": pid, "url": url, "run_id": run["id"],
+             "run_url": "https://github.com/" + REPO + "/actions/runs/" + str(run["id"])}], False
+
+
 def inspect_log(log, run):
+    if run.get("name") in EQUIPMENT_NAMES:
+        return inspect_equipment_log(log, run)
     if run.get("name") in PLANT_NAMES:
         return inspect_plant_log(log, run)
     events = []

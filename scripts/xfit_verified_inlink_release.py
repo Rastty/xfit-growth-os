@@ -33,6 +33,8 @@ class Handoff:
     paragraph: str
     before_heading: str | None = None
     before_first_h2: bool = False
+    intro_terms: tuple[str, ...] = (r"kreatin|creatin", r"protein")
+    required_source_marker: str | None = None
 
     @property
     def url(self):
@@ -347,7 +349,49 @@ _BEGINNER_PLANT_COMMERCE = Handoff(
 )
 
 
+_EQUIPMENT_MAT = Handoff(
+    key="equipment_mat_25554", post_id=25554,
+    slug="xfit-os-vyber-podlozky-na-cviceni", title_term="podložku",
+    target="https://xfit.cz/xfit-os-vybaveni-na-domaci-cviceni-nabidky/#xfit-gear-mat",
+    marker="xfit-equipment-mat-25554-20261127",
+    sentence="Chcete vidět aktuální nabídky podložek",
+    before_first_h2=True, intro_terms=(r"podlož",),
+    required_source_marker="xfit-ai-exercise-mat-selector-v1",
+    paragraph=(
+        '<p data-xfit-handoff="xfit-equipment-mat-25554-20261127">'
+        '<strong>Chcete vidět aktuální nabídky podložek?</strong> '
+        'Pokud už znáte potřebné rozměry a typ povrchu, projděte si '
+        '<a href="https://xfit.cz/xfit-os-vybaveni-na-domaci-cviceni-nabidky/#xfit-gear-mat">katalogové nabídky podložek na domácí cvičení</a>. '
+        'U konkrétní varianty ověřte rozměry, materiál a vhodnost pro zamýšlený pohyb. '
+        'Jde o omezený výběr jednoho prodejce s označenými partnerskými odkazy. '
+        'Cenu včetně dopravy ověřte v košíku. Pokud už máte vyhovující vybavení, '
+        'nic nekupujte; tento odkaz není doporučení k nákupu.</p>'
+    ),
+)
+
+_EQUIPMENT_BAND = Handoff(
+    key="equipment_band_25561", post_id=25561,
+    slug="xfit-os-vyber-odporove-gumy", title_term="gumu",
+    target="https://xfit.cz/xfit-os-vybaveni-na-domaci-cviceni-nabidky/#xfit-gear-band",
+    marker="xfit-equipment-band-25561-20261127",
+    sentence="Chcete vidět aktuální nabídky odporových gum",
+    before_first_h2=True, intro_terms=(r"gum",),
+    required_source_marker="xfit-ai-resistance-band-decision-v1",
+    paragraph=(
+        '<p data-xfit-handoff="xfit-equipment-band-25561-20261127">'
+        '<strong>Chcete vidět aktuální nabídky odporových gum?</strong> '
+        'Pokud znáte potřebný tvar a způsob použití, projděte si '
+        '<a href="https://xfit.cz/xfit-os-vybaveni-na-domaci-cviceni-nabidky/#xfit-gear-band">katalogové nabídky odporových gum na domácí cvičení</a>. '
+        'U konkrétní varianty ověřte délku, odpor při deklarovaném natažení a použití podle návodu výrobce. '
+        'Jde o omezený výběr jednoho prodejce s označenými partnerskými odkazy. '
+        'Cenu včetně dopravy ověřte v košíku. Pokud už máte vyhovující vybavení, '
+        'nic nekupujte; tento odkaz není doporučení k nákupu.</p>'
+    ),
+)
+
 ALLOWLIST = {
+    _EQUIPMENT_MAT.key: _EQUIPMENT_MAT,
+    _EQUIPMENT_BAND.key: _EQUIPMENT_BAND,
     _BEGINNER_PLANT_COMMERCE.key: _BEGINNER_PLANT_COMMERCE,
     _CREATINE_PROTEIN_JOINT_4763.key: _CREATINE_PROTEIN_JOINT_4763,
     _CREATINE_PROTEIN_VEGAN_25504.key: _CREATINE_PROTEIN_VEGAN_25504,
@@ -433,6 +477,8 @@ def prepare(cfg, post):
             or len(raw.encode("utf-8"))>MAX_BYTES
             or not isinstance(modified,str) or not modified):
         raise PublishError("Legacy source unavailable or out of safety bounds")
+    if cfg.required_source_marker and raw.count(cfg.required_source_marker) != 1:
+        raise PublishError("Expected source ownership marker missing or ambiguous")
     old_links=real_links(raw)
     if cfg.target in old_links:
         if cfg.marker in raw and raw.count(cfg.marker)!=1:
@@ -462,8 +508,8 @@ def prepare(cfg, post):
         # Do not infer a unique heading from a source that changed structure.
         intro = raw[:10000]
         headings = list(re.finditer(r"<h2(?:\s+[^>]*)?>", intro, re.I))
-        if not headings or not re.search(r"kreatin|creatin", intro, re.I) or not re.search(
-                r"protein", intro, re.I):
+        if not headings or not cfg.intro_terms or not all(
+                re.search(term, intro, re.I) for term in cfg.intro_terms):
             raise PublishError("Reviewed early topic/H2 insertion anchor unavailable")
         first_h2 = headings[0].start()
         updated = raw[:first_h2] + cfg.paragraph + "\n" + raw[first_h2:]
