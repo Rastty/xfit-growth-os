@@ -12,6 +12,7 @@ on:
       - 'tests/test_merchant_destination_probe.py'
       - 'scripts/xfit_public_feed_parity.py'
       - 'tests/test_public_feed_parity.py'
+      - 'tests/test_expanded_offer_parity.py'
   schedule:
     - cron: '43 6 * * *'
 permissions:
@@ -22,6 +23,7 @@ jobs:
     timeout-minutes: 12
     env:
       XFIT_AFFIL_DEFAULT_LINK: ${{ secrets.XFIT_AFFIL_DEFAULT_LINK }}
+      XFIT_AFFIL_SAMPLE_PRODUCT_LINK: ${{ secrets.XFIT_AFFIL_SAMPLE_PRODUCT_LINK }}
       XFIT_NAMAXIMUM_FEED_URL: ${{ secrets.XFIT_NAMAXIMUM_FEED_URL || secrets.XFIT_GREENMEDICAL_FEED_URL }}
     steps:
       - uses: actions/checkout@v4
