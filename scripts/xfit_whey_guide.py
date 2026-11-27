@@ -164,8 +164,7 @@ def build_document(catalog, base, sample):
             delivery_note(item)+'</p>'
             +model_portion_line(item, "whey")+
             '<p><small id="'+disclosure_id+'">Partnerský odkaz · Xfit.cz může získat provizi. '
-            'Cena balení je bez dopravy a případných poplatků za platbu. '
-            'Celkovou částku ověřte v košíku. NaMaximum.cz · nová karta</small></p>'
+            'Cena bez dopravy a poplatků. NaMaximum.cz · nová karta</small></p>'
             '<p><a'+card_click_attributes(item["id"], "whey")+' href="'+link+'" rel="sponsored nofollow noopener noreferrer" '
             'aria-label="Ověřit cenu a dostupnost produktu '+html.escape(item["title"],quote=True)+' na NaMaximum.cz (nová karta)" '
             'aria-describedby="'+disclosure_id+'" '

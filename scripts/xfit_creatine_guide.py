@@ -237,8 +237,7 @@ def build_document(catalog, base, sample):
             delivery_note(offer)+'</p>'
             +model_portion_line(offer, "creatine")+
             '<p><small id="'+disclosure_id+'">Partnerský odkaz · Xfit.cz může získat provizi. '
-            'Cena balení je bez dopravy a případných poplatků za platbu. '
-            'Celkovou částku ověřte v košíku. NaMaximum.cz · nová karta</small></p>'
+            'Cena bez dopravy a poplatků. NaMaximum.cz · nová karta</small></p>'
             '<p><a'+card_click_attributes(offer["id"], "creatine")+' href="'+href+'" rel="sponsored nofollow noopener noreferrer" '
             'aria-label="Ověřit cenu a dostupnost produktu '+html.escape(offer["title"],quote=True)+' na NaMaximum.cz (nová karta)" '
             'aria-describedby="'+disclosure_id+'" '

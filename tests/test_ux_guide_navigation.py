@@ -1,6 +1,7 @@
 """Advisor shortcuts work without scripts and keep the no-purchase route first."""
 import unittest
 from html.parser import HTMLParser
+from scripts.xfit_editorial_gate import check_document, Inspector
 
 from scripts.xfit_creatine_guide import build_document as creatine_document
 from scripts.xfit_whey_guide import build_document as whey_document
@@ -122,9 +123,41 @@ class GuideNavigationTests(unittest.TestCase):
                     self.assertLess(body.index(disclosure),
                                     body.index(f'aria-describedby="{disclosure_id}"'))
                     description = body.split(disclosure, 1)[1].split("</small>", 1)[0]
-                    self.assertIn("bez dopravy a případných poplatků za platbu", description)
-                    self.assertIn("Celkovou částku ověřte v košíku", description)
+                    self.assertIn("Cena bez dopravy a poplatků.", description)
+                    self.assertIn("může získat provizi", description)
+                    self.assertLessEqual(len(description), 110)
                 self.assertEqual(body.count("Zpět k výběru podle rozpočtu</a>"), 2)
+
+
+    def test_six_realistic_cards_pass_unchanged_editorial_duplicate_gate(self):
+        # The previous agent PR passed navigation tests but actual publishing
+        # rejected the repeated >110 character paragraphs. Do not weaken the
+        # editorial gate; run exactly that gate against a six-card document.
+        base = ("https://www.namaximum.cz/?utm_medium=affiliate"
+                "&utm_campaign=affial.com&utm_source=pap&a_aid=TEST&a_bid=TEST")
+        sample = base.replace(".cz/", ".cz/p/example")
+        for build, name, category in (
+            (creatine_document, "Creatine Monohydrate", "Kreatin"),
+            (whey_document, "Whey WPC", "Syrovátkové proteiny"),
+        ):
+            with self.subTest(guide=build.__module__):
+                catalog = {"merchant": "namaximum.cz", "merchant_match": True,
+                           "products": [
+                    {"id": str(i), "title": f"{name} varianta {i} {mass}g",
+                     "price_czk": 200 + i * 75, "category": category,
+                     "merchant": "NaMaximum.cz", "delivery_date": "0",
+                     "source_url": f"https://www.namaximum.cz/p/product-{i}?variant={i}"}
+                    for i, mass in enumerate((250, 400, 500, 600, 750, 1000), 1)
+                ]}
+                doc = build(catalog, base, sample)
+                self.assertEqual(check_document(doc, commercial=True)["product_cards"], 6)
+                inspector = Inspector()
+                inspector.feed(doc["content"])
+                notices = [p for p in inspector.paragraphs if
+                           "Cena bez dopravy a poplatků." in p]
+                self.assertEqual(len(notices), 6)
+                self.assertTrue(all(len(p) <= 110 and "může získat provizi" in p
+                                    for p in notices))
 
 
 if __name__ == "__main__":
