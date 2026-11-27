@@ -35,6 +35,7 @@ class VerifiedInlinkTests(unittest.TestCase):
             "beginner_plant_25458",
             "beginner_plant_commerce_25458",
             "equipment_mat_25554", "equipment_band_25561",
+            "plant_guide_commerce_25987",
             "creatine_protein_vegan_25504",
             "creatine_protein_joint_4763",
         })
@@ -416,6 +417,36 @@ class EquipmentCommerceHandoffTests(unittest.TestCase):
                             before.replace(source_term, "jiný produkt")):
                     with self.assertRaises(PublishError):
                         release.prepare(cfg, {**original, "content": {"raw": bad}})
+
+
+
+class PlantGuideCatalogHandoffTests(unittest.TestCase):
+    def test_exact_owned_plant_guide_link_preserves_all_original_html(self):
+        cfg = release.ALLOWLIST["plant_guide_commerce_25987"]
+        self.assertEqual(cfg.post_id, 25987)
+        self.assertEqual(cfg.target, "https://xfit.cz/xfit-os-rostlinne-proteiny-porovnani/")
+        before = ('<section data-xfit-ai-edit="' + cfg.required_source_marker + '">'
+                  + '<p>Rostlinný protein: zvažte cenu, etiketu a běžné jídlo.</p>' * 35
+                  + '<h2>Co hledat u sóji, hrachu, rýže a směsí</h2>'
+                  + '<p>Další původní text.</p></section>')
+        original = {"id": 25987, "slug": cfg.slug, "link": cfg.url, "status": "publish",
+                    "title": {"raw": "Jak vybrat rostlinný protein podle složení a ceny"},
+                    "content": {"raw": before}, "modified_gmt": "2026-11-22T11:00:00"}
+        state = release.prepare(cfg, original)
+        self.assertEqual(state["after"].replace(cfg.paragraph + "\n", ""), before)
+        self.assertLess(state["after"].index(cfg.marker), state["after"].index("<h2"))
+        self.assertEqual(state["after"].count(cfg.target), 1)
+        self.assertIn("nikoli za 100 g čistých bílkovin", cfg.paragraph)
+        self.assertIn("prášek nekupujte", cfg.paragraph)
+        self.assertNotIn("namaximum.cz", cfg.paragraph)
+        self.assertTrue(release.public_verified(cfg, reader=lambda _: cfg.paragraph))
+        self.assertEqual(release.prepare(cfg, {**original, "content": {
+            "raw": state["after"]}})["mode"], "already_linked")
+        for bad in (before.replace(cfg.required_source_marker, "foreign"),
+                    before.replace("Rostlinný", "Syrovátkový"),
+                    before.replace("<h2>", "<h3>")):
+            with self.assertRaises(PublishError):
+                release.prepare(cfg, {**original, "content": {"raw": bad}})
 
 
 if __name__=="__main__":
