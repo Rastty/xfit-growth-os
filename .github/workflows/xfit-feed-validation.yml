@@ -7,6 +7,8 @@ on:
     paths:
       - '.github/workflows/xfit-feed-validation.yml'
       - 'scripts/xfit_feed_ingest.py'
+      - 'scripts/xfit_multishop_readiness.py'
+      - 'tests/test_multishop_readiness.py'
   schedule:
     - cron: '23 4 * * *'
 permissions:
@@ -55,10 +57,14 @@ jobs:
                   "affiliate_deeplinks_verified": False, "public_site_modified": False},
                   ensure_ascii=False))
           PY
-      - name: Preserve private validation artifact
+      - name: Screen actual feed identity fields for existing Core multishop contract
+        run: python -m scripts.xfit_multishop_readiness
+      - name: Preserve redacted validation artifacts
         uses: actions/upload-artifact@v4
         with:
           name: xfit-namaximum-feed-summary
-          path: reports/affiliate-feed-summary.json
+          path: |
+            reports/affiliate-feed-summary.json
+            reports/xfit-multishop-source-readiness.json
           retention-days: 7
           if-no-files-found: error
