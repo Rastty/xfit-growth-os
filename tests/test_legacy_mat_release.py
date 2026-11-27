@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-from scripts.xfit_legacy_mat_release import SCOPES, TARGET, content, prepare, sha
+from scripts.xfit_legacy_mat_release import SCOPES, TARGET, content, prepare, sha, stable_metadata
 from scripts.wp_publish import PublishError, editorial_links
 from scripts.xfit_editorial_gate import check_document
 
@@ -29,6 +29,20 @@ class LegacyMatRevisionTests(unittest.TestCase):
                         {**post,"content":{"raw":old+" changed"}}):
                 with self.assertRaises(PublishError):
                     prepare(testcfg,bad)
+
+    def test_auto_generated_excerpt_is_not_a_stored_metadata_change(self):
+        before={"id":3377,"slug":"mat","status":"publish","link":"https://xfit.cz/mat/",
+                "categories":[1],"tags":[3],"sticky":False,"featured_media":12,
+                "title":{"raw":"Mat","rendered":"Mat"},
+                "excerpt":{"raw":"","rendered":"Original generated text"}}
+        after={**before,"excerpt":{"raw":"","rendered":"New generated text"}}
+        self.assertEqual(stable_metadata(before),stable_metadata(after))
+        for changed in ({**after,"excerpt":{"raw":"Explicit new excerpt","rendered":"new"}},
+                        {**after,"categories":[2]},{**after,"featured_media":99},
+                        {**after,"title":{"raw":"New title","rendered":"New title"}}):
+            self.assertNotEqual(stable_metadata(before),stable_metadata(changed))
+        with self.assertRaises(PublishError):
+            stable_metadata({k:v for k,v in before.items() if k!="excerpt"})
 
 if __name__=="__main__":
     unittest.main()

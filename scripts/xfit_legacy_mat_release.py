@@ -79,6 +79,60 @@ def prepare(cfg,post):
         raise PublishError("Source differs from independent reviewed SHA; no write")
     return raw,new
 
+def stable_metadata(post):
+    """Compare persisted metadata, not content-derived REST render output.
+
+    WordPress generates excerpt.rendered from content when excerpt.raw is
+    empty. That must change after a rewrite; the stored excerpt must not.
+    Require all requested identity/metadata fields; do not silently drop
+    raw title or excerpt, categories, tags or featured media.
+    """
+    values = {}
+    for key in ("id", "slug", "status", "link", "categories", "tags", "sticky", "featured_media"):
+        if key not in post:
+            raise PublishError("Missing stored metadata field")
+        values[key] = post[key]
+    for key in ("title", "excerpt"):
+        obj = post.get(key)
+        if not isinstance(obj, dict) or not isinstance(obj.get("raw"), str):
+            raise PublishError("Missing stored title or excerpt")
+        values[key] = obj["raw"]
+    return values
+
+
+def prove_prior_release(cfg, backup_path):
+    """Independent GET-only proof from the original immutable release backup."""
+    saved=json.loads(Path(backup_path).read_text(encoding="utf-8"))
+    before=identity(cfg,saved.get("before"))
+    old=before["content"]["raw"]
+    expected=content(cfg)
+    if (saved.get("schema")!=1 or saved.get("id")!=cfg.pid
+            or saved.get("wordpress_writes")!=0 or sha(old)!=cfg.old_sha
+            or before["modified_gmt"]!=cfg.modified
+            or saved.get("raw_sha")!=sha(old) or saved.get("after_sha")!=sha(expected)):
+        raise PublishError("Untrusted original release backup")
+    after=read(cfg)
+    if after["content"]["raw"]!=expected:
+        raise PublishError("Exact intended current article not retained")
+    old_meta,new_meta=stable_metadata(before),stable_metadata(after)
+    changed=[key for key in old_meta if old_meta[key]!=new_meta[key]]
+    render_changed=[key for key in ("title","excerpt")
+                    if before[key].get("rendered")!=after[key].get("rendered")]
+    print(json.dumps({"state":"LEGACY_MAT_STORED_METADATA_CHECK","post_id":cfg.pid,
+        "changed_stored_fields":changed,"changed_rendered_fields":render_changed,
+        "original_excerpt_empty":before["excerpt"]["raw"]=="","wordpress_writes":0}))
+    if changed:
+        raise PublishError("Stored metadata changed; no retry")
+    verify_public(cfg.url,after["title"]["raw"],expected)
+    public=read_public_page(cfg.slug)
+    if TARGET not in editorial_links(public):
+        raise PublishError("Missing live target")
+    print(json.dumps({"state":"LEGACY_MAT_PRIOR_RELEASE_READONLY_VERIFIED",
+        "post_id":cfg.pid,"slug":cfg.slug,"url":cfg.url,
+        "original_run_id":46050150293,"stored_metadata_preserved":True,
+        "new_posts":0,"wordpress_writes":0,"public_site_modified":False}))
+
+
 def snapshot(cfg):
     gear,_=read_source()
     verify_public(URL,TITLE,gear)
@@ -106,8 +160,7 @@ def apply(cfg):
         except (PublishError,OSError,ValueError,TypeError):
             pass
         after=read(cfg)
-        metadata=lambda p:{k:v for k,v in p.items() if k not in {"content","modified_gmt"}}
-        if after["content"]["raw"]!=new or metadata(after)!=metadata(before):
+        if after["content"]["raw"]!=new or stable_metadata(after)!=stable_metadata(before):
             raise PublishError("Exact source and metadata not verified; no retry")
     verify_public(cfg.url,before["title"]["raw"],new)
     public=read_public_page(cfg.slug)

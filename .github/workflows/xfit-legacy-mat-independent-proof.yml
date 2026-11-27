@@ -1,0 +1,70 @@
+name: XFIT Legacy Mat Independent Public Proof
+# Recovery verification only; never POST. Reuse actual prewrite artifacts.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-legacy-mat-independent-proof.yml'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate stored metadata contract
+        run: python -m unittest discover -s tests -v
+      - name: Download original prewrite backup 3377 from exact release
+        uses: actions/download-artifact@v4
+        with:
+          name: legacy-mat-original-3377
+          path: reports/previous/3377
+          run-id: 46050150293
+          github-token: ${{ github.token }}
+      - name: Download original prewrite backup 7487 from exact release
+        uses: actions/download-artifact@v4
+        with:
+          name: legacy-mat-original-7487
+          path: reports/previous/7487
+          run-id: 46050150293
+          github-token: ${{ github.token }}
+      - name: Independently verify exact stored source and preserved metadata
+        run: |
+          python - <<'PY'
+          from scripts.xfit_legacy_mat_release import SCOPES, prove_prior_release
+          for key,cfg in SCOPES.items():
+              prove_prior_release(cfg,"reports/previous/"+key+"/xfit-legacy-mat-"+key+".json")
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Actual public mobile route verification both existing pages
+        run: |
+          node tests/legacy_mat_mobile.cjs 3377 live
+          node tests/legacy_mat_mobile.cjs 7487 live
+      - name: Preserve mobile evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legacy-mat-independent-mobile
+          path: reports/browser-qa/mat-*-live.png
+          retention-days: 7
+          if-no-files-found: ignore
