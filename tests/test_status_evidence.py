@@ -795,3 +795,18 @@ class LegacyCreatineMatrixEvidenceTests(unittest.TestCase):
             self.assertEqual(len(out["unverified_runs"]),int(n!=3))
             if n!=3:
                 self.assertEqual(out["unverified_runs"][0]["unverified_post_ids"],[failure or malformed])
+
+class DrinkwareEvidenceTests(unittest.TestCase):
+    def test_exact_published_or_unchanged(self):
+        from scripts.xfit_status_evidence import DRINKWARE_FIRST, DRINKWARE_DAILY
+        receipt=dict(state="PUBLIC_VERIFIED_NEW_POST",post_id=26176,slug="xfit-os-sejkry-a-sportovni-lahve",url="https://xfit.cz/xfit-os-sejkry-a-sportovni-lahve/",new_posts=1,public_site_modified=True)
+        mobile=dict(state="DRINKWARE_MOBILE_LIVE_VERIFIED",cards=6,width=375,clicked_merchant_links=0)
+        def check(name, r, m, command):
+            log="\n".join(("##[group]Run "+command,"##[endgroup]",json.dumps(r),json.dumps(m)))
+            return real_release_evidence([run(name=name)],"fake",fetch_jobs=jobs,fetch_log=lambda *_:log)
+        cmd="python -m scripts.xfit_drinkware_comparison apply"
+        self.assertEqual(check(DRINKWARE_FIRST,receipt,mobile,cmd)["counts"]["new"],1)
+        self.assertEqual(check(DRINKWARE_FIRST,dict(receipt,post_id=26154),mobile,cmd)["counts"]["new"],0)
+        self.assertEqual(check(DRINKWARE_FIRST,receipt,dict(mobile,cards=2),cmd)["counts"]["new"],0)
+        self.assertEqual(check(DRINKWARE_FIRST,receipt,dict(mobile,clicked_merchant_links=1),cmd)["counts"]["new"],0)
+        self.assertEqual(check(DRINKWARE_DAILY,dict(receipt,state="unchanged_public_verified",public_site_modified=False,post_attempts=0,new_posts=0),mobile,"python -m scripts.xfit_drinkware_refresh apply")["verified_no_change_runs"],1)

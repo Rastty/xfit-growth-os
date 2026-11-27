@@ -28,6 +28,7 @@ from scripts.xfit_creatine_guide import build_tracked_url, validate_example
 from scripts.xfit_affil_deeplink import affiliate_signature
 from scripts.xfit_select import plant_powder, mass_grams
 from scripts.xfit_equipment_comparison import equipment_kind
+from scripts.xfit_drinkware_comparison import drinkware_kind
 from scripts.xfit_availability import delivery_state
 from scripts.wp_publish import PublishError
 
@@ -183,6 +184,7 @@ def inspect(offers, pages, affiliate_base):
 EXPANDED_PAGES = {
     "xfit-os-rostlinne-proteiny-porovnani": (26152, "plant"),
     "xfit-os-vybaveni-na-domaci-cviceni-nabidky": (26154, "equipment"),
+    "xfit-os-sejkry-a-sportovni-lahve": (26176, "drinkware"),
 }
 PLANT_PRICE = re.compile(r"\b([0-9][0-9 ,.]*?)\s*kč\s+za balení\s+(\d+)\s*g\b")
 PLANT_UNIT = re.compile(r"\b([0-9][0-9 ,.]*?)\s*kč\s+za 100 g prášku\b")
@@ -204,7 +206,7 @@ def expanded_cards(body, slug, base):
     parser.feed(body)
     visible = product_card_texts(body)
     titles = product_card_identities(body)
-    if (parser.depth or not 2 <= len(parser.cards) <= MAX_CARDS_PER_PAGE
+    if (parser.depth or not (3 if kind == "drinkware" else 2) <= len(parser.cards) <= (8 if kind == "drinkware" else MAX_CARDS_PER_PAGE)
             or len(visible) != len(parser.cards) or len(titles) != len(parser.cards)
             or not has_visible_disclosure(body)):
         raise ParityError("EXPANDED_INVALID_CARD_OR_DISCLOSURE")
@@ -290,7 +292,9 @@ def inspect_expanded(offers, pages, base, sample):
                 counts["ambiguous_feed_identity"] += 1
                 continue
             row = matches[0]
-            category = plant_powder(row) if kind == "plant" else equipment_kind(row) is not None
+            category = (plant_powder(row) if kind == "plant" else
+                        drinkware_kind(row) is not None if kind == "drinkware" else
+                        equipment_kind(row) is not None)
             if not category or typography_key(" ".join(row["title"].casefold().split())) != title:
                 counts["feed_title_or_category_differs"] += 1
                 continue
@@ -346,7 +350,7 @@ def main():
             raise ParityError("SOURCE_OR_PUBLIC_BODY_INCOMPLETE")
         pages[slug] = (body, public)
     result = inspect(offers, pages, affiliate_base)
-    # Fetch the two additional pinned pages, using the SAME fresh XML.
+    # Fetch the additional pinned pages, using the SAME fresh XML.
     # No extra merchant/feed request or WordPress write.
     expanded_pages = {}
     for slug, (expected_id, _kind) in EXPANDED_PAGES.items():
