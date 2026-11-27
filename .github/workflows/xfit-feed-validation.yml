@@ -59,6 +59,38 @@ jobs:
           PY
       - name: Screen actual feed identity fields for existing Core multishop contract
         run: python -m scripts.xfit_multishop_readiness
+      - name: Screen remaining catalog groups for new practical purchase intent
+        run: |
+          python - <<'PY'
+          import json,re
+          from collections import Counter,defaultdict
+          from pathlib import Path
+          from urllib.parse import urlsplit
+          from scripts.xfit_select import folded
+          from scripts.xfit_availability import delivery_state
+          from scripts.xfit_feed_ingest import catalog_identity_matches_url
+          from scripts.xfit_equipment_comparison import equipment_kind
+          data=json.loads(Path("reports/private-greenmedical-catalog.json").read_text(encoding="utf-8"))
+          patterns={
+            "shaker":r"\b(shaker\w*|sejkr\w*|sejker\w*)\b",
+            "bottle":r"\b(lahv\w*|lahev|flasa|flas\w*|bottle\w*|bidon\w*)\b",
+            "training_accessories":r"\b(rukavic\w*|gloves|trhac\w*|straps|svihadl\w*|jump rope|foam roller|masazni valec|masazny valec|cink\w*|dumbbell\w*)\b",
+            "food_scale":r"\b(kuchynsk\w* vah\w*|digitaln\w* vah\w*|kitchen scale)\b",
+            "oats":r"\b(ovesn\w* vlock\w*|ovsene vlocky|oat flakes|rolled oats)\b",
+            "nut_butter":r"\b(arasidov\w* masl\w*|mandlov\w* masl\w*|peanut butter|almond butter|kesu masl\w*)\b",
+          }
+          groups=defaultdict(set);rows=Counter();cats=Counter()
+          for o in data["products"]:
+              if o.get("merchant")!="NaMaximum.cz" or not catalog_identity_matches_url(o.get("id"),o.get("source_url")): continue
+              if delivery_state(o) not in {"feed_stocked","up_to_week","unknown"}: continue
+              cats[o.get("category") or ""]+=1
+              title=folded(o["title"])
+              for k,p in patterns.items():
+                  if re.search(p,title):
+                      groups[k].add(urlsplit(o["source_url"]).path.rstrip("/"))
+                      rows[k]+=1
+          print(json.dumps({"state":"FIFTH_LANE_SCREEN","eligible_category_counts":cats.most_common(45),"groups":{k:{"rows":rows[k],"families":len(groups[k])} for k in patterns},"wordpress_writes":0,"merchant_clicks":0,"source_only":True},ensure_ascii=False))
+          PY
       - name: Preserve redacted validation artifacts
         uses: actions/upload-artifact@v4
         with:
