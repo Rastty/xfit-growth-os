@@ -31,7 +31,7 @@ class VerifiedInlinkTests(unittest.TestCase):
             "creatine_buyer_10854", "creatine_buyer_10738",
             "whey_training_7363", "creatine_selection_9772",
             "whey_snacks_7195", "drinkware_snacks_7195", "nut_butter_snacks_7195", "protein_lactose_25451",
-            "protein_plant_25451",
+            "protein_plant_25451", "main_protein_shaker_25451",
             "beginner_plant_25458",
             "beginner_plant_commerce_25458",
             "equipment_mat_25554", "equipment_band_25561",
@@ -448,6 +448,25 @@ class PlantGuideCatalogHandoffTests(unittest.TestCase):
             with self.assertRaises(PublishError):
                 release.prepare(cfg, {**original, "content": {"raw": bad}})
 
+
+
+class MainProteinShakerTests(unittest.TestCase):
+    def test_exact_contextual_purchase_link_preserves_body(self):
+        cfg=release.ALLOWLIST["main_protein_shaker_25451"]
+        before=('<nav '+cfg.required_source_marker+'><a href="https://xfit.cz/xfit-os-rostlinne-proteiny-porovnani/">Nabídky</a></nav>'
+                + '<p>Protein: čtěte etiketu a zvažte cenu.</p>'*55
+                + '<h2>6. Časté chyby při nákupu</h2><ul><li>Nákup zbytečností</li></ul>'
+                + cfg.before_heading + '<p>Původní rada.</p>')
+        original={"id":25451,"slug":cfg.slug,"link":cfg.url,"status":"publish",
+                  "title":{"raw":"Jak vybrat protein"},"content":{"raw":before},
+                  "modified_gmt":"2026-11-27T18:00:00"}
+        after=release.prepare(cfg,original)["after"]
+        self.assertEqual(after.replace(cfg.paragraph+"\n",""),before)
+        self.assertTrue(release.public_verified(cfg,reader=lambda _:cfg.paragraph))
+        self.assertIn("novou nekupujte",cfg.paragraph)
+        self.assertEqual(after.count(cfg.target),1)
+        with self.assertRaises(PublishError):
+            release.prepare(cfg,{**original,"content":{"raw":before.replace(cfg.required_source_marker,"foreign")}})
 
 if __name__=="__main__":
     unittest.main()
