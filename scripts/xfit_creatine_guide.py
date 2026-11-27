@@ -236,14 +236,14 @@ def build_document(catalog, base, sample):
             '<p data-xfit-availability="'+offer["availability_state"]+'">'+
             delivery_note(offer)+'</p>'
             +model_portion_line(offer, "creatine")+
+            '<p><small id="'+disclosure_id+'">Partnerský odkaz · Xfit.cz může získat provizi. '
+            'NaMaximum.cz · nová karta</small></p>'
             '<p><a'+card_click_attributes(offer["id"], "creatine")+' href="'+href+'" rel="sponsored nofollow noopener noreferrer" '
             'aria-label="Ověřit cenu a dostupnost produktu '+html.escape(offer["title"],quote=True)+' na NaMaximum.cz (nová karta)" '
             'aria-describedby="'+disclosure_id+'" '
             'target="_blank" style="display:inline-block;padding:12px 16px;min-height:44px;box-sizing:border-box;'
             'background-color:#116a70;color:#ffffff;text-decoration:none;font-weight:700;'
-            'border-radius:8px;">Ověřit cenu a dostupnost</a> '
-            '<small id="'+disclosure_id+'">Partnerský odkaz · Xfit.cz může získat provizi. '
-            'NaMaximum.cz · nová karta</small></p>'
+            'border-radius:8px;">Ověřit cenu a dostupnost</a></p>'
             '<p><a href="#xfit-vyber-podle-rozpoctu" '
             'style="display:inline-block;padding:12px 0;">'
             'Zpět k výběru podle rozpočtu</a></p>'
