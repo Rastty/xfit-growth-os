@@ -1,0 +1,96 @@
+name: XFIT Equipment Mat Commerce Onepost
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-equipment-mat-handoff.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  onepost:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate full repository before onepost
+        run: python -m unittest discover -s tests -v
+      - name: Require exact live new plant comparison before linking
+        run: |
+          python - <<'PY'
+          from scripts.xfit_equipment_refresh import read_source, URL, TITLE
+          from scripts.wp_publish import verify_public
+          raw, _ = read_source()
+          verify_public(URL, TITLE, raw)
+          print("PUBLIC_EQUIPMENT_COMPARISON_VERIFIED_BEFORE_SOURCE_WRITE")
+          PY
+      - name: Capture current exact beginner source before any write
+        run: python -m scripts.xfit_verified_inlink_release equipment_mat_25554 snapshot
+      - name: Preserve immutable original before possible POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: equipment-mat-original
+          path: reports/backups/xfit-reviewed-inlink-equipment_mat_25554.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: One source-bound existing article update and public proof
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.xfit_verified_inlink_release equipment_mat_25554 apply | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Verify actual contextual link on mobile without opening merchant
+        shell: bash
+        run: |
+          node - <<'JS'
+          const {chromium}=require('playwright');
+          const assert=require('node:assert/strict');
+          const fs=require('node:fs');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            try {
+              const page=await browser.newPage({viewport:{width:375,height:812}});
+              const target='https://xfit.cz/xfit-os-vybaveni-na-domaci-cviceni-nabidky/#xfit-gear-mat';
+              await page.goto('https://xfit.cz/xfit-os-vyber-podlozky-na-cviceni/',{waitUntil:'domcontentloaded',timeout:45000});
+              const paragraph=page.locator('p[data-xfit-handoff="xfit-equipment-mat-25554-20261127"]');
+              assert.equal(await paragraph.count(),1);
+              const a=paragraph.locator('a');
+              assert.equal(await a.count(),1);
+              assert.equal(await a.getAttribute('href'),target);
+              assert.equal(await a.isVisible(),true);
+              const before=await paragraph.evaluate(el=>{const scope=el.closest('.entry-content,article,main');const h=scope && scope.querySelector('h2');return Boolean(h && (el.compareDocumentPosition(h)&Node.DOCUMENT_POSITION_FOLLOWING));});
+              assert.equal(before,true);
+              await paragraph.scrollIntoViewIfNeeded();
+              const box=await paragraph.boundingBox();
+              assert.ok(box && box.x>=-1 && box.x+box.width<=376);
+              fs.mkdirSync('reports/browser-qa',{recursive:true});
+              await page.screenshot({path:'reports/browser-qa/equipment-mat-handoff.png'});
+              console.log(JSON.stringify({state:'EQUIPMENT_HANDOFF_MOBILE_VERIFIED',width:375,target,post_id:25554}));
+            } finally {await browser.close();}
+          })().catch(()=>{console.error('EQUIPMENT_HANDOFF_MOBILE_QA_FAILED');process.exitCode=2;});
+          JS
+      - name: Preserve screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: equipment-mat-mobile
+          path: reports/browser-qa/equipment-mat-handoff.png
+          retention-days: 7
+          if-no-files-found: ignore

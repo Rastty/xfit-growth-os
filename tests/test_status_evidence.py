@@ -7,6 +7,7 @@ from scripts.xfit_status_evidence import (
     NoTokenRedirect, PUBLISHER_NAMES, canonical, inspect_log,
     coupon_cleanup_evidence, real_release_evidence,
     PLANT_FIRST, PLANT_DAILY, PLANT_HANDOFF,
+    EQUIPMENT_FIRST, EQUIPMENT_DAILY, EQUIPMENT_HANDOFFS,
 )
 from scripts.xfit_status import render
 
@@ -651,6 +652,42 @@ class PlantProductionProofTests(unittest.TestCase):
         self.assertEqual(out["counts"]["new"], 0)
         self.assertEqual(out["counts"]["updated"], 1)
         self.assertEqual(self.evidence(PLANT_HANDOFF, receipt, dict(browser, target="https://xfit.cz/"))["counts"]["updated"], 0)
+
+
+class EquipmentProductionProofTests(unittest.TestCase):
+    def evidence(self, name, receipt, browser, marker):
+        log = "\n".join((json.dumps(receipt), marker, "##[endgroup]", json.dumps(receipt), json.dumps(browser)))
+        return real_release_evidence([run(name=name)], "fake", fetch_jobs=jobs,
+                                     fetch_log=lambda *_: log)
+
+    def test_real_equipment_new_and_noop_proof(self):
+        receipt = {"state": "PUBLIC_VERIFIED_NEW_POST", "post_id": 26154,
+                   "slug": "xfit-os-vybaveni-na-domaci-cviceni-nabidky",
+                   "url": "https://xfit.cz/xfit-os-vybaveni-na-domaci-cviceni-nabidky/",
+                   "new_posts": 1, "public_site_modified": True}
+        browser = {"state": "EQUIPMENT_MOBILE_LIVE_VERIFIED", "cards": 2, "width": 375,
+                   "clicked_merchant_links": 0}
+        marker = "##[group]Run python -m scripts.xfit_equipment_comparison apply"
+        self.assertEqual(self.evidence(EQUIPMENT_FIRST, receipt, browser, marker)["counts"]["new"], 1)
+        self.assertEqual(self.evidence(EQUIPMENT_FIRST, dict(receipt, post_id=26152), browser, marker)["counts"]["new"], 0)
+        self.assertEqual(self.evidence(EQUIPMENT_FIRST, receipt, dict(browser, cards=1), marker)["counts"]["new"], 0)
+        receipt.update(state="unchanged_public_verified", public_site_modified=False, post_attempts=0, new_posts=0)
+        marker = "##[group]Run python -m scripts.xfit_equipment_refresh apply"
+        out = self.evidence(EQUIPMENT_DAILY, receipt, browser, marker)
+        self.assertEqual(out["verified_no_change_runs"], 1)
+        self.assertEqual(out["counts"]["updated"], 0)
+
+    def test_handoffs_require_exact_target_and_purpose(self):
+        for name, (pid, slug, key, fragment) in EQUIPMENT_HANDOFFS.items():
+            receipt = {"state": "PUBLIC_VERIFIED", "post_id": pid,
+                       "url": "https://xfit.cz/" + slug + "/", "post_attempts": 1,
+                       "posts_changed": 1, "new_posts": 0, "public_site_modified": True}
+            browser = {"state": "EQUIPMENT_HANDOFF_MOBILE_VERIFIED", "width": 375,
+                       "post_id": pid, "target": "https://xfit.cz/xfit-os-vybaveni-na-domaci-cviceni-nabidky/" + fragment}
+            marker = "##[group]Run set -o pipefail\npython -m scripts.xfit_verified_inlink_release " + key + " apply"
+            self.assertEqual(self.evidence(name, receipt, browser, marker)["counts"]["updated"], 1)
+            self.assertEqual(self.evidence(name, receipt, dict(browser, target="https://xfit.cz/"), marker)["counts"]["updated"], 0)
+            self.assertEqual(self.evidence(name, receipt, browser, "##[group]Run unit tests")["counts"]["updated"], 0)
 
 
 if __name__=="__main__":
