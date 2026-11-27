@@ -288,7 +288,9 @@ def _positive_id_list(values, *, records=False):
         raise ValueError("Invalid bounded coupon ID list")
     ids = []
     for value in values:
-        pid = value.get("id") if records and isinstance(value, dict) else value
+        if records and not isinstance(value, dict):
+            raise ValueError("Coupon outcome must be an ID record")
+        pid = value.get("id") if records else value
         if type(pid) is not int or pid <= 0 or pid in ids:
             raise ValueError("Invalid or duplicate coupon post ID")
         ids.append(pid)
@@ -419,7 +421,8 @@ def coupon_cleanup_evidence(runs, token, *, fetch_jobs, fetch_log=job_log):
         "known_public_verified_shortcodes": sum(w["public_verified_shortcodes"] or 0
                                                  for w in waves),
         "shortcode_count_incomplete": bool(unknown) or any(
-            w["public_verified_shortcodes"] is None for w in waves),
+            w["public_verified_shortcodes"] is None or bool(w["uncertain_post_ids"])
+            for w in waves),
     }
 
 

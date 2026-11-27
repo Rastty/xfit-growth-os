@@ -565,6 +565,7 @@ class CouponStatusEvidenceTests(unittest.TestCase):
             {"public_verified_post_ids": [10418] * 7},
             {"public_verified_post_ids": [10409, 10412, 10406, 10402, 10398, 10396, 10392]},
             {"state": "coupon_wave_verified"}, {"uncertain_posts": [{"id": 99999}]},
+            {"unchanged_failures": [10409]},
             {"public_verified_post_ids": [True, 10412, 10406, 10402, 10398, 10396, 10392]},
         ):
             bad_logs.append(coupon_log(dict(final, **patch)))
@@ -577,6 +578,16 @@ class CouponStatusEvidenceTests(unittest.TestCase):
         proof = self.collect(job=coupon_job(backup="failure"))["coupon_cleanup"]
         self.assertEqual(proof["public_verified_unique_posts"], 0)
         self.assertEqual(proof["unknown_run_ids"], [46017000248])
+
+    def test_uncertain_write_keeps_verified_subset_and_marks_total_incomplete(self):
+        final = coupon_receipt()
+        final["unchanged_failures"] = []
+        final["uncertain_posts"] = [{"id": 10409, "state": "readback_unavailable"}]
+        proof = self.collect(coupon_log(final))["coupon_cleanup"]
+        self.assertEqual(proof["public_verified_unique_posts"], 7)
+        self.assertEqual(proof["known_public_verified_shortcodes"], 21)
+        self.assertTrue(proof["shortcode_count_incomplete"])
+        self.assertEqual(proof["waves"][0]["uncertain_post_ids"], [10409])
 
     def test_duplicate_run_inventory_does_not_double_count(self):
         proof = coupon_cleanup_evidence(
