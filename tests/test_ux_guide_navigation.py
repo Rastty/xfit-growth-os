@@ -121,6 +121,9 @@ class GuideNavigationTests(unittest.TestCase):
                     self.assertEqual(len(parser.ids[disclosure_id]), 1)
                     self.assertLess(body.index(disclosure),
                                     body.index(f'aria-describedby="{disclosure_id}"'))
+                    description = body.split(disclosure, 1)[1].split("</small>", 1)[0]
+                    self.assertIn("bez dopravy a případných poplatků za platbu", description)
+                    self.assertIn("Celkovou částku ověřte v košíku", description)
                 self.assertEqual(body.count("Zpět k výběru podle rozpočtu</a>"), 2)
 
 
