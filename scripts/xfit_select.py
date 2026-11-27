@@ -23,6 +23,7 @@ from scripts.xfit_availability import delivery_state
 from scripts.xfit_feed_ingest import catalog_identity_matches_url
 
 KINDS = {
+    "nut_butter": {"title": (), "category": ()},
     "creatine": {"title": ("creatine", "kreatin", "creapure"), "category": ()},
     "whey": {"title": ("whey", "wpc", "wpi", "syrovátkov", "srvatkov"), "category": ("protein",)},
     "plant_protein": {"title": ("vegansk", "vegan", "rastlinn", "rostlinn", "hrachov", "sojov"), "category": ("protein",)},
@@ -99,7 +100,19 @@ def plant_powder(item):
     return protein and plant and category_ok and not any(word in title for word in banned)
 
 
+def nut_butter(item):
+    title = folded(item.get("title") or "")
+    category = folded(item.get("category") or "")
+    if not re.search(r"\b(?:masla|maslo|masel|nut butter\w*)\b", category):
+        return False
+    if re.search(r"\b(?:prasek|pras[kc]\w*|powder|olej\w*|oil|tycink\w*|bar|kapsl\w*|tablet\w*|mouka|flour|balicek|set|multipack|aroma|extrakt)\b", title):
+        return False
+    return bool(re.search(r"\b(?:arasidov\w*|mandlov\w*|kesu|liskov\w*|pistaciov\w*|orechov\w*|peanut|almond|cashew|hazelnut|pistachio|nut)\s+(?:masl\w*|butter\w*)\b",title))
+
+
 def matches_kind(item, kind):
+    if kind == "nut_butter":
+        return nut_butter(item)
     if kind == "plant_protein":
         return plant_powder(item)
     title = (item.get("title") or "").casefold()
@@ -181,7 +194,7 @@ def select_offers(catalog, kind, max_price=None, min_mass_g=100, limit=12):
             "affiliate_url": None,
             "availability_state": availability,
             "publish_ready": False,
-            "explanation": "Porovnání ceny za hmotnost prášku, nikoli za množství účinné látky či čistých bílkovin."
+            "explanation": ("Porovnání ceny za 100 g celého výrobku, nikoli množství ořechů." if kind == "nut_butter" else "Porovnání ceny za hmotnost prášku, nikoli za množství účinné látky či čistých bílkovin.")
         })
         raw_prices.append(price)
     # Some merchant feeds repeat an EAN, product ID or canonical URL. If the
