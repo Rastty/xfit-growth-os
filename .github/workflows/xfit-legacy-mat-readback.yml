@@ -1,0 +1,59 @@
+name: XFIT Legacy Mat Readback Diagnosis
+# GET only. Never retry a potentially committed or rejected POST.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-legacy-mat-readback.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Classify current source and public result without WordPress writes
+        run: |
+          python - <<'PY'
+          import json
+          from scripts.xfit_legacy_mat_release import SCOPES, read, content, sha, TARGET
+          from scripts.wp_publish import verify_public, editorial_links, PublishError
+          from scripts.xfit_affiliate_public_audit import read_public_page
+          for cfg in SCOPES.values():
+              out={"state":"LEGACY_MAT_READBACK_DIAGNOSIS","post_id":cfg.pid,
+                   "wordpress_writes":0,"merchant_clicks":0,"source_state":"UNKNOWN"}
+              try:
+                  post=read(cfg)
+                  raw=post["content"]["raw"]
+                  expected=content(cfg)
+                  out["source_state"]=("NEW_EXACT" if raw==expected else
+                       "ORIGINAL_EXACT" if sha(raw)==cfg.old_sha else "OTHER_SOURCE")
+                  out["modified_gmt"]=post.get("modified_gmt")
+                  out["same_original_revision"]=post.get("modified_gmt")==cfg.modified
+                  out["raw_sha256"]=sha(raw)
+                  public=read_public_page(cfg.slug)
+                  out["public_target_present"]=TARGET in editorial_links(public)
+                  out["public_cta_present"]="Zobrazit aktuální nabídky podložek" in public
+                  if out["source_state"]=="NEW_EXACT":
+                      try:
+                          verify_public(cfg.url,post["title"]["raw"],expected)
+                          out["full_public_new_content"]="VERIFIED"
+                      except (PublishError,ValueError,OSError) as exc:
+                          out["full_public_new_content"]=type(exc).__name__
+              except (PublishError,ValueError,OSError,KeyError,TypeError) as exc:
+                  out["blocked"]=type(exc).__name__
+              print(json.dumps(out,ensure_ascii=False))
+          PY
