@@ -69,7 +69,7 @@ jobs:
               const page=await browser.newPage({viewport:{width:375,height:812}});
               const target='https://xfit.cz/xfit-os-sejkry-a-sportovni-lahve/#xfit-drink-shaker';
               await page.goto('https://xfit.cz/jaky-typ-proteinu-si-vybrat-pro-pripravu-proteinovych-snacku-a-napoju/',{waitUntil:'domcontentloaded',timeout:45000});
-              const paragraph=page.locator('p[data-xfit-handoff="xfit-drinkware-protein-25554-20261127"]');
+              const paragraph=page.locator('p[data-xfit-handoff="xfit-drinkware-snacks-7195-20261127"]');
               assert.equal(await paragraph.count(),1);
               const a=paragraph.locator('a');
               assert.equal(await a.count(),1);
