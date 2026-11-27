@@ -11,7 +11,7 @@ class LegacyCreatineTests(unittest.TestCase):
             self.assertEqual(editorial_links(body).count(cfg.target),1)
             self.assertIn("nih.gov",body)
             self.assertIn(cfg.cta,body)
-            self.assertIn("nekup",body)
+            self.assertTrue(any(term in body for term in ("nemusíte kupovat", "doplněk vůbec potřebujete", "nic dalšího nekupujte")))
             self.assertNotIn("namaximum.cz",body)
             self.assertNotIn("5NM2022",body)
         self.assertIn("nasycovací",content(SCOPES["11753"]))
