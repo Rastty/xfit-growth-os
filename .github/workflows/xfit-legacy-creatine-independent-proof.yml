@@ -1,0 +1,61 @@
+name: XFIT Legacy Creatine 11863 Independent Proof
+# GET-only verification of the committed public revision; do not retry POST.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-legacy-creatine-independent-proof.yml'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate full repository
+        run: python -m unittest discover -s tests -v
+      - name: Download exact original prewrite backup
+        uses: actions/download-artifact@v4
+        with:
+          name: legacy-creatine-original-11863
+          path: reports/previous/11863
+          run-id: 46053286686
+          github-token: ${{ github.token }}
+      - name: Independently verify stored source and preserved metadata
+        run: |
+          python - <<'PY'
+          from scripts.xfit_legacy_creatine_release import SCOPES
+          from scripts.xfit_legacy_mat_release import prove_prior_release
+          prove_prior_release(SCOPES["11863"], "reports/previous/11863/xfit-legacy-creatine-11863.json", original_run_id=46053286686)
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Actual public mobile route verification
+        run: node tests/legacy_creatine_mobile.cjs 11863 live
+      - name: Preserve mobile evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legacy-creatine-independent-mobile-11863
+          path: reports/browser-qa/creatine-11863-live.png
+          retention-days: 7
+          if-no-files-found: ignore

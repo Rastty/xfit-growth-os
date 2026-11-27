@@ -109,7 +109,7 @@ def stable_metadata(post):
     return values
 
 
-def prove_prior_release(cfg, backup_path):
+def prove_prior_release(cfg, backup_path, original_run_id=46050150293):
     """Independent GET-only proof from the original immutable release backup."""
     saved=json.loads(Path(backup_path).read_text(encoding="utf-8"))
     before=identity(cfg,saved.get("before"))
@@ -127,18 +127,18 @@ def prove_prior_release(cfg, backup_path):
     changed=[key for key in old_meta if old_meta[key]!=new_meta[key]]
     render_changed=[key for key in ("title","excerpt")
                     if before[key].get("rendered")!=after[key].get("rendered")]
-    print(json.dumps({"state":"LEGACY_MAT_STORED_METADATA_CHECK","post_id":cfg.pid,
+    print(json.dumps({"state":"LEGACY_"+cfg.lane.upper()+"_STORED_METADATA_CHECK","post_id":cfg.pid,
         "changed_stored_fields":changed,"changed_rendered_fields":render_changed,
         "original_excerpt_empty":before["excerpt"]["raw"]=="","wordpress_writes":0}))
     if changed:
         raise PublishError("Stored metadata changed; no retry")
     verify_public(cfg.url,after["title"]["raw"],expected)
     public=read_public_page(cfg.slug)
-    if TARGET not in editorial_links(public):
+    if cfg.target not in editorial_links(public):
         raise PublishError("Missing live target")
-    print(json.dumps({"state":"LEGACY_MAT_PRIOR_RELEASE_READONLY_VERIFIED",
+    print(json.dumps({"state":"LEGACY_"+cfg.lane.upper()+"_PRIOR_RELEASE_READONLY_VERIFIED",
         "post_id":cfg.pid,"slug":cfg.slug,"url":cfg.url,
-        "original_run_id":46050150293,"stored_metadata_preserved":True,
+        "original_run_id":original_run_id,"stored_metadata_preserved":True,
         "new_posts":0,"wordpress_writes":0,"public_site_modified":False}))
 
 
