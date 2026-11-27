@@ -1,0 +1,64 @@
+name: XFIT Legacy Creatine Editorial Revision
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-legacy-creatine-revision.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  publish:
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        id: ['11753','11863','11882']
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+      POST_ID: ${{ matrix.id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate full repository and exact reviewed revisions
+        run: python -m unittest discover -s tests -v
+      - name: Verify live target and immutable original source
+        run: python -m scripts.xfit_legacy_creatine_release "$POST_ID" snapshot
+      - name: Upload rollback before POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: legacy-creatine-original-${{ matrix.id }}
+          path: reports/backups/xfit-legacy-creatine-${{ matrix.id }}.json
+          retention-days: 90
+          if-no-files-found: error
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Mobile preview before write
+        run: node tests/legacy_creatine_mobile.cjs "$POST_ID" preview
+      - name: Apply exact onepost revision and verify public
+        run: python -m scripts.xfit_legacy_creatine_release "$POST_ID" apply
+      - name: Actual public mobile route verification
+        run: node tests/legacy_creatine_mobile.cjs "$POST_ID" live
+      - name: Preserve mobile evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legacy-creatine-mobile-${{ matrix.id }}
+          path: reports/browser-qa/creatine-*.png
+          retention-days: 7
+          if-no-files-found: ignore
