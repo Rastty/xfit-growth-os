@@ -25,6 +25,7 @@ PUBLISHER_NAMES = frozenset({
     "XFIT Beginner Four Lane Hub Onepost",
     "XFIT Protein Guide Commerce Routes",
     "XFIT Protein Price Commerce Routes",
+    "XFIT Legacy Creatine Editorial Revision",
     "XFIT Direct Publish",
     "XFIT Autonomous Approved Editorial Publish",
     "XFIT AI Author and Source-Bound Live Publisher",
@@ -721,6 +722,108 @@ def mat_recovery_evidence(runs, token, *, fetch_jobs, fetch_log=job_log):
     return result
 
 
+CREATINE_LEGACY_NAME = "XFIT Legacy Creatine Editorial Revision"
+CREATINE_LEGACY_TARGETS = {
+    11753: "kreatin-pro-zacatecniky-jaky-druh-kreatinu-si-vybrat-pro-cviceni",
+    11863: "porovnani-nejucinnejsich-druhu-kreatinu-pro-sportovce",
+    11882: "nejlepsi-kreatin-pro-fitness-jak-vybrat-ten-spravny-pro-vas",
+}
+CREATINE_LEGACY_STEPS = (
+    "Validate full repository and exact reviewed revisions",
+    "Verify live target and immutable original source",
+    "Upload rollback before POST",
+    "Mobile preview before write",
+    "Apply exact onepost revision and verify public",
+    "Actual public mobile route verification",
+)
+
+
+def inspect_creatine_legacy_job(log, run, job, pid):
+    """One exact matrix target; actual backup/apply/mobile, never test fixtures."""
+    if (job.get("name") != "publish ("+str(pid)+")"
+            or job.get("status") != "completed" or job.get("conclusion") != "success"):
+        raise ValueError("No complete target job")
+    steps = job.get("steps")
+    if not isinstance(steps, list):
+        raise ValueError("Missing steps")
+    positions = []
+    for name in CREATINE_LEGACY_STEPS:
+        matches = [(i, st) for i, st in enumerate(steps) if st.get("name") == name]
+        if (len(matches) != 1 or matches[0][1].get("status") != "completed"
+                or matches[0][1].get("conclusion") != "success"):
+            raise ValueError("Incomplete target proof")
+        positions.append(matches[0][0])
+    if positions != sorted(positions):
+        raise ValueError("Unordered target steps")
+    markers = (
+        '##[group]Run python -m scripts.xfit_legacy_creatine_release "$POST_ID" snapshot',
+        '##[group]Run node tests/legacy_creatine_mobile.cjs "$POST_ID" preview',
+        '##[group]Run python -m scripts.xfit_legacy_creatine_release "$POST_ID" apply',
+        '##[group]Run node tests/legacy_creatine_mobile.cjs "$POST_ID" live',
+    )
+    if any(log.count(m) != 1 for m in markers):
+        raise ValueError("Missing exact executed command")
+    offsets = [log.index(m) for m in markers]
+    if offsets != sorted(offsets):
+        raise ValueError("Unordered command evidence")
+    states = ("LEGACY_CREATINE_PREWRITE_BACKUP_READY",
+              "LEGACY_CREATINE_MOBILE_PREVIEW_VERIFIED",
+              "PUBLIC_LEGACY_CREATINE_REVISION_VERIFIED",
+              "LEGACY_CREATINE_MOBILE_LIVE_VERIFIED")
+    receipts = []
+    for i, state in enumerate(states):
+        part = log[offsets[i]:offsets[i+1] if i+1 < len(offsets) else len(log)]
+        _, sep, output = part.partition("##[endgroup]")
+        if not sep:
+            raise ValueError("Missing completed command group")
+        vals = [v for line in output.splitlines() if (v := _receipt(line)) and v.get("state") == state]
+        if len(vals) != 1 or vals[0].get("post_id") != pid:
+            raise ValueError("Ambiguous target receipt")
+        receipts.append(vals[0])
+    backup, preview, result, mobile = receipts
+    slug = CREATINE_LEGACY_TARGETS[pid]
+    url = "https://xfit.cz/"+slug+"/"
+    target = "https://xfit.cz/xfit-os-kreatin-poradce/"
+    if (backup.get("wordpress_writes") != 0
+            or any(v.get("width") != 375 or v.get("target") != target
+                   or v.get("merchant_clicks") != 0 for v in (preview, mobile))
+            or result.get("url") != url or result.get("slug") != slug
+            or any(result.get(key) != 0 for key in ("new_posts", "deletes", "redirects"))):
+        raise ValueError("Invalid target identity or proof")
+    if (backup.get("change_required") is False and result.get("public_site_modified") is False
+            and result.get("post_attempts") == 0 and result.get("posts_changed") == 0):
+        return None
+    if (backup.get("change_required") is not True or result.get("public_site_modified") is not True
+            or result.get("post_attempts") != 1 or result.get("posts_changed") != 1):
+        raise ValueError("Unproved public write")
+    return {"kind":"updated","post_id":pid,"slug":slug,"url":url,
+            "run_id":run["id"],"run_url":"https://github.com/"+REPO+"/actions/runs/"+str(run["id"])}
+
+
+def creatine_legacy_matrix(run, token, *, fetch_jobs, fetch_log):
+    """A failed sibling never erases a separately proven target. No retries."""
+    jobs = fetch_jobs(run["id"], token).get("jobs")
+    expected = {"publish ("+str(pid)+")":pid for pid in CREATINE_LEGACY_TARGETS}
+    if not isinstance(jobs,list) or len(jobs)!=len(expected):
+        raise ValueError("Incomplete matrix inventory")
+    if any(not isinstance(j,dict) or j.get("name") not in expected
+           or type(j.get("id")) is not int or j["id"]<=0 for j in jobs):
+        raise ValueError("Unexpected matrix job")
+    if len({j["name"] for j in jobs})!=len(expected) or len({j["id"] for j in jobs})!=len(expected):
+        raise ValueError("Duplicate matrix target")
+    changed, unchanged, unknown = [], [], []
+    for job in jobs:
+        pid = expected[job["name"]]
+        try:
+            if job.get("status")!="completed" or job.get("conclusion")!="success":
+                raise ValueError("Incomplete target")
+            item=inspect_creatine_legacy_job(fetch_log(job["id"],token),run,job,pid)
+            (unchanged if item is None else changed).append(pid if item is None else item)
+        except (KeyError, TypeError, ValueError, OSError, AttributeError):
+            unknown.append(pid)
+    return changed, unchanged, sorted(unknown)
+
+
 def real_release_evidence(runs, token, *, fetch_jobs, fetch_log=job_log):
     """Inspect only successful publisher jobs; fail closed for inaccessible proof.
 
@@ -732,10 +835,27 @@ def real_release_evidence(runs, token, *, fetch_jobs, fetch_log=job_log):
     changed = []
     nochange = 0
     unknown = []
+    seen_legacy_matrix = set()
     for run in publishers[:15]:
         rid = run.get("id")
         if type(rid) is not int or rid <= 0:
             unknown.append({"run_id": None, "name": run.get("name", "?")})
+            continue
+        if run["name"] == CREATINE_LEGACY_NAME:
+            if rid in seen_legacy_matrix:
+                continue
+            seen_legacy_matrix.add(rid)
+            try:
+                if run.get("status") != "completed":
+                    raise ValueError("Matrix not complete")
+                events, noops, unresolved = creatine_legacy_matrix(run, token, fetch_jobs=fetch_jobs, fetch_log=fetch_log)
+                changed.extend(events)
+                if unresolved:
+                    unknown.append({"run_id": rid, "name": run["name"], "unverified_post_ids": unresolved})
+                elif not events and len(noops) == len(CREATINE_LEGACY_TARGETS):
+                    nochange += 1
+            except (KeyError, TypeError, ValueError, OSError, AttributeError):
+                unknown.append({"run_id": rid, "name": run["name"]})
             continue
         if run.get("conclusion") != "success" or run.get("status") != "completed":
             unknown.append({"run_id": rid, "name": run["name"]})
