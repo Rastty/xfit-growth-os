@@ -129,6 +129,18 @@ class GuideNavigationTests(unittest.TestCase):
                 self.assertEqual(body.count("Zpět k výběru podle rozpočtu</a>"), 2)
 
 
+                # A bigger pack can lead on unit price while a smaller pack
+                # costs less at the merchant before shipping and fees.
+                unit_card, pack_card = [
+                    body.split(f'id="xfit-offer-{i}"', 1)[1].split("</article>", 1)[0]
+                    for i in (1, 2)
+                ]
+                self.assertIn("Nejnižší jednotková cena ve výběru", unit_card)
+                self.assertNotIn("Nejnižší cena balení ve výběru", unit_card)
+                self.assertIn("Nejnižší cena balení ve výběru", pack_card)
+                self.assertNotIn("Nejnižší jednotková cena ve výběru", pack_card)
+
+
     def test_six_realistic_cards_pass_unchanged_editorial_duplicate_gate(self):
         # The previous agent PR passed navigation tests but actual publishing
         # rejected the repeated >110 character paragraphs. Do not weaken the

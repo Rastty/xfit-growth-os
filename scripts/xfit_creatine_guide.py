@@ -214,6 +214,7 @@ def build_document(catalog, base, sample):
         model_portion_intro("creatine"),
       '<div class="xfit-product-cards">'
     ]
+    lowest_pack_price = min(offer["price_czk"] for offer in chosen)
     for i,offer in enumerate(chosen):
         disclosure_id="xfit-creatine-partner-"+str(i+1)
         title=html.escape(offer["title"])
@@ -223,6 +224,9 @@ def build_document(catalog, base, sample):
         price=f'{offer["price_czk"]:,.2f}'.replace(",", "\u00a0").replace(".", ",")
         unit=f'{offer["price_per_100g_powder_czk"]:,.2f}'.replace(",", "\u00a0").replace(".", ",")
         label="Nejnižší jednotková cena ve výběru" if i==0 else "Alternativa podle ceny a velikosti balení"
+        if offer["price_czk"] == lowest_pack_price:
+            label = ("Nejnižší cena balení ve výběru" if i else
+                     label + " · Nejnižší cena balení ve výběru")
         image=('<p><img src="'+html.escape(offer["image"],quote=True)+
                '" alt="'+title+'" loading="lazy" width="120" height="120" style="max-width:100%;width:120px;height:120px;object-fit:contain;" /></p>'
                if offer["image"] else "")
