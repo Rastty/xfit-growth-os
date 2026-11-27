@@ -1,0 +1,127 @@
+"""Pinned legacy editorial rewrites: two separately reviewed Pilates mat pages."""
+from dataclasses import dataclass
+import hashlib
+import json
+from pathlib import Path
+import re
+import sys
+from scripts.wp_publish import PublishError, normalized_base, wp_request, verify_public, editorial_links
+from scripts.xfit_editorial_gate import check_document
+from scripts.xfit_equipment_refresh import read_source, URL, TITLE
+from scripts.xfit_affiliate_public_audit import read_public_page
+
+TARGET = URL + "#xfit-gear-mat"
+
+@dataclass(frozen=True)
+class Scope:
+    pid: int
+    slug: str
+    old_sha: str
+    modified: str
+    file: str
+
+    @property
+    def url(self):
+        return "https://xfit.cz/" + self.slug + "/"
+
+    @property
+    def marker(self):
+        return "xfit-legacy-mat-revision-" + str(self.pid) + "-20261127"
+
+    @property
+    def backup(self):
+        return Path("reports/backups/xfit-legacy-mat-" + str(self.pid) + ".json")
+
+SCOPES = {
+    "3377": Scope(3377, "vybaveni-do-fitka-jak-vybrat-vhodnou-podlozku-na-pilates-cviceni",
+        "f561e45ec5c75321e15ebb2cfa679675d7dff3b5e2954e5fb719a2d7a67da858",
+        "2023-04-19T04:03:58", "content/revisions/pilates-mat-home-studio-3377.json"),
+    "7487": Scope(7487, "jak-vybrat-spravnou-podlozku-pro-cviceni-pilates",
+        "99f663d2eb6065a0820047ead13b1dda46051e42cea883a5a78ef7e989d01d21",
+        "2023-05-15T10:40:02", "content/revisions/pilates-mat-choice-7487.json"),
+}
+
+def sha(value):
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+def content(cfg):
+    doc=json.loads(Path(cfg.file).read_text(encoding="utf-8"))
+    body=doc.get("content")
+    if (doc.get("wp_post_id")!=cfg.pid or doc.get("slug")!=cfg.slug
+            or not isinstance(body,str) or body.count(cfg.marker)!=1
+            or editorial_links(body).count(TARGET)!=1
+            or any("namaximum.cz" in u for u in editorial_links(body))
+            or "5NM2022" in body
+            or re.search(r"<\s*(?:script|iframe|form)\b|\bon\w+\s*=",body,re.I)):
+        raise PublishError("Reviewed revision identity or safety failed")
+    check_document(doc, commercial=False)
+    return body
+
+def identity(cfg, post):
+    if (not isinstance(post,dict) or type(post.get("id")) is not int or post["id"]!=cfg.pid
+            or post.get("slug")!=cfg.slug or post.get("link")!=cfg.url
+            or post.get("status")!="publish" or not isinstance((post.get("title") or {}).get("raw"),str)
+            or not isinstance((post.get("content") or {}).get("raw"),str)
+            or not isinstance(post.get("modified_gmt"),str)):
+        raise PublishError("Pinned existing post identity mismatch")
+    return post
+
+def read(cfg):
+    return identity(cfg,wp_request(normalized_base(),f"posts/{cfg.pid}?context=edit&_fields=id,slug,status,link,title,content,excerpt,categories,tags,sticky,featured_media,modified_gmt"))
+
+def prepare(cfg,post):
+    identity(cfg,post)
+    raw=post["content"]["raw"]
+    new=content(cfg)
+    if raw==new:
+        return raw,new
+    if sha(raw)!=cfg.old_sha or post["modified_gmt"]!=cfg.modified or cfg.marker in raw:
+        raise PublishError("Source differs from independent reviewed SHA; no write")
+    return raw,new
+
+def snapshot(cfg):
+    gear,_=read_source()
+    verify_public(URL,TITLE,gear)
+    if 'id="xfit-gear-mat"' not in gear:
+        raise PublishError("Missing intended live section")
+    post=read(cfg)
+    raw,new=prepare(cfg,post)
+    if cfg.backup.exists():
+        raise PublishError("Never overwrite backup")
+    cfg.backup.parent.mkdir(parents=True,exist_ok=True)
+    cfg.backup.write_text(json.dumps({"schema":1,"id":cfg.pid,"before":post,
+        "raw_sha":sha(raw),"after_sha":sha(new),"wordpress_writes":0},ensure_ascii=False),encoding="utf-8")
+    print(json.dumps({"state":"LEGACY_MAT_PREWRITE_BACKUP_READY","post_id":cfg.pid,"wordpress_writes":0,"change_required":raw!=new}))
+
+def apply(cfg):
+    saved=json.loads(cfg.backup.read_text(encoding="utf-8"))
+    before=read(cfg)
+    raw,new=prepare(cfg,before)
+    if (saved.get("schema")!=1 or saved.get("id")!=cfg.pid or saved.get("wordpress_writes")!=0
+            or saved.get("before")!=before or saved.get("raw_sha")!=sha(raw) or saved.get("after_sha")!=sha(new)):
+        raise PublishError("Source changed after backup")
+    if raw!=new:
+        try:
+            wp_request(normalized_base(),"posts/"+str(cfg.pid),payload={"content":new})
+        except (PublishError,OSError,ValueError,TypeError):
+            pass
+        after=read(cfg)
+        metadata=lambda p:{k:v for k,v in p.items() if k not in {"content","modified_gmt"}}
+        if after["content"]["raw"]!=new or metadata(after)!=metadata(before):
+            raise PublishError("Exact source and metadata not verified; no retry")
+    verify_public(cfg.url,before["title"]["raw"],new)
+    public=read_public_page(cfg.slug)
+    if TARGET not in editorial_links(public) or "Zobrazit aktuální nabídky podložek" not in public:
+        raise PublishError("Exact public buyer route not verified")
+    print(json.dumps({"state":"PUBLIC_LEGACY_MAT_REVISION_VERIFIED","post_id":cfg.pid,"slug":cfg.slug,
+        "url":cfg.url,"post_attempts":int(raw!=new),"posts_changed":int(raw!=new),
+        "new_posts":0,"deletes":0,"redirects":0,"public_site_modified":raw!=new}))
+
+if __name__=="__main__":
+    try:
+        if len(sys.argv)!=3 or sys.argv[1] not in SCOPES or sys.argv[2] not in {"snapshot","apply"}:
+            raise PublishError("Unknown pinned revision")
+        (snapshot if sys.argv[2]=="snapshot" else apply)(SCOPES[sys.argv[1]])
+    except (PublishError,ValueError,OSError,KeyError,TypeError) as exc:
+        print("XFIT_LEGACY_MAT_REVISION_BLOCKED: "+type(exc).__name__,file=sys.stderr)
+        raise SystemExit(2)

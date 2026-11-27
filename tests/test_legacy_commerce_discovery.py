@@ -37,9 +37,10 @@ class LegacyCommerceDiscoveryTests(unittest.TestCase):
     def test_no_medical_or_generic_protein_and_no_prior_release(self):
         self.assertFalse(route_for("nejlepsi protein pri alergii","whey"))
         self.assertFalse(route_for("jak vybrat protein","whey"))
+        self.assertFalse(route_for("kdy zacit s kreatinem v centru","creatine"))
         rows={lane:[] for lane in LANES}
-        rows["creatine"]=[row(10854,"Jak koupit kreatin","kreatin-test")]
-        self.assertEqual(assess(rows,today=date(2026,11,27))["creatine"]["prior_allowlist"],1)
+        rows["creatine"]=[row(10854,"Jak koupit kreatin","kreatin-test"),row(10860,"Slevy na kreatin a cena","kreatin-slevy")]
+        self.assertEqual(assess(rows,today=date(2026,11,27))["creatine"]["prior_allowlist"],2)
 
 if __name__ == "__main__":
     unittest.main()

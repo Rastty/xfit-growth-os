@@ -11,6 +11,7 @@ from scripts.xfit_intent_discovery import fetch_topic_posts, verified_post_ident
 from scripts.xfit_internal_inlinks import BodyAnchors, target_from_href
 from scripts.xfit_select import folded
 from scripts.xfit_verified_inlink_release import ALLOWLIST
+from scripts.xfit_coupon_cleanup import QUARANTINE_IDS
 
 ROOT = "https://xfit.cz/"
 LANES = {
@@ -21,7 +22,7 @@ LANES = {
     "band": ("band", ("odporov", "posilovací gum"), "xfit-os-vybaveni-na-domaci-cviceni-nabidky"),
 }
 BUY = re.compile(r"\b(?:vybrat|vyber\w*|koupit|nakoupit|nakup\w*|nejlevn\w*|"
-                 r"nejleps\w*|srovn\w*|porovn\w*|cen\w*|recenz\w*)\b")
+                 r"nejleps\w*|srovn\w*|porovn\w*|cen(?:a|y|u|ou|ove|ik|ikem)|recenz\w*)\b")
 MEDICAL = re.compile(r"rizik|bezpecnost|nezadouc|vedlejs|ledvin|jatr|kreatinin|"
                      r"kontraindik|onemocn|poskoz|tehot|krev|diagnost|alerg|"
                      r"lecba|leky|bolest|zranen|rehabilit|nemoc|cukrovk|deti|"
@@ -29,7 +30,7 @@ MEDICAL = re.compile(r"rizik|bezpecnost|nezadouc|vedlejs|ledvin|jatr|kreatinin|"
 PLANT = re.compile(r"rostlinn|vegan|hrachov|sojov|ryzov|konopn")
 MILK = re.compile(r"syrovat|whey|wpc|wpi|wph|koncentrat|izolat")
 JOINT = re.compile(r"kreatin|creatin")
-OLD_IDS = frozenset(cfg.post_id for cfg in ALLOWLIST.values())
+OLD_IDS = frozenset(cfg.post_id for cfg in ALLOWLIST.values()) | frozenset(QUARANTINE_IDS)
 MAX_PER_LANE = 5
 COOLDOWN_DAYS = 14
 
@@ -113,7 +114,7 @@ def assess(rows_by_lane, *, today=None):
                 counters["recent_or_unknown_modified"] += 1
                 continue
             # Explicit purchase/comparison title beats generic "best".
-            score = 2 if re.search(r"koupit|nakoupit|cen\w*|srovn\w*|porovn\w*|vybrat",text) else 1
+            score = 2 if re.search(r"koupit|nakoupit|\bcen(?:a|y|u|ou|ove|ik|ikem)\b|srovn\w*|porovn\w*|vybrat",text) else 1
             matches.append({"id":pid,"slug":slug,"title":title[:160],
                             "target":ROOT+target+"/","last_modified":modified.isoformat(),
                             "explicit_purchase_score":score,
