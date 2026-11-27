@@ -71,6 +71,13 @@ class ReaderText(HTMLParser):
     This is not a browser visibility check (CSS and shortcodes are not rendered).
     """
     INACTIVE={"script","style","template"}
+    TEXT_BOUNDARIES={
+        "address","article","aside","blockquote","br","caption","dd","details",
+        "dialog","div","dl","dt","fieldset","figcaption","figure","footer","form",
+        "h1","h2","h3","h4","h5","h6","header","hgroup","hr","li","main","menu",
+        "nav","ol","p","pre","section","summary","table","tbody","td","tfoot",
+        "th","thead","tr","ul",
+    }
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
@@ -80,10 +87,14 @@ class ReaderText(HTMLParser):
     def handle_starttag(self,tag,attrs):
         if tag in self.INACTIVE:
             self.inactive_depth+=1
+        elif not self.inactive_depth and tag in self.TEXT_BOUNDARIES:
+            self.parts.append(" ")
 
     def handle_endtag(self,tag):
         if tag in self.INACTIVE and self.inactive_depth:
             self.inactive_depth-=1
+        elif not self.inactive_depth and tag in self.TEXT_BOUNDARIES:
+            self.parts.append(" ")
 
     def handle_data(self,data):
         if not self.inactive_depth:
@@ -93,7 +104,7 @@ def clean(text):
     parser=ReaderText()
     parser.feed(text or "")
     parser.close()
-    return SPACE.sub(" "," ".join(parser.parts)).strip()
+    return SPACE.sub(" ","".join(parser.parts)).strip()
 
 def fetch(page,size):
     url=BASE+"?"+urlencode({"page":page,"per_page":size,"_fields":FIELDS})

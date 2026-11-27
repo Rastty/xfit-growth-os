@@ -31,6 +31,20 @@ class ArchiveAuditTests(unittest.TestCase):
         scored = {p["id"]: p["stale_2022_promo_mentions"] for p in queue["candidates"]}
         self.assertEqual(scored, {1: 0, 2: 1, 3: 0})
 
+    def test_coupon_triage_preserves_inline_codes_and_separates_lines(self):
+        report = inventory([
+            post(1, "kreatin-kod", "Kreatin", "Slevový kód: <strong>5NM</strong>2022"),
+            post(2, "protein-kod", "Protein", "5NM<br>2022"),
+            post(3, "kreatin-rady", "Kreatin", "</p><p>5NM</p><p>2022</p><p>"),
+            post(4, "protein-rady", "Protein", "5NM <em>2022</em>"),
+            post(5, "protein-jiny-kod", "Protein", "5NM2022<span>0</span>"),
+        ])
+        self.assertEqual(report["visible_stale_2022_promo_posts"], 1)
+        self.assertEqual(
+            [p["id"] for p in report["visible_stale_promo_candidates"]], [1]
+        )
+        self.assertEqual(report["content_quality_review_queue"]["expired_promo_eligible"], 1)
+
     def test_reader_text_coupon_shortlist_has_its_own_cap(self):
         hidden = [
             post(i, f"kreatin-{i}", "Kreatin", "<!-- 5NM2022 -->")
