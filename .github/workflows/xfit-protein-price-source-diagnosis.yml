@@ -1,0 +1,74 @@
+name: XFIT Protein Price Source Diagnosis
+# Read-only investigation of 46046975165 (blocked before backup or POST).
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-protein-price-source-diagnosis.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Read exact pinned source and report only safe structural facts
+        run: |
+          python - <<'PY'
+          import json, re
+          from scripts.xfit_protein_commerce_routes import (
+              SCOPES, PRICE_HEADING, PRICE_OWNER, PRICE_PANEL, PLANT_URL, WHEY_URL,
+              read, revise, destinations, proof)
+          from scripts.wp_publish import editorial_links, PublishError, normalize_visible
+          from scripts.xfit_editorial_gate import Inspector, EditorialError
+          cfg = SCOPES["protein-price"]
+          out = {"state":"PROTEIN_PRICE_SOURCE_DIAGNOSIS", "post_id":cfg.post_id,
+                 "wordpress_writes":0, "merchant_clicks":0}
+          try:
+              destinations()
+              out["destination_proof"] = "PASS"
+          except (PublishError, ValueError, OSError, TypeError, KeyError) as exc:
+              out["destination_proof"] = type(exc).__name__
+          try:
+              post = read(cfg)
+          except (PublishError, ValueError, OSError, TypeError, KeyError) as exc:
+              out["source_read"] = type(exc).__name__
+              print(json.dumps(out))
+              raise SystemExit(2)
+          raw = post["content"]["raw"]
+          out["source_read"] = "PINNED_IDENTITY_PASS"
+          out["source_bytes"] = len(raw.encode("utf-8"))
+          out["owner_marker_count"] = raw.count(PRICE_OWNER)
+          out["exact_heading_count"] = raw.count(PRICE_HEADING)
+          out["heading_visible_match_count"] = sum(
+              normalize_visible(m.group(0)) == normalize_visible(PRICE_HEADING)
+              for m in re.finditer(r"<h2(?:\s[^>]*)?>.*?</h2>", raw, re.I | re.S))
+          out["existing_whey_link"] = WHEY_URL in editorial_links(raw)
+          out["existing_plant_link"] = PLANT_URL in editorial_links(raw)
+          out["new_block_already_valid"] = proof(cfg, raw)
+          try:
+              result = revise(cfg, raw)
+              out["revision_result"] = "NOOP" if result == raw else "VALID"
+          except (PublishError, EditorialError, ValueError, TypeError, KeyError) as exc:
+              allowed = {"Expected reviewed pricing content or unique target unavailable",
+                         "Existing route block is inconsistent", "Source length outside bounds",
+                         "Nonlocal price guide change", "Unexpected routes or outbound mutation",
+                         "Duplicated long paragraphs", "Exact repeated heading; likely boilerplate content",
+                         "Missing structured H2 sections",
+                         "No recognizable independent scientific/public-health source"}
+              out["revision_result"] = str(exc) if str(exc) in allowed else type(exc).__name__
+          print(json.dumps(out, ensure_ascii=False))
+          PY
