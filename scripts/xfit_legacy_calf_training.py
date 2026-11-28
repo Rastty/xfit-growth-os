@@ -9,7 +9,9 @@ from urllib.parse import urlencode, urlsplit, urljoin, parse_qs, unquote, quote,
 from scripts.wp_publish import normalized_base, wp_request, PublishError, verify_public, normalize_visible, article_visible, editorial_links
 from scripts.xfit_legacy_mat_release import stable_metadata
 from scripts.xfit_legacy_fitness_fabric_guide import Images, media_url as strict_media_url, local_image
-from scripts.xfit_coupon_cleanup import QUARANTINE_IDS
+from scripts.xfit_coupon_cleanup import QUARANTINE_IDS, stripped
+from scripts.xfit_coupon_attempt_ledger import load as ledger_load, reserve as ledger_reserve
+from scripts.xfit_public_coupon_watch import probe
 from scripts.xfit_editorial_gate import check_document
 from scripts.xfit_equipment_refresh import read_source, URL as TARGET, TITLE as TARGET_TITLE
 
@@ -73,7 +75,8 @@ def revised(row):
     visible,_=article_visible(raw)
     if any(normalize_visible(a) not in visible for a in ANCHORS):
         raise PublishError("Publicly reviewed old anchors missing")
-    if "5nm2022" in raw.casefold() or re.search(r"<\s*(?:iframe|video|audio|script|form|object|embed)\b|\[(?:gallery|embed|su_button)\b",raw,re.I):
+    raw,coupons=stripped(raw)
+    if coupons>8 or "5nm2022" in raw.casefold() or re.search(r"<\s*(?:iframe|video|audio|script|form|object|embed)\b|\[(?:gallery|embed|su_button)\b",raw,re.I):
         raise PublishError("Unreviewed coupon or embedded media")
     inventory=[]
     main=[]
@@ -115,25 +118,33 @@ def revised(row):
     proof=check_document({"content":body},commercial=False)
     if proof["word_count"]<1200 or editorial_links(body).count(TARGET)!=1 or not set(inventory)<=set(editorial_links(body))|set(main):
         raise PublishError("Editorial or media preservation guard failed")
-    return body,proof["word_count"],len(removed)
+    return body,proof["word_count"],len(removed),coupons
 
 def snapshot():
     gear,_=read_source()
     verify_public(TARGET,TARGET_TITLE,gear)
     row=read()
     verify_public(URL,TITLE,row["content"]["rendered"])
-    new,words,removed=revised(row)
+    new,words,removed,coupons=revised(row)
+    ledger=ledger_load() if coupons else None
+    if ledger and row["id"] in ledger.ids:
+        raise PublishError("Coupon ID already reserved; no repeat")
     if BACKUP.exists():raise PublishError("Never overwrite backup")
     BACKUP.parent.mkdir(parents=True,exist_ok=True)
-    BACKUP.write_text(json.dumps({"schema":1,"before":row,"before_sha":sha(row["content"]["raw"]),"after_sha":sha(new),"wordpress_writes":0},ensure_ascii=False),encoding="utf-8")
-    print(json.dumps({"state":"CALF_TRAINING_BACKUP_READY","post_id":row["id"],"words":words,"reviewed_links_removed":removed,"wordpress_writes":0}))
+    BACKUP.write_text(json.dumps({"schema":1,"before":row,"before_sha":sha(row["content"]["raw"]),"after_sha":sha(new),"coupon_count":coupons,"ledger_fingerprint":ledger.fingerprint if ledger else None,"ledger_updated_at":ledger.updated_at if ledger else None,"wordpress_writes":0},ensure_ascii=False),encoding="utf-8")
+    print(json.dumps({"state":"CALF_TRAINING_BACKUP_READY","post_id":row["id"],"words":words,"reviewed_links_removed":removed,"shortcodes_removed":coupons,"wordpress_writes":0}))
 
 def apply():
     saved=json.loads(BACKUP.read_text(encoding="utf-8"))
     before=read()
-    new,words,removed=revised(before)
-    if saved.get("schema")!=1 or saved.get("wordpress_writes")!=0 or saved.get("before")!=before or saved.get("before_sha")!=sha(before["content"]["raw"]) or saved.get("after_sha")!=sha(new):
+    new,words,removed,coupons=revised(before)
+    if saved.get("schema")!=1 or saved.get("wordpress_writes")!=0 or saved.get("before")!=before or saved.get("before_sha")!=sha(before["content"]["raw"]) or saved.get("after_sha")!=sha(new) or saved.get("coupon_count")!=coupons:
         raise PublishError("Source changed after backup")
+    if coupons:
+        ledger=ledger_load()
+        if ledger.fingerprint!=saved["ledger_fingerprint"] or ledger.updated_at!=saved["ledger_updated_at"]:
+            raise PublishError("Coupon attempt ledger changed")
+        ledger_reserve(ledger,[before["id"]])
     try:
         wp_request(normalized_base(),"posts/"+str(before["id"]),payload={"content":new})
     except (PublishError,OSError,ValueError,TypeError):
@@ -142,7 +153,11 @@ def apply():
     if after["content"]["raw"]!=new or stable_metadata(after)!=stable_metadata(before):
         raise PublishError("Exact source and metadata not verified; no retry")
     verify_public(URL,TITLE,after["content"]["rendered"])
-    print(json.dumps({"state":"PUBLIC_CALF_TRAINING_REVISION_VERIFIED","post_id":before["id"],"url":URL,"words":words,"reviewed_links_removed":removed,"post_attempts":1,"posts_changed":1,"new_posts":0,"public_site_modified":True}))
+    if coupons:
+        result=probe(before["id"],SLUG)
+        if result.get("state")!="PUBLIC_NO_COUPON_OBSERVED" or result.get("visible_mentions")!=0:
+            raise PublishError("Public absence of old coupon not verified")
+    print(json.dumps({"state":"PUBLIC_CALF_TRAINING_REVISION_VERIFIED","post_id":before["id"],"url":URL,"words":words,"reviewed_links_removed":removed,"shortcodes_removed":coupons,"post_attempts":1,"posts_changed":1,"new_posts":0,"public_site_modified":True}))
 
 if __name__=="__main__":
     try:
