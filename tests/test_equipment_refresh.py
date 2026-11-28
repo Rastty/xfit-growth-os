@@ -1,7 +1,8 @@
 import unittest
+import re
 from datetime import datetime, timezone
 from unittest.mock import patch
-from scripts.xfit_equipment_comparison import build_document
+from scripts.xfit_equipment_comparison import build_document, NAV_MARKER, LEGACY_NAV, LEGACY_INTRO, INTRO
 from scripts.xfit_equipment_refresh import splice, segments, START, END, GUIDE_MARKER, GYM_MARKER, GYM_TARGET, STRENGTH_MARKER
 from scripts.wp_publish import MARKER, PublishError
 from test_equipment_comparison import BASE, SAMPLE, catalog, item
@@ -39,6 +40,23 @@ class EquipmentRefreshTests(unittest.TestCase):
         self.assertEqual(upgraded.count(GYM_TARGET), 2)
         self.assertEqual(upgraded.count(STRENGTH_MARKER), 1)
         self.assertEqual(splice(upgraded, body), upgraded)
+
+    def test_migrate_old_navigation_and_follow_optional_catalog_groups(self):
+        body = source()
+        old = MARKER + "\n" + body.replace(INTRO, LEGACY_INTRO)
+        old = re.sub(r'<nav '+NAV_MARKER+r'[^>]*>.*?</nav>', LEGACY_NAV, old, flags=re.S)
+        rows = catalog(item(1,"Yoga Mat",249,path="mat"),item(2,"Resistance Band",399,path="band"),
+                       item(3,"Fitball 85 cm",369,path="ball"))
+        rows["fetched_at_utc"] = datetime.now(timezone.utc).isoformat()
+        changed = splice(old, build_document(rows, BASE, SAMPLE)["content"])
+        nav = re.search(r'<nav '+NAV_MARKER+r'[^>]*>.*?</nav>', changed, re.S).group()
+        self.assertIn('href="#xfit-gear-ball"', nav)
+        self.assertNotIn(LEGACY_NAV, changed)
+        self.assertIn(INTRO, changed)
+        again = splice(changed, body)
+        nav = re.search(r'<nav '+NAV_MARKER+r'[^>]*>.*?</nav>', again, re.S).group()
+        self.assertNotIn('href="#xfit-gear-ball"', nav)
+        self.assertEqual(again.count(NAV_MARKER),1)
 
     def test_missing_duplicate_boundaries_or_unowned_source_fail(self):
         old = MARKER + "\n" + source()

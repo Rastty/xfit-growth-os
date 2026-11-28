@@ -6,7 +6,7 @@ import os
 import re
 from pathlib import Path
 
-from scripts.xfit_equipment_comparison import CATALOG, PREPARED, SLUG, URL, build_document, BUDGET_MARKER, MAX_CARDS
+from scripts.xfit_equipment_comparison import CATALOG, PREPARED, SLUG, URL, build_document, BUDGET_MARKER, MAX_CARDS, NAV_MARKER, LEGACY_NAV, LEGACY_INTRO, INTRO
 from scripts.xfit_catalog_retrieval import verified_catalog_fetch_time
 from scripts.xfit_editorial_gate import check_document
 from scripts.wp_publish import (
@@ -22,6 +22,7 @@ START = '<h2 id="xfit-gear-mat">Podložky na cvičení – aktuální nabídky</
 END = "<h2>Co zkontrolovat v obchodě před objednávkou</h2>"
 OFFER_HEADING = '<h2 id="xfit-gear-band">'
 MAX_BYTES = 400000
+NAV_BLOCK = re.compile(r'<nav ' + re.escape(NAV_MARKER) + r'[^>]*>.*?</nav>', re.S)
 GUIDE = Path("content/revisions/equipment-buying-guide.html")
 GUIDE_MARKER = 'id="xfit-gear-buying-guide-v1"'
 GUIDE_ANCHOR = "<h2>Metodika výběru</h2>"
@@ -72,6 +73,24 @@ def splice(old, new):
     # All other existing editorial HTML survives byte-for-byte, even if a human
     # or a separate authorized editor has added a paragraph since launch.
     output = old[:d1] + new[n1:n2] + old[d2:b1] + new[m1:m2] + old[b2:]
+    # Refresh the single generated category navigation with the same feed as
+    # the cards. Initial migration is restricted to the exact owned HTML.
+    new_nav = list(NAV_BLOCK.finditer(new))
+    if len(new_nav) != 1 or new.count(NAV_MARKER) != 1:
+        raise PublishError("Expected exactly one generated category navigation")
+    existing = list(NAV_BLOCK.finditer(output))
+    if NAV_MARKER in output:
+        if len(existing) != 1 or output.count(NAV_MARKER) != 1 or LEGACY_NAV in output:
+            raise PublishError("Ambiguous equipment category navigation")
+        output = output[:existing[0].start()] + new_nav[0].group() + output[existing[0].end():]
+    else:
+        if output.count(LEGACY_NAV) != 1:
+            raise PublishError("Exact legacy equipment navigation missing")
+        output = output.replace(LEGACY_NAV, new_nav[0].group(), 1)
+    if output.count(LEGACY_INTRO) == 1 and INTRO not in output:
+        output = output.replace(LEGACY_INTRO, INTRO, 1)
+    elif output.count(INTRO) != 1 or LEGACY_INTRO in output:
+        raise PublishError("Equipment introduction drifted")
     if GUIDE_MARKER not in output:
         guide = GUIDE.read_text(encoding="utf-8").strip()
         if guide.count(GUIDE_MARKER) != 1 or output.count(GUIDE_ANCHOR) != 1:

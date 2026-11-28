@@ -150,6 +150,20 @@ def shortlist(catalog, base, sample):
 
 
 BUDGET_MARKER = 'id="xfit-gear-budget-v1"'
+NAV_MARKER = 'id="xfit-equipment-nav-v2"'
+LEGACY_NAV = '<nav aria-label="Výběr vybavení"><ul><li><a href="#xfit-gear-mat" style="display:inline-block;padding:12px 0;">Potřebuji podložku</a></li><li><a href="#xfit-gear-band" style="display:inline-block;padding:12px 0;">Potřebuji odporovou gumu</a></li></ul></nav>'
+LEGACY_INTRO = '<p><strong>Co opravdu potřebujete pro domácí cvičení?</strong> Podložka řeší kontakt se zemí a odporová guma umožňuje přidat odpor. Není nutné kupovat obě věci najednou. Pokud vám vyhovuje stávající vybavení, nekupujte nic. Zvolte nejprve účel a až potom nabídku podle ceny.</p>'
+INTRO = '<p><strong>Co opravdu potřebujete pro domácí cvičení nebo silový trénink?</strong> Vyberte si konkrétní účel a přejděte k aktuálním cenám. Základní podložka a odporová guma, pomůcky pro regeneraci nebo silové příslušenství řeší odlišné potřeby. Pokud vám vyhovuje stávající vybavení, nekupujte nic. Nabídky jednotlivých skupin se aktualizují podle katalogu.</p>'
+NAV_LABELS = {"mat": "Podložky", "band": "Odporové gumy", "ball": "Gymnastické míče",
+              "massage": "Masážní sady", "glove": "Fitness rukavice", "belt": "Opasky", "strap": "Trhačky"}
+
+
+def equipment_nav(groups):
+    links = ['<a href="#xfit-gear-'+kind+'" style="display:inline-flex;align-items:center;min-height:44px;box-sizing:border-box;padding:8px 12px;border:1px solid #cdded7;border-radius:8px;color:#115e59;font-weight:600;max-width:100%;overflow-wrap:anywhere;">'+NAV_LABELS[kind]+'</a>' for kind in GROUPS if groups.get(kind)]
+    return ('<nav '+NAV_MARKER+' aria-label="Aktuální kategorie vybavení" style="margin:12px 0 16px;">'
+            '<p><strong>Rychlý výběr podle potřeby</strong></p>'
+            '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;">'+''.join(links)+
+            '</div><p><a href="#xfit-gear-budget-v1" style="display:inline-block;min-height:44px;box-sizing:border-box;padding:12px 0;">Porovnat ceny a rozpočet včetně možnosti nic nekoupit</a></p></nav>')
 
 def budget_block(groups):
     mat, band = groups["mat"][0], groups["band"][0]
@@ -174,9 +188,9 @@ def build_document(catalog, base, sample):
     if any(not groups[kind] for kind in REQUIRED_GROUPS):
         raise PublishError("Both equipment purposes must have genuine eligible products")
     parts = [
-        '<p><strong>Co opravdu potřebujete pro domácí cvičení?</strong> Podložka řeší kontakt se zemí a odporová guma umožňuje přidat odpor. Není nutné kupovat obě věci najednou. Pokud vám vyhovuje stávající vybavení, nekupujte nic. Zvolte nejprve účel a až potom nabídku podle ceny.</p>',
+        INTRO,
         catalog_retrieval_notice(catalog),
-        '<nav aria-label="Výběr vybavení"><ul><li><a href="#xfit-gear-mat" style="display:inline-block;padding:12px 0;">Potřebuji podložku</a></li><li><a href="#xfit-gear-band" style="display:inline-block;padding:12px 0;">Potřebuji odporovou gumu</a></li></ul></nav>',
+        equipment_nav(groups),
         '<p><strong>Rozsah a cena:</strong> katalogové nabídky do 2 000 Kč za nabízenou variantu od jediného prodejce NaMaximum.cz; nejde o srovnání celého trhu. Neznáme skutečné rozměry, odpor, počet kusů ani materiál, pokud nejsou v názvu. Cena je za katalogovou nabídku, nikoli nutně za jeden kus, a nezahrnuje dopravu. Seřazení uvnitř skupiny je podle ceny, ne kvality, bezpečnosti nebo provize.</p>',
         '<h2>Jak rozhodnout, za co utratit peníze</h2>',
         '<ul><li><strong>Cvičíte na zemi:</strong> nejdřív řešte prostor, povrch a rozměry podložky.</li><li><strong>Potřebujete přidat odpor:</strong> zvažte typ gumy podle pohybu, délky a bezpečného použití podle návodu.</li><li><strong>Obojí:</strong> ověřte, že každou pomůcku skutečně využijete. Nekupujte set jen kvůli slevě nebo dopravě zdarma.</li></ul>',
