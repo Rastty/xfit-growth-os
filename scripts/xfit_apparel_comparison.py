@@ -28,6 +28,7 @@ GROUPS = {
     "shirt": ("Pánská fitness trička", "Ověřte střih, materiál a tabulku rozměrů konkrétního výrobce."),
     "hoodie": ("Pánské mikiny", "Ověřte střih, tloušťku, materiál a zda chcete zip nebo provedení přes hlavu."),
     "leggings": ("Fitness legíny", "Ověřte rozměry pasu a boků, délku nohavic a možnost vrácení."),
+    "bra": ("Sportovní podprsenky", "Změřte obvod pod prsy a přes prsa podle návodu výrobce. Ověřte deklarovanou míru opory pro svůj pohyb, nastavení ramínek a možnost vrácení. Samotná velikost S nebo M nezaručuje stejný střih ani oporu."),
 }
 PRICE_LIMIT = Decimal("2000")
 SIZE = re.compile(r"(?<![\w-])(?:XXXS|XXS|XS|S|M|L|XL|XXL|XXXL|[2-5]XL)(?![\w-])")
@@ -42,10 +43,11 @@ def apparel_kind(row):
     category = folded(row.get("category") or "").strip()
     title = folded(row.get("title") or "")
     kind = {"panska tricka": "shirt", "panske mikiny": "hoodie",
-            "fitness leginy": "leggings"}.get(category)
+            "fitness leginy": "leggings", "sportovni podprsenky a topy": "bra"}.get(category)
     patterns = {"shirt": r"\b(?:trick\w*|trik\w*|t-shirt|tshirt|shirt)\b",
                 "hoodie": r"\b(?:mikin\w*|hoodie|sweatshirt)\b",
-                "leggings": r"\b(?:legin\w*|leggings)\b"}
+                "leggings": r"\b(?:legin\w*|leggings)\b",
+                "bra": r"\b(?:podprsenk\w*|sports? bra|bra)\b"}
     if not kind or not re.search(patterns[kind], title) or not explicit_size(row.get("title")):
         return None
     if re.search(r"\b(?:detske|detsky|detska|kids|junior|balicek|multipack|nahradn\w*)\b", title):
@@ -214,6 +216,7 @@ def prepare():
     PREPARED.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
     print(json.dumps({"state": "APPAREL_COMPARISON_PREPARED", "cards": check_document(doc)["product_cards"],
                       "size_choices": doc["content"].count("data-xfit-size="),
+                      "bra_families": len(groups["bra"]),
                       "wordpress_writes": 0}))
 
 
