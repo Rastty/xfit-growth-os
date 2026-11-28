@@ -83,6 +83,29 @@ jobs:
             console.log('APPAREL_EDITORIAL_MOBILE_LIVE_VERIFIED');
           }finally{await browser.close()}})().catch(()=>process.exitCode=2);
           JS
+      - name: Read exact pending fabric article link inventory for next release
+        if: github.event_name == 'push'
+        continue-on-error: true
+        run: |
+          python - <<'PY'
+          import json
+          from collections import Counter
+          from urllib.parse import urlsplit
+          from scripts.xfit_legacy_fitness_fabric_guide import read
+          from scripts.xfit_coupon_cleanup import stripped
+          from scripts.wp_publish import editorial_links
+          row=read()
+          raw,n=stripped(row["content"]["raw"])
+          counts=Counter()
+          for href in editorial_links(raw):
+              p=urlsplit(href)
+              host=(p.hostname or "").removeprefix("www.")
+              if host in {"xfit.cz","shape.com","cs.wikipedia.org","youtube.com","youtube-nocookie.com"}:
+                  counts[(host,p.path)]+=1
+              else:
+                  counts[(host or "(relative)","[redacted]")]+=1
+          print(json.dumps({"state":"FABRIC_SOURCE_LINK_INVENTORY","post_id":row["id"],"coupons":n,"links":[{"host":h,"path":p,"count":c} for (h,p),c in sorted(counts.items())],"wordpress_writes":0},ensure_ascii=False))
+          PY
       - name: Preserve mobile screenshots
         if: always()
         uses: actions/upload-artifact@v4

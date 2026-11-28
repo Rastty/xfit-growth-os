@@ -28,6 +28,7 @@ GROUPS = {
     "shirt": ("Pánská fitness trička", "Ověřte střih, materiál a tabulku rozměrů konkrétního výrobce."),
     "hoodie": ("Pánské mikiny", "Ověřte střih, tloušťku, materiál a zda chcete zip nebo provedení přes hlavu."),
     "leggings": ("Fitness legíny", "Ověřte rozměry pasu a boků, délku nohavic a možnost vrácení."),
+    "top": ("Dámské fitness topy", "Ověřte délku, střih, materiál a tabulku rozměrů. Samotné označení top nedokládá vestavěnou podprsenku ani míru opory; pro běh a skoky vybírejte podle skutečných potřeb."),
     "bra": ("Sportovní podprsenky", "Změřte obvod pod prsy a přes prsa podle návodu výrobce. Ověřte deklarovanou míru opory pro svůj pohyb, nastavení ramínek a možnost vrácení. Samotná velikost S nebo M nezaručuje stejný střih ani oporu."),
 }
 PRICE_LIMIT = Decimal("2000")
@@ -48,6 +49,16 @@ def apparel_kind(row):
                 "hoodie": r"\b(?:mikin\w*|hoodie|sweatshirt)\b",
                 "leggings": r"\b(?:legin\w*|leggings)\b",
                 "bra": r"\b(?:podprsenk\w*|sports? bra|bra)\b"}
+    # Same merchant category includes both types; never silently treat a top
+    # as a bra. Ambiguous combined titles are excluded.
+    if kind == "bra":
+        is_bra = bool(re.search(patterns["bra"], title))
+        is_top = bool(re.search(r"\b(?:fitness top|sportovn\w* top|crop top)\b", title))
+        if is_bra and is_top:
+            return None
+        if is_top:
+            kind = "top"
+            patterns["top"] = r"\b(?:fitness top|sportovn\w* top|crop top)\b"
     if not kind or not re.search(patterns[kind], title) or not explicit_size(row.get("title")):
         return None
     if re.search(r"\b(?:detske|detsky|detska|kids|junior|balicek|multipack|nahradn\w*)\b", title):
@@ -180,6 +191,8 @@ def build_document(catalog, base, sample):
         if not groups[kind]:
             continue
         parts += ['<h2 id="xfit-apparel-'+kind+'">'+heading+' – katalogové varianty</h2>','<p>'+caution+'</p>', size_picker(kind,by_size[kind])]
+        if kind == "bra":
+            parts.append('<p><a href="https://xfit.cz/jak-na-vyber-podprsenky/">Průvodce měřením velikosti a výběrem sportovní podprsenky podle aktivity</a>.</p>')
         for item in groups[kind][:3]:
             n+=1
             title=html.escape(item["title"])
@@ -217,6 +230,7 @@ def prepare():
     print(json.dumps({"state": "APPAREL_COMPARISON_PREPARED", "cards": check_document(doc)["product_cards"],
                       "size_choices": doc["content"].count("data-xfit-size="),
                       "bra_families": len(groups["bra"]),
+                      "top_families": len(groups["top"]),
                       "wordpress_writes": 0}))
 
 
