@@ -14,9 +14,13 @@ async function main() {
     assert.ok(links.length >= 2 && links.length <= 6);
     const budget = page.locator('#xfit-gear-budget-v1');
     assert.equal(await budget.count(),1);
-    const expectedBudget = (await budget.innerText()).replace(/\s+/g,' ').trim();
+    const norm = text => text.replace(/\s+/g,' ').replace(/[–—−]/g,'-').trim();
+    const expectedBudget = (await budget.locator('h2,p').allTextContents()).map(norm).filter(Boolean);
+    const expectedPrices = await budget.locator('strong').evaluateAll(els=>els.map(e=>e.textContent.replace(/\s+/g,' ').replace(/[–—−]/g,'-').trim()));
     if(phase === 'live'){
+      await page.setExtraHTTPHeaders({'Cache-Control':'no-cache','Pragma':'no-cache'});
       await page.goto(URL,{waitUntil:'domcontentloaded',timeout:45000});
+      await budget.waitFor({state:'visible',timeout:15000});
       assert.equal(new global.URL(page.url()).pathname, new global.URL(URL).pathname);
     }
     const cards = page.locator('article.xfit-product-card[id^="xfit-gear-offer-"]');
@@ -32,14 +36,15 @@ async function main() {
       assert.equal(overflow,false,'Card horizontal overflow');
     }
     assert.equal(await budget.count(),1);
-    assert.equal((await budget.innerText()).replace(/\s+/g,' ').trim(),expectedBudget);
-    assert.equal(await budget.evaluate(el=>el.scrollWidth>el.clientWidth+2),false);
+    assert.deepEqual((await budget.locator('h2,p').allTextContents()).map(norm).filter(Boolean),expectedBudget,'budget text differs after rendering');
+    assert.deepEqual(await budget.locator('strong').evaluateAll(els=>els.map(e=>e.textContent.replace(/\s+/g,' ').replace(/[–—−]/g,'-').trim())),expectedPrices,'budget prices differ');
+    assert.equal(await budget.evaluate(el=>el.scrollWidth>el.clientWidth+2),false,'budget overflow');
     for(const id of ['xfit-gear-mat','xfit-gear-band']){
       const a=budget.locator('a[href="#'+id+'"]');
       assert.equal(await a.count(),1);
       const box=await a.boundingBox();
-      assert.ok(box && box.height>=44 && box.x>=-1 && box.x+box.width<=376);
-      assert.equal(await page.locator('#'+id).count(),1);
+      assert.ok(box && box.height>=44 && box.x>=-1 && box.x+box.width<=376,'budget jump link geometry');
+      assert.equal(await page.locator('#'+id).count(),1,'budget target missing');
     }
     fs.mkdirSync('reports/browser-qa',{recursive:true});
     await cards.first().scrollIntoViewIfNeeded();
@@ -47,4 +52,4 @@ async function main() {
     console.log(JSON.stringify({state:'EQUIPMENT_MOBILE_'+phase.toUpperCase()+'_VERIFIED',cards:links.length,budget_verified:true,width:375,clicked_merchant_links:0}));
   } finally {await browser.close();}
 }
-main().catch(()=>{console.error('EQUIPMENT_MOBILE_QA_FAILED');process.exitCode=2;});
+main().catch(err=>{console.error('EQUIPMENT_MOBILE_QA_FAILED: '+(err?.name==='AssertionError' ? (err.message||'').split('\n')[0].slice(0,120) : err?.name||'unknown'));process.exitCode=2;});
