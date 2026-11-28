@@ -12,6 +12,9 @@ async function main() {
     await page.setContent('<html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>'+doc.content+'</body></html>');
     const links = await page.locator('article.xfit-product-card a[rel~="sponsored"]').evaluateAll(els=>els.map(a=>a.href));
     assert.ok(links.length >= 3 && links.length <= 9);
+    const sizeSelector = 'details[id^="xfit-size-picker-"] li[data-xfit-size] a[rel~="sponsored"]';
+    const sizeLinks = await page.locator(sizeSelector).evaluateAll(els=>els.map(a=>a.href));
+    assert.ok(sizeLinks.length>=3 && sizeLinks.length<=39);
     if(phase === 'live'){
       await page.goto(URL,{waitUntil:'domcontentloaded',timeout:45000});
       assert.equal(new global.URL(page.url()).pathname, new global.URL(URL).pathname);
@@ -28,10 +31,25 @@ async function main() {
       const overflow=await c.evaluate(el=>el.scrollWidth>el.clientWidth+2);
       assert.equal(overflow,false,'Card horizontal overflow');
     }
+    assert.deepEqual(await page.locator(sizeSelector).evaluateAll(els=>els.map(a=>a.href)),sizeLinks);
+    const pickers=page.locator('details[id^="xfit-size-picker-"]');
+    for (const picker of await pickers.all()) {
+      const summary=picker.locator('summary');
+      assert.ok(await summary.isVisible());
+      await summary.click();
+      assert.equal(await picker.evaluate(el=>el.open),true);
+      for(const link of await picker.locator('li[data-xfit-size] a').all()){
+        assert.ok(await link.isVisible());
+        const box=await link.boundingBox();
+        assert.ok(box && box.height>=44 && box.x>=-1 && box.x+box.width<=376);
+      }
+      assert.equal(await picker.evaluate(el=>el.scrollWidth>el.clientWidth+2),false);
+      await summary.click();
+    }
     fs.mkdirSync('reports/browser-qa',{recursive:true});
     await cards.first().scrollIntoViewIfNeeded();
     await page.screenshot({path:'reports/browser-qa/apparel-'+phase+'.png'});
-    console.log(JSON.stringify({state:'APPAREL_MOBILE_'+phase.toUpperCase()+'_VERIFIED',cards:links.length,width:375,clicked_merchant_links:0}));
+    console.log(JSON.stringify({state:'APPAREL_MOBILE_'+phase.toUpperCase()+'_VERIFIED',cards:links.length,size_choices:sizeLinks.length,width:375,clicked_merchant_links:0}));
   } finally {await browser.close();}
 }
 main().catch(()=>{console.error('APPAREL_MOBILE_QA_FAILED');process.exitCode=2;});

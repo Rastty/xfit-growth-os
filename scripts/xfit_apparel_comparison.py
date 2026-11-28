@@ -52,7 +52,7 @@ def apparel_kind(row):
         return None
     return kind
 
-def shortlist(catalog, base, sample):
+def eligible_variants(catalog, base, sample):
     if catalog.get("merchant") != "namaximum.cz" or catalog.get("merchant_match") is not True:
         raise PublishError("Apparel comparison requires verified merchant")
     items = catalog.get("products")
@@ -94,11 +94,21 @@ def shortlist(catalog, base, sample):
                        records[i]["availability_state"]) for i in indices}
         if len(signatures) > 1:
             bad.update(indices)
-    grouped = {kind: {} for kind in GROUPS}
+    eligible = []
+    seen = set()
     for i, row in enumerate(records):
         if i in bad or row["price"] > PRICE_LIMIT or row["availability_state"] not in (
                 "feed_stocked", "up_to_week", "unknown"):
             continue
+        if row["source_url"] not in seen:
+            eligible.append(row)
+            seen.add(row["source_url"])
+    return eligible
+
+
+def family_shortlist(eligible):
+    grouped = {kind: {} for kind in GROUPS}
+    for row in eligible:
         family = urlsplit(row["source_url"]).path.rstrip("/")
         prior = grouped[row["kind"]].get(family)
         if prior is None or (row["price"], row["id"]) < (prior["price"], prior["id"]):
@@ -107,8 +117,52 @@ def shortlist(catalog, base, sample):
             for kind, rows in grouped.items()}
 
 
+def shortlist(catalog, base, sample):
+    return family_shortlist(eligible_variants(catalog, base, sample))
+
+
+SIZE_ORDER = ("XXXS", "XXS", "XS", "S", "M", "L", "XL", "XXL", "2XL", "XXXL", "3XL", "4XL", "5XL")
+
+
+def size_shortlist(eligible):
+    # Rank exact source variants only AFTER global identity-conflict detection.
+    # Do not silently normalize 2XL and XXL: merchant labels may differ.
+    grouped = {kind: {} for kind in GROUPS}
+    for row in eligible:
+        group = grouped[row["kind"]]
+        size = row["size"]
+        if size not in group or (row["price"], row["title"], row["id"]) < (
+                group[size]["price"], group[size]["title"], group[size]["id"]):
+            group[size] = row
+    return grouped
+
+
+def size_picker(kind, variants):
+    if not variants:
+        return ""
+    rows = []
+    for size in SIZE_ORDER:
+        item = variants.get(size)
+        if item is None:
+            continue
+        label = html.escape(item["title"])
+        attr = html.escape(item["title"], quote=True)
+        rows.append('<li style="margin:0 0 8px;padding:8px 0;border-bottom:1px solid #dce5e8;overflow-wrap:anywhere" data-xfit-size="'+size+'">'
+            '<strong>'+size+' · '+money(item["price"])+'</strong><br>'+label+'<br>'
+            '<small>'+delivery_note(item)+'</small><br>'
+            '<a href="'+html.escape(item["affiliate_url"], quote=True)+'" rel="sponsored nofollow noopener noreferrer" target="_blank" '
+            'aria-label="Ověřit velikost a cenu: '+attr+' (nová karta)" style="display:inline-block;min-height:44px;box-sizing:border-box;padding:12px 0;font-weight:700;">Ověřit tuto variantu</a></li>')
+    return ('<details id="xfit-size-picker-'+kind+'" style="border:1px solid #cdded7;border-radius:10px;padding:12px;margin:12px 0;background:#f6faf8">'
+        '<summary style="cursor:pointer;min-height:44px;box-sizing:border-box;padding:10px 0;font-weight:700">Vybrat podle velikosti ('+str(len(rows))+' velikostí)</summary>'
+        '<p>Nejnižší katalogová cena způsobilé varianty v každé uvedené velikosti, nikoli doporučení kvality. Ceny bez dopravy. Označení velikosti ověřte v tabulce výrobce. Chybějící velikost neznamená, že ji obchod nemá.</p>'
+        '<ul style="padding-left:20px">'+''.join(rows)+'</ul>'
+        '<p><small>Partnerské odkazy · Xfit.cz může získat provizi · NaMaximum.cz · nová karta.</small></p></details>')
+
+
 def build_document(catalog, base, sample):
-    groups=shortlist(catalog,base,sample)
+    eligible=eligible_variants(catalog,base,sample)
+    groups=family_shortlist(eligible)
+    by_size=size_shortlist(eligible)
     if sum(bool(rows) for rows in groups.values()) < 2 or sum(map(len, groups.values())) < 3:
         raise PublishError("Need distinct real clothing families in at least two groups")
     parts=[
@@ -123,7 +177,7 @@ def build_document(catalog, base, sample):
     for kind,(heading,caution) in GROUPS.items():
         if not groups[kind]:
             continue
-        parts += ['<h2 id="xfit-apparel-'+kind+'">'+heading+' – katalogové varianty</h2>','<p>'+caution+'</p>']
+        parts += ['<h2 id="xfit-apparel-'+kind+'">'+heading+' – katalogové varianty</h2>','<p>'+caution+'</p>', size_picker(kind,by_size[kind])]
         for item in groups[kind][:3]:
             n+=1
             title=html.escape(item["title"])
@@ -139,7 +193,7 @@ def build_document(catalog, base, sample):
         '<h2>Co ověřit před objednáním</h2>',
         '<ol><li>Vyberte svoji velikost podle tabulky výrobce, ne pouze podle písmene na štítku.</li><li>Ověřte cenu a dostupnost zvolené barvy a velikosti přímo u prodejce. Uvedená cena se může týkat jiné varianty, než potřebujete.</li><li>Zkontrolujte složení materiálu, údržbu a podmínky vrácení; započítejte dopravu.</li><li>Pokud chybí rozměry, vyžádejte si je nebo objednávku odložte.</li></ol>',
         '<h2>Jak vzniká srovnání</h2>',
-        '<p>Vycházíme z aktuálně načteného XML katalogu jediného prodejce. Vyžadujeme konkrétní kategorii, rozpoznatelné označení oděvu a jednoznačnou velikost přímo v názvu. Vyřazujeme konfliktní identity a ceny, výslovně nedostupné položky, předobjednávky a katalogovou expedici nad sedm dní. Z každé produktové rodiny uvádíme nejlevnější způsobilou variantu; další velikosti mohou mít odlišnou cenu nebo dostupnost. Žádné oblečení jsme fyzicky netestovali.</p>',
+        '<p>Vycházíme z aktuálně načteného XML katalogu jediného prodejce. Vyžadujeme konkrétní kategorii, rozpoznatelné označení oděvu a jednoznačnou velikost přímo v názvu. Vyřazujeme konfliktní identity a ceny, výslovně nedostupné položky, předobjednávky a katalogovou expedici nad sedm dní. V hlavních kartách uvádíme nejlevnější způsobilou variantu vybraných rodin; ve výběru podle velikosti nejlevnější způsobilou variantu daného označení z katalogu. Další velikosti mohou mít odlišnou cenu nebo dostupnost. Žádné oblečení jsme fyzicky netestovali.</p>',
         '<p>Vybíráte také pomůcky na domácí trénink? Projděte <a href="https://xfit.cz/xfit-os-vybaveni-na-domaci-cviceni-nabidky/">nabídky podložek a odporových gum</a>. K obecným pravidlům bezpečnosti výrobků viz <a href="https://commission.europa.eu/topics/business-and-industry/product-safety_en">Evropská komise – bezpečnost výrobků</a>.</p>',
     ]
     doc={"slug":SLUG,"title":"Fitness oblečení: nabídky triček, mikin a legín podle velikosti",
@@ -159,6 +213,7 @@ def prepare():
     doc = build_document(catalog, base, sample)
     PREPARED.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
     print(json.dumps({"state": "APPAREL_COMPARISON_PREPARED", "cards": check_document(doc)["product_cards"],
+                      "size_choices": doc["content"].count("data-xfit-size="),
                       "wordpress_writes": 0}))
 
 
