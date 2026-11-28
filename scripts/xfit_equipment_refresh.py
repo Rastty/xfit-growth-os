@@ -6,7 +6,7 @@ import os
 import re
 from pathlib import Path
 
-from scripts.xfit_equipment_comparison import CATALOG, PREPARED, SLUG, URL, build_document, BUDGET_MARKER
+from scripts.xfit_equipment_comparison import CATALOG, PREPARED, SLUG, URL, build_document, BUDGET_MARKER, MAX_CARDS
 from scripts.xfit_catalog_retrieval import verified_catalog_fetch_time
 from scripts.xfit_editorial_gate import check_document
 from scripts.wp_publish import (
@@ -56,7 +56,7 @@ def segments(body):
             raise PublishError("Equipment budget boundary drifted")
         begin = budget_begin
     block = body[begin:end]
-    if not 2 <= block.count('class="xfit-product-card"') <= 8 or not 2 <= block.count('rel="sponsored nofollow noopener noreferrer"') <= 8:
+    if not 2 <= block.count('class="xfit-product-card"') <= MAX_CARDS or not 2 <= block.count('rel="sponsored nofollow noopener noreferrer"') <= MAX_CARDS:
         raise PublishError("Unexpected equipment generated card structure")
     return dates[0].span(), (begin, end)
 
