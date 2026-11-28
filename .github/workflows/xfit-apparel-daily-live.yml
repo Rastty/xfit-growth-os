@@ -8,6 +8,9 @@ on:
     paths:
       - '.github/workflows/xfit-apparel-daily-live.yml'
       - 'scripts/xfit_apparel_refresh.py'
+      - 'scripts/xfit_apparel_comparison.py'
+      - 'tests/apparel_comparison_mobile.cjs'
+      - 'tests/test_apparel_comparison.py'
       - 'tests/test_apparel_refresh.py'
       - 'content/revisions/apparel-fit-buying-guide.html'
 permissions:

@@ -1,11 +1,6 @@
 name: XFIT Apparel Comparison First Live Release
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/xfit-apparel-comparison-first-live.yml'
-      - 'scripts/xfit_apparel_comparison.py'
-      - 'tests/test_apparel_comparison.py'
+  # Initial publication complete; subsequent changes use the pinned daily writer.
   workflow_dispatch:
 permissions:
   contents: read

@@ -36,14 +36,19 @@ def segments(body):
         raise PublishError("Apparel block missing")
     dates, navs, headings = list(RETRIEVAL.finditer(body)), list(NAV.finditer(body)), list(HEADING.finditer(body))
     if len(dates)!=1 or len(navs)!=1 or not headings:
-        raise PublishError("Ambiguous nut butter boundaries")
+        raise PublishError("Ambiguous apparel boundaries")
     begin,end=headings[0].start(),body.index(END)
     if not dates[0].end()<navs[0].start()<navs[0].end()<begin<end or any(h.start()>=end for h in headings):
-        raise PublishError("Invalid nut butter block order")
+        raise PublishError("Invalid apparel block order")
     block=body[begin:end]
     count=block.count('class="xfit-product-card"')
-    if not 3<=count<=9 or block.count('rel="sponsored nofollow noopener noreferrer"')!=count:
-        raise PublishError("Unexpected nut butter card count")
+    size_count = block.count('data-xfit-size="')
+    if not 3<=count<=9 or not 0<=size_count<=39 or block.count('rel="sponsored nofollow noopener noreferrer"')!=count+size_count:
+        raise PublishError("Unexpected apparel card or size-choice count")
+    if size_count and block.count('<details id="xfit-size-picker-')!=len(headings):
+        raise PublishError("Apparel size picker group count mismatch")
+    if size_count and len(set(re.findall(r'data-xfit-size="([^"]+)"', block)))>13:
+        raise PublishError("Unexpected apparel size tokens")
     return dates[0].span(),navs[0].span(),(begin,end)
 
 
