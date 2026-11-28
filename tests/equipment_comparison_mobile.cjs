@@ -22,6 +22,7 @@ async function main() {
       if(await page.locator('#'+id).count()) expectedOptional.push(id);
     }
     const nav=page.locator('#xfit-equipment-nav-v2');
+    const expectedChoiceTexts=await nav.locator('[data-xfit-gear-choice]').allTextContents();
     const expectedNav=['#xfit-gear-mat','#xfit-gear-band',...expectedOptional.map(id=>'#'+id),'#xfit-gear-budget-v1'];
     if(phase === 'live'){
       await page.setExtraHTTPHeaders({'Cache-Control':'no-cache','Pragma':'no-cache'});
@@ -30,6 +31,13 @@ async function main() {
       assert.equal(new global.URL(page.url()).pathname, new global.URL(URL).pathname);
     }
     assert.equal(await nav.count(),1);
+    assert.deepEqual((await nav.locator('[data-xfit-gear-choice]').allTextContents()).map(norm),expectedChoiceTexts.map(norm),'feed-bound category text');
+    assert.equal(await nav.locator('[data-xfit-nav-price]').count(),expectedNav.length-1);
+    const grids=page.locator('[data-xfit-offer-grid]');
+    assert.equal(await grids.count(),expectedNav.length-1);
+    for(let i=0;i<await grids.count();i++){
+      assert.equal(await grids.nth(i).evaluate(el=>el.scrollWidth>el.clientWidth+2),false,'product grid overflow');
+    }
     assert.deepEqual(await nav.locator('a').evaluateAll(els=>els.map(a=>a.getAttribute('href'))),expectedNav,'category navigation targets');
     assert.equal(await nav.evaluate(el=>el.scrollWidth>el.clientWidth+2),false,'category navigation overflow');
     for(let i=0;i<expectedNav.length;i++){
