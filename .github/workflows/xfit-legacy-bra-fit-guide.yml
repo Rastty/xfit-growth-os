@@ -4,6 +4,8 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/xfit-legacy-bra-fit-guide.yml'
+      - 'scripts/xfit_legacy_bra_fit_guide.py'
+      - 'content/revisions/legacy-bra-fit-guide.html'
 permissions:
   contents: read
 concurrency:
