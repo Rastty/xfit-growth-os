@@ -33,15 +33,39 @@ GROUPS = {
              "Vybírejte rozměr podle zamýšleného pohybu, návodu a skutečných rozměrů. Zkontrolujte deklarované zatížení, nafukování, protiskluznost a dostatek volného prostoru. Nestabilní míč není nutný pro začátečníka."),
     "massage": ("Masážní válce a míčky v sadě", None,
                 "Sada má smysl jen pokud využijete její součásti. Ověřte přesný obsah, rozměry, materiál a pokyny pro používání. Nepoužívejte bolestivý tlak ani pomůcku jako náhradu zdravotní péče."),
+    "glove": ("Fitness rukavice", None,
+              "Rukavice mohou změnit pocit úchopu a kontakt dlaně s náčiním. Změřte ruku podle tabulky výrobce, ověřte švy, zapínání a prodyšnost. Silnější polstrování nemusí vyhovovat každému úchopu."),
+    "belt": ("Posilovací opasky", None,
+             "Opasek není povinný ani náhradou techniky a přiměřené zátěže. Ověřte obvod v místě nošení podle výrobce, šířku, tuhost, zapínání a rozsah nastavení. Nevybírejte jen podle velikosti kalhot."),
+    "strap": ("Trhačky na posilování", None,
+              "Trhačky mohou pomoci, když úchop omezuje zamýšlený tah. Porovnejte klasický pásek a typ figure 8 podle návodu, rozměrů a možnosti bezpečně uvolnit úchop. Nejsou potřeba pro každý cvik."),
 }
 REQUIRED_GROUPS = ("mat", "band")
-OPTIONAL_GROUPS = ("ball", "massage")
+OPTIONAL_GROUPS = ("ball", "massage", "glove", "belt", "strap")
+OPTIONAL_LABELS = {"ball": "Gymnastický míč", "massage": "Masážní sada",
+                   "glove": "Fitness rukavice", "belt": "Posilovací opasek", "strap": "Trhačky"}
+GROUP_LIMITS = {"ball": 1, "massage": 1, "glove": 2, "belt": 2, "strap": 2}
+MAX_CARDS = 3 * len(REQUIRED_GROUPS) + sum(GROUP_LIMITS.values())
 PRICE_LIMIT = Decimal("2000")
 
 
 def equipment_kind(row):
     title = folded(row.get("title") or "")
     category = folded(row.get("category") or "")
+    # Dedicated merchant category; a category alone never establishes the product type.
+    category_key = " ".join(re.findall(r"[a-z0-9]+", category))
+    if category_key in ("pasky trhacky rukavice bandaze", "pasy trhacky rukavice bandaze",
+                         "pasky trhacky rukavice a bandaze"):
+        if re.search(r"\b(?:nahradn\w*|replacement|repair|pouzdro|obal|detsk\w*|kids|junior)\b", title):
+            return None
+        matches = []
+        if re.search(r"\b(?:fitness rukavic\w*|rukavic\w* (?:na|pro) (?:cvicen\w*|posilovan\w*))\b", title):
+            matches.append("glove")
+        if re.search(r"\b(?:fitness opasek|fitness opask\w*|powerliftersk\w* opasek|posilovac\w* opasek|vzp[eě]racsk\w* opasek)\b", title):
+            matches.append("belt")
+        if re.search(r"\btrhack\w*\b", title):
+            matches.append("strap")
+        return matches[0] if len(matches) == 1 else None
     if not any(term in category for term in ("pomucky pro cviceni", "treninkove prislusenstvi",
                     "podlozk", "expand", "posilovaci gum", "odporove gum", "fitness pomucky",
                     "pomocky na cvicenie", "treningove prislusenstvo")):
@@ -132,7 +156,7 @@ def budget_block(groups):
     total = mat["price"] + band["price"]
     optional = "".join(
         '<p><a href="#xfit-gear-'+kind+'" style="display:block;min-height:44px;box-sizing:border-box;padding:10px 0">'
-        '<strong>'+("Gymnastický míč" if kind=="ball" else "Masážní sada")+': od '+money(groups[kind][0]["price"])+'</strong> – volitelná pomůcka</a></p>'
+        '<strong>'+OPTIONAL_LABELS[kind]+': od '+money(groups[kind][0]["price"])+'</strong> – volitelná pomůcka</a></p>'
         for kind in OPTIONAL_GROUPS if groups.get(kind)
     )
     return ('<section '+BUDGET_MARKER+' aria-label="Rozpočet na domácí cvičení" style="border:1px solid #cdded7;border-radius:12px;padding:14px;margin:16px 0;background:#f6faf8;overflow-wrap:anywhere">'
@@ -167,7 +191,7 @@ def build_document(catalog, base, sample):
             '<h2 id="xfit-gear-' + kind + '">' + heading + ' – aktuální nabídky</h2>',
             '<p>' + caution + guide_link + '</p>',
         ]
-        for item in groups[kind][:1 if kind in OPTIONAL_GROUPS else 3]:
+        for item in groups[kind][:GROUP_LIMITS.get(kind, 3)]:
             n += 1
             title = html.escape(item["title"])
             attr = html.escape(item["title"], quote=True)
