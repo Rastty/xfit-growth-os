@@ -67,24 +67,9 @@ jobs:
       - name: Refresh only generated sections and verify live
         run: python -m scripts.xfit_apparel_refresh apply
       - name: Verify live card hrefs and mobile layout
-        run: |
-          node tests/apparel_comparison_mobile.cjs live
-          node - <<'JS'
-          const {chromium}=require('playwright');
-          const assert=require('node:assert/strict');
-          (async()=>{const browser=await chromium.launch({headless:true});try{
-            const page=await browser.newPage({viewport:{width:375,height:812}});
-            await page.goto('https://xfit.cz/xfit-os-fitness-obleceni-nabidky/',{waitUntil:'domcontentloaded',timeout:45000});
-            const guide=page.locator('#xfit-apparel-fit-guide-v1');
-            assert.equal(await guide.count(),1);
-            assert.ok(await guide.locator('h2').count()>=5);
-            assert.ok((await guide.innerText()).split(/\s+/).length>=650);
-            assert.equal(await guide.evaluate(el=>el.scrollWidth>el.clientWidth+2),false);
-            console.log('APPAREL_EDITORIAL_MOBILE_LIVE_VERIFIED');
-          }finally{await browser.close()}})().catch(()=>process.exitCode=2);
-          JS
+        run: node tests/apparel_comparison_mobile.cjs live
       - name: Read exact pending fabric article link inventory for next release
-        if: github.event_name == 'push'
+        if: always() && github.event_name == 'push'
         continue-on-error: true
         run: |
           python - <<'PY'

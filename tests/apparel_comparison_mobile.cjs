@@ -51,10 +51,18 @@ async function main() {
       assert.equal(await picker.evaluate(el=>el.scrollWidth>el.clientWidth+2),false);
       await summary.click();
     }
+    if(phase==='live'){
+      const guide=page.locator('#xfit-apparel-fit-guide-v1');
+      assert.equal(await guide.count(),1,'editorial guide missing');
+      assert.ok(await guide.locator('h2').count()>=5,'editorial headings missing');
+      assert.ok((await guide.innerText()).split(/\s+/).length>=650,'editorial guide truncated');
+      assert.equal(await guide.evaluate(el=>el.scrollWidth>el.clientWidth+2),false,'editorial guide overflow');
+      console.log('APPAREL_EDITORIAL_MOBILE_LIVE_VERIFIED');
+    }
     fs.mkdirSync('reports/browser-qa',{recursive:true});
     await cards.first().scrollIntoViewIfNeeded();
     await page.screenshot({path:'reports/browser-qa/apparel-'+phase+'.png'});
     console.log(JSON.stringify({state:'APPAREL_MOBILE_'+phase.toUpperCase()+'_VERIFIED',cards:links.length,size_choices:sizeLinks.length,bra_section:expectedBra,top_section:expectedTop,width:375,clicked_merchant_links:0}));
   } finally {await browser.close();}
 }
-main().catch(()=>{console.error('APPAREL_MOBILE_QA_FAILED');process.exitCode=2;});
+main().catch(err=>{console.error('APPAREL_MOBILE_QA_FAILED: '+(err?.name==='AssertionError'?(err.message||'').split('\n')[0].slice(0,120):err?.name||'unknown'));process.exitCode=2;});
