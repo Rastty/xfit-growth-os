@@ -1,0 +1,54 @@
+name: XFIT Home Training Chooser
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-home-training-chooser.yml'
+      - 'scripts/xfit_home_training_chooser.py'
+      - 'content/revisions/home-training-chooser.html'
+      - 'tests/home_training_chooser_mobile.cjs'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Capture reviewed article and verify all seven live destinations
+        run: python -m scripts.xfit_home_training_chooser snapshot
+      - uses: actions/upload-artifact@v4
+        with:
+          name: home-training-chooser-original
+          path: reports/backups/xfit-home-training-chooser-original.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Publish reviewed navigation and verify exact live body
+        run: python -m scripts.xfit_home_training_chooser apply
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Check responsive layout, target geometry and working local jump
+        run: node tests/home_training_chooser_mobile.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: home-training-chooser-screenshots
+          path: reports/browser-qa/home-training-*.png
+          if-no-files-found: ignore
