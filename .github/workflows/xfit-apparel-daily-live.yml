@@ -84,6 +84,8 @@ jobs:
           }finally{await browser.close()}})().catch(()=>process.exitCode=2);
           JS
       - name: Read exact pending fabric article link inventory for next release
+        if: github.event_name == 'push'
+        continue-on-error: true
         run: |
           python - <<'PY'
           import json
