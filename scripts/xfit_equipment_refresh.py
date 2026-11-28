@@ -25,6 +25,8 @@ MAX_BYTES = 400000
 GUIDE = Path("content/revisions/equipment-buying-guide.html")
 GUIDE_MARKER = 'id="xfit-gear-buying-guide-v1"'
 GUIDE_ANCHOR = "<h2>Metodika výběru</h2>"
+STRENGTH_GUIDE = Path("content/revisions/strength-accessory-buying-guide.html")
+STRENGTH_MARKER = 'id="xfit-strength-accessory-guide-v1"'
 GYM_TARGET = "https://xfit.cz/domaci-posilovny-a-workout-hriste/"
 GYM_MARKER = 'data-xfit-handoff="xfit-gear-home-gym-plan-v1"'
 GYM_ANCHOR = '<h3>Výběr podle místa, které máte k dispozici</h3>'
@@ -83,6 +85,13 @@ def splice(old, new):
         output = output.replace(GYM_ANCHOR, GYM_LINK + "\n" + GYM_ANCHOR, 1)
     elif output.count(GYM_MARKER) != 1 or output.count(GYM_LINK) != 1:
         raise PublishError("Ambiguous gym planning handoff")
+    if STRENGTH_MARKER not in output:
+        guide = STRENGTH_GUIDE.read_text(encoding="utf-8").strip()
+        if guide.count(STRENGTH_MARKER) != 1 or output.count(GUIDE_ANCHOR) != 1:
+            raise PublishError("Reviewed strength accessory guide insertion unavailable")
+        output = output.replace(GUIDE_ANCHOR, guide + "\n" + GUIDE_ANCHOR, 1)
+    elif output.count(STRENGTH_MARKER) != 1:
+        raise PublishError("Duplicate strength accessory guide marker")
     check_document({"content": output}, commercial=True)
     return output
 
