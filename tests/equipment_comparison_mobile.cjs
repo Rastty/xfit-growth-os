@@ -60,6 +60,17 @@ async function main() {
       assert.equal(await gymLink.count(),1);
       assert.equal(await gymLink.isVisible(),true);
       assert.equal(await guide.evaluate(el=>el.scrollWidth>el.clientWidth+2),false,'guide overflow');
+      const strength=page.locator('#xfit-strength-accessory-guide-v1');
+      await strength.waitFor({state:'visible',timeout:15000});
+      assert.equal(await strength.count(),1);
+      assert.equal(await strength.locator('h4').count(),4);
+      assert.equal(await strength.evaluate(el=>el.scrollWidth>el.clientWidth+2),false,'strength guide overflow');
+      const back=strength.locator('a[href="#xfit-gear-budget-v1"]');
+      assert.equal(await back.count(),1);
+      assert.ok(await back.isVisible());
+      for(const id of expectedOptional.filter(id=>/glove|belt|strap/.test(id))){
+        assert.equal(await page.locator('#'+id+' + p a[href="#xfit-strength-accessory-guide-v1"]').count(),1);
+      }
     }
     fs.mkdirSync('reports/browser-qa',{recursive:true});
     await cards.first().scrollIntoViewIfNeeded();
