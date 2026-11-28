@@ -61,6 +61,14 @@ async function main() {
       assert.equal(await page.locator('#'+id).count(),1,'budget target missing');
     }
     if(phase === 'live'){
+      const training=page.locator('#xfit-gear-training-return-v1');
+      await training.waitFor({state:'visible',timeout:15000});
+      assert.equal(await training.count(),1);
+      const trainingLink=training.locator('a[href="https://xfit.cz/co-je-to-funkcni-trenink/"]');
+      assert.equal(await trainingLink.count(),1);
+      const trainingBox=await trainingLink.boundingBox();
+      assert.ok(trainingBox && trainingBox.height>=44 && trainingBox.x>=-1 && trainingBox.x+trainingBox.width<=376,'training choice geometry');
+      assert.equal(await training.evaluate(el=>el.scrollWidth>el.clientWidth+2),false,'training choice overflow');
       const guide = page.locator('#xfit-gear-buying-guide-v1');
       await guide.waitFor({state:'visible',timeout:15000});
       assert.equal(await guide.count(),1);
