@@ -187,6 +187,8 @@ def build_document(catalog, base, sample):
         if not groups[kind]:
             continue
         guide_link = (' <a href="https://xfit.cz/' + guide + '/">Podrobný návod k výběru</a>.') if guide else ""
+        if kind in ("glove", "belt", "strap"):
+            guide_link = ' <a href="#xfit-strength-accessory-guide-v1">Podrobný průvodce velikostí a výběrem</a>.'
         parts += [
             '<h2 id="xfit-gear-' + kind + '">' + heading + ' – aktuální nabídky</h2>',
             '<p>' + caution + guide_link + '</p>',

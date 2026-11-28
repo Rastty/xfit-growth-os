@@ -2,7 +2,7 @@ import unittest
 from datetime import datetime, timezone
 from unittest.mock import patch
 from scripts.xfit_equipment_comparison import build_document
-from scripts.xfit_equipment_refresh import splice, segments, START, END, GUIDE_MARKER, GYM_MARKER, GYM_TARGET
+from scripts.xfit_equipment_refresh import splice, segments, START, END, GUIDE_MARKER, GYM_MARKER, GYM_TARGET, STRENGTH_MARKER
 from scripts.wp_publish import MARKER, PublishError
 from test_equipment_comparison import BASE, SAMPLE, catalog, item
 
@@ -36,7 +36,8 @@ class EquipmentRefreshTests(unittest.TestCase):
         upgraded = splice(old, body)
         self.assertEqual(upgraded.count(GUIDE_MARKER), 1)
         self.assertEqual(upgraded.count(GYM_MARKER), 1)
-        self.assertEqual(upgraded.count(GYM_TARGET), 1)
+        self.assertEqual(upgraded.count(GYM_TARGET), 2)
+        self.assertEqual(upgraded.count(STRENGTH_MARKER), 1)
         self.assertEqual(splice(upgraded, body), upgraded)
 
     def test_missing_duplicate_boundaries_or_unowned_source_fail(self):
