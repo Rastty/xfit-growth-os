@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
     paths:
-      - '.github/workflows/xfit-beginner-apparel-hub-hub.yml'
+      - '.github/workflows/xfit-beginner-apparel-hub.yml'
 permissions:
   contents: read
 concurrency:
