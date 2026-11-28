@@ -1,0 +1,64 @@
+name: XFIT Beginner Apparel Hub Onepost
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-beginner-apparel-hub-hub.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate existing release safeguards
+        run: python -m unittest discover -s tests -v
+      - name: Verify destinations and capture exact original
+        run: python -m scripts.xfit_beginner_apparel_hub snapshot
+      - name: Upload immutable original before possible POST
+        uses: actions/upload-artifact@v4
+        with:
+          name: beginner-apparel-hub-original
+          path: reports/backups/xfit-beginner-apparel-hub-20261128.json
+          retention-days: 90
+          if-no-files-found: error
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Preview revised mobile navigation before WP write
+        run: |
+          python - <<'PY'
+          from scripts.xfit_beginner_apparel_hub import V2_NAV, NEW_NAV
+          from pathlib import Path
+          Path("reports/beginner-apparel-hub-preview.html").write_text(V2_NAV + NEW_NAV, encoding="utf-8")
+          PY
+          node tests/beginner_apparel_hub_mobile.cjs preview
+      - name: Apply exact onepost navigation and prove public
+        run: python -m scripts.xfit_beginner_apparel_hub apply
+      - name: Verify actual mobile navigation
+        run: node tests/beginner_apparel_hub_mobile.cjs live
+      - name: Preserve mobile evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: beginner-apparel-hub-mobile
+          path: reports/browser-qa/beginner-apparel-hub-*.png
+          retention-days: 7
+          if-no-files-found: ignore
