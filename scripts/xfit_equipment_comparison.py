@@ -158,12 +158,35 @@ NAV_LABELS = {"mat": "Podložky", "band": "Odporové gumy", "ball": "Gymnastick�
               "massage": "Masážní sady", "glove": "Fitness rukavice", "belt": "Opasky", "strap": "Trhačky"}
 
 
+NAV_NEEDS = {
+    "mat": "Cvičení na zemi", "band": "Přidat odpor",
+    "ball": "Cviky s míčem", "massage": "Volitelné uvolnění",
+    "glove": "Kontakt dlaně s náčiním", "belt": "Opora při vybraných cvicích",
+    "strap": "Úchop při tahu",
+}
+
+
 def equipment_nav(groups):
-    links = ['<a href="#xfit-gear-'+kind+'" style="display:inline-flex;align-items:center;min-height:44px;box-sizing:border-box;padding:8px 12px;border:1px solid #cdded7;border-radius:8px;color:#115e59;font-weight:600;max-width:100%;overflow-wrap:anywhere;">'+NAV_LABELS[kind]+'</a>' for kind in GROUPS if groups.get(kind)]
-    return ('<nav '+NAV_MARKER+' aria-label="Aktuální kategorie vybavení" style="margin:12px 0 16px;">'
-            '<p><strong>Rychlý výběr podle potřeby</strong></p>'
-            '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;">'+''.join(links)+
-            '</div><p><a href="#xfit-gear-budget-v1" style="display:inline-block;min-height:44px;box-sizing:border-box;padding:12px 0;">Porovnat ceny a rozpočet včetně možnosti nic nekoupit</a></p></nav>')
+    links = []
+    for kind in GROUPS:
+        if not groups.get(kind):
+            continue
+        count = min(len(groups[kind]), GROUP_LIMITS.get(kind, 3))
+        count_text = "1 nabídka" if count == 1 else str(count) + " nabídky"
+        links.append(
+            '<a href="#xfit-gear-'+kind+'" data-xfit-gear-choice="'+kind+'" '
+            'style="display:flex;flex-direction:column;justify-content:space-between;min-width:0;min-height:96px;box-sizing:border-box;padding:10px 12px;border:1px solid #b9d1c8;border-radius:10px;background:#ffffff;color:#172d26;text-decoration:none;overflow-wrap:anywhere;line-height:1.35;">'
+            '<span><strong style="display:block;color:#115e59;">'+NAV_LABELS[kind]+'</strong>'
+            '<span style="display:block;font-size:.88em;color:#33453e;margin:3px 0 6px;">'+NAV_NEEDS[kind]+'</span></span>'
+            '<span style="display:block;font-size:.92em;color:#172d26;"><strong data-xfit-nav-price="true">od '+money(groups[kind][0]["price"])+'</strong>'
+            '<span style="display:block;font-size:.85em;color:#33453e;">'+count_text+' <span aria-hidden="true">→</span></span></span></a>'
+        )
+    return ('<nav '+NAV_MARKER+' aria-label="Aktuální kategorie vybavení" style="box-sizing:border-box;max-width:100%;margin:12px 0 16px;padding:12px;border:1px solid #b9d1c8;border-radius:12px;background:#f4f9f6;color:#172d26;">'
+            '<p style="margin:0 0 4px;"><strong>Vyberte podle toho, co vám chybí</strong></p>'
+            '<p style="font-size:.88em;color:#33453e;margin:0 0 10px;">Nejnižší katalogové ceny z jednoho obchodu, bez dopravy. Počet zobrazených nabídek, ne počet variant skladem.</p>'
+            '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr));gap:8px;max-width:100%;box-sizing:border-box;">'+''.join(links)+
+            '</div><p style="margin:10px 0 0;"><a href="#xfit-gear-budget-v1" style="display:block;min-height:44px;box-sizing:border-box;padding:10px 12px;border-radius:8px;background:#115e59;color:#ffffff;font-weight:700;text-decoration:none;line-height:1.4;">Porovnat rozpočet včetně 0 Kč <span aria-hidden="true">→</span></a></p></nav>')
+
 
 def budget_block(groups):
     mat, band = groups["mat"][0], groups["band"][0]
@@ -207,25 +230,27 @@ def build_document(catalog, base, sample):
             '<h2 id="xfit-gear-' + kind + '">' + heading + ' – aktuální nabídky</h2>',
             '<p>' + caution + guide_link + '</p>',
         ]
+        parts.append('<div data-xfit-offer-grid="'+kind+'" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:12px;max-width:100%;box-sizing:border-box;margin:12px 0 24px;">')
         for item in groups[kind][:GROUP_LIMITS.get(kind, 3)]:
             n += 1
             title = html.escape(item["title"])
             attr = html.escape(item["title"], quote=True)
             pic = ('<p><img src="' + html.escape(item["image"], quote=True) + '" alt="' + attr +
-                   '" loading="lazy" width="120" height="120" style="max-width:100%;object-fit:contain;" /></p>'
+                   '" loading="lazy" width="120" height="120" style="display:block;margin:0 auto;width:120px;height:120px;max-width:100%;object-fit:contain;" /></p>'
                    if item["image"] else "")
             parts.append(
                 '<article class="xfit-product-card" id="xfit-gear-offer-' + str(n) +
-                '" style="border:1px solid #dce5e8;border-radius:12px;padding:16px;margin:16px 0;overflow-wrap:anywhere;">'
-                '<h3>' + title + '</h3>' + pic +
-                '<p><strong>Cena nabídky: ' + money(item["price"]) + '</strong> (bez dopravy a poplatků).</p>'
+                '" style="display:flex;flex-direction:column;min-width:0;box-sizing:border-box;border:1px solid #b9d1c8;border-radius:12px;padding:12px;margin:0;overflow-wrap:anywhere;background:#ffffff;color:#172d26;">'
+                '<h3 style="font-size:1.05rem;line-height:1.35;margin:0 0 8px;color:#172d26;">' + title + '</h3>' + pic +
+                '<p style="margin:8px 0 4px;color:#115e59;"><strong style="font-size:1.35em;">Cena nabídky: ' + money(item["price"]) + '</strong><br><small style="color:#33453e;">Bez dopravy a poplatků.</small></p>'
                 '<p>' + delivery_note(item) + '</p>'
                 '<p><small>Partnerský odkaz · Xfit.cz může získat provizi · NaMaximum.cz · nová karta.</small></p>'
-                '<p><a href="' + html.escape(item["affiliate_url"], quote=True) +
+                '<p style="margin:auto 0 0;padding-top:8px;"><a href="' + html.escape(item["affiliate_url"], quote=True) +
                 '" rel="sponsored nofollow noopener noreferrer" target="_blank" aria-label="Ověřit variantu a cenu: ' + attr +
-                ' (nová karta)" style="display:inline-block;min-height:44px;box-sizing:border-box;padding:12px 16px;'
+                ' (nová karta)" style="display:block;min-height:44px;box-sizing:border-box;padding:12px 10px;text-align:center;text-decoration:none;line-height:1.4;'
                 'background-color:#116a70;color:#ffffff;border-radius:8px;font-weight:700;">Ověřit variantu a cenu</a></p></article>'
             )
+        parts.append('</div>')
     parts += [
         '<h2>Co zkontrolovat v obchodě před objednávkou</h2>',
         '<ol><li>Změřte místo, kde budete cvičit, a zvažte místo pro uložení vybavení.</li><li>U podložky zkontrolujte skutečné rozměry, materiál, stabilitu na konkrétním povrchu a pokyny pro údržbu.</li><li>U gumy zkontrolujte tvar, délku, materiál, deklarovaný rozsah odporu a povolený způsob uchycení. Neodvozujte odpor z barvy ani z ceny.</li><li>Ověřte přesný počet kusů v balení, konečnou cenu v košíku, dopravu a podmínky vrácení. Pokud prodejce důležité údaje neuvádí, výběr odložte.</li><li>Používejte vybavení pouze v souladu s návodem výrobce; poškozené součásti nepoužívejte.</li></ol>',

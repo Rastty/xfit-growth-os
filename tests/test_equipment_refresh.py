@@ -28,7 +28,10 @@ class EquipmentRefreshTests(unittest.TestCase):
         (od1, od2), (ob1, ob2) = segments(old)
         (nd1, nd2), (nb1, nb2) = segments(changed)
         self.assertEqual(old[:od1], changed[:nd1])
-        self.assertEqual(old[od2:ob1], changed[nd2:nb1])
+        # The owned category nav carries the same price as the budget.
+        nav_pattern = r'<nav '+NAV_MARKER+r'[^>]*>.*?</nav>'
+        self.assertEqual(re.sub(nav_pattern, "", old[od2:ob1], flags=re.S),
+                         re.sub(nav_pattern, "", changed[nd2:nb1], flags=re.S))
         self.assertEqual(old[ob2:], changed[nb2:])
 
     def test_same_catalog_same_day_is_noop(self):
