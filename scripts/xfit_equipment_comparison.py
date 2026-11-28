@@ -130,6 +130,11 @@ BUDGET_MARKER = 'id="xfit-gear-budget-v1"'
 def budget_block(groups):
     mat, band = groups["mat"][0], groups["band"][0]
     total = mat["price"] + band["price"]
+    optional = "".join(
+        '<p><a href="#xfit-gear-'+kind+'" style="display:block;min-height:44px;box-sizing:border-box;padding:10px 0">'
+        '<strong>'+("Gymnastický míč" if kind=="ball" else "Masážní sada")+': od '+money(groups[kind][0]["price"])+'</strong> – volitelná pomůcka</a></p>'
+        for kind in OPTIONAL_GROUPS if groups.get(kind)
+    )
     return ('<section '+BUDGET_MARKER+' aria-label="Rozpočet na domácí cvičení" style="border:1px solid #cdded7;border-radius:12px;padding:14px;margin:16px 0;background:#f6faf8;overflow-wrap:anywhere">'
         '<h2>Kolik stojí základní vybavení na domácí cvičení?</h2>'
         '<p>Vyberte jen to, co vám chybí. Níže jsou nejnižší ceny způsobilých katalogových nabídek v jednotlivých skupinách, nikoli doporučení kvality.</p>'
