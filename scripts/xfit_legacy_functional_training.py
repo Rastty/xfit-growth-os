@@ -73,7 +73,7 @@ def revised(row):
         elif (p.hostname or "").removeprefix("www.") in ("youtube.com","youtu.be","youtube-nocookie.com") and VIDEO in (p.path+"?"+p.query):
             continue
         elif ((p.hostname or "").removeprefix("www."),p.path.rstrip("/") or "/") in OLD_LINKS and p.scheme in ("http","https") and not p.username and not p.password and not p.port:
-            removed.append(((p.hostname or "").removeprefix("www."),p.path or "/"))
+            removed.append(((p.hostname or "").removeprefix("www."),p.path.rstrip("/") or "/"))
         else:
             raise PublishError("Unreviewed legacy link")
     if len(removed)!=3 or set(removed)!=OLD_LINKS:
