@@ -90,9 +90,16 @@ def build_document(catalog, base, sample):
     from scripts.xfit_select import MAX_FULL_CATALOG_SCAN
     if len(items) > MAX_FULL_CATALOG_SCAN:
         raise PublishError("Unexpected nut butter catalog inventory")
+    # Do not let filtering hide contradictory catalog identities.
+    rejected = [row for row in items
+                if _POWDER.search(folded(row.get("title") or ""))]
+    conflict_keys = {(key, str(row[key])) for row in rejected
+                     for key in ("id", "ean", "source_url") if row.get(key)}
     filtered = dict(catalog, products=[
         row for row in items
         if not _POWDER.search(folded(row.get("title") or ""))
+        and not any((key, str(row[key])) in conflict_keys
+                    for key in ("id", "ean", "source_url") if row.get(key))
     ])
     doc = base_document(filtered, base, sample)
     # This paragraph belongs inside the generated region so that the daily
