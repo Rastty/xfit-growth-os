@@ -41,7 +41,7 @@ jobs:
       - name: Validate campaign sample without clicks
         run: python scripts/xfit_affil_deeplink.py
       - name: Prepare exact new commercial block
-        run: python -m scripts.xfit_nut_butter_comparison prepare
+        run: python -m scripts.xfit_nut_butter_refresh prepare
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
