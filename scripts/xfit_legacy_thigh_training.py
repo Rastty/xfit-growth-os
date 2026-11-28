@@ -5,10 +5,10 @@ import json
 import re
 import sys
 from pathlib import Path
-from urllib.parse import urlencode, urlsplit, urljoin, parse_qs
+from urllib.parse import urlencode, urlsplit, urljoin, parse_qs, unquote, quote, urlunsplit
 from scripts.wp_publish import normalized_base, wp_request, PublishError, verify_public, normalize_visible, article_visible, editorial_links
 from scripts.xfit_legacy_mat_release import stable_metadata
-from scripts.xfit_legacy_fitness_fabric_guide import Images, media_url, local_image
+from scripts.xfit_legacy_fitness_fabric_guide import Images, media_url as strict_media_url, local_image
 from scripts.xfit_coupon_cleanup import QUARANTINE_IDS
 from scripts.xfit_editorial_gate import check_document
 from scripts.xfit_equipment_refresh import read_source, URL as TARGET, TITLE as TARGET_TITLE
@@ -24,6 +24,28 @@ ANCHORS = ("Dřepy se zátěží", "Lavička se zdvíháním kolene", "Zakopáv�
 OLD_VIDEOS = {"HoJefnGfp2c","AJ7j6PYnY4E","7SMzPn4LGjQ","M3EnmNQEam0","_gXD57Tpanc"}
 GLUTE = "https://xfit.cz/ucinne-cviky-pro-fakt-dobry-zadek/"
 PLACEHOLDER = "<!-- XFIT_ORIGINAL_MEDIA -->"
+
+def media_url(value):
+    # Old WordPress sources can contain relative or unescaped Czech filenames.
+    # Canonicalize only safe same-site image paths, never accept other hosts,
+    # queries, fragments, credentials, ports, nested paths or traversal.
+    dest = urljoin(URL, value)
+    try:
+        return strict_media_url(dest)
+    except PublishError:
+        p = urlsplit(dest)
+        decoded = unquote(p.path)
+        match = re.fullmatch(r"/wp-content/uploads/[0-9]{4}/[0-9]{2}/([^/]+)", decoded)
+        if (local_image(dest) and match and ".." not in decoded
+                and re.fullmatch(r"[\w .()-]+\.(?:jpg|jpeg|png|webp|gif)", match.group(1), re.I)
+                and not match.group(1).startswith(".")):
+            return urlunsplit(("https", p.hostname, quote(decoded, safe="/-._"), "", ""))
+        # Bounded diagnostic, no queries, credentials or arbitrary raw HTML.
+        safe_host = p.hostname if p.hostname in ("xfit.cz","www.xfit.cz") else "external-or-inline"
+        safe_path = p.path[:220] if safe_host != "external-or-inline" and p.path.startswith("/wp-content/uploads/") else "(not a local upload)"
+        print(json.dumps({"state":"THIGH_MEDIA_REVIEW_REQUIRED","host":safe_host,"path":safe_path},ensure_ascii=False))
+        raise PublishError("Unrecognized original media path")
+
 
 def sha(value):
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
