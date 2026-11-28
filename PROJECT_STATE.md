@@ -2,6 +2,10 @@
 
 **Cíl:** Důvěryhodný český fitness, výživový a suplementový poradce: relevantní návštěva → poctivé rozhodnutí (i nic nekoupit) → ověřená nabídka → skutečně schválená a vyplacená affiliate provize. PR, CI ani merge samy nejsou produkčním nasazením ani ziskem.
 
+## HOTOVO / OVĚŘENO — TURBO 28.11. (silové příslušenství)
+
+- **Fitness rukavice, opasky a trhačky:** [PR #476](https://github.com/Rastty/xfit-growth-os/pull/476) MERGED `80c01a2a50bbcafa6de75e95e337331bacb263f0`, CI 46139367966 SUCCESS. Tři nové volitelné skupiny v existujícím WP #26154, nejvýše dvě způsobilé produktové rodiny v každé, přesná identita z katalogu, kritéria výběru a dynamický rozpočet, beze změny původního součtu podložky a gumy. Bez nové URL. [Release 46139502261](https://github.com/Rastty/xfit-growth-os/actions/runs/46139502261) spuštěn; zatím bez finálního receipt, nezapočítávat do nasazení ani karet. Poslední potvrzené celkové počty zůstávají 47 karet / 7 komerčních stránek; GSC/GA4/Affial a druhý schválený prodejce neověřeny.
+
 ## HOTOVO / OVĚŘENO — TURBO 28.11. (rozšíření domácího fitness a regenerace)
 
 - **Dvě nové produktové skupiny živě:** [PR #474](https://github.com/Rastty/xfit-growth-os/pull/474) MERGED `d3408caba07095e42327d5073c5f740c09c5d554`, CI 46138570924 SUCCESS, [release 46138615861](https://github.com/Rastty/xfit-growth-os/actions/runs/46138615861) SUCCESS. Čerstvý ověřený katalog: mat 1, band 1, ball 1, massage 1; WP #26154 má 4 produktové karty místo 2, dvě nové volitelné skupiny s cenou v rozpočtu a samostatnými kritérii výběru. 1 content-only POST, immutable backup + exact public readback + 375px mobile PASS, 0 merchant clicks. Původní součet podložka+guma beze změny. Tím dořešena i předchozí neúspěšná mobilní kontrola. Celkem 47 karet napříč 7 komerčními stránkami podle posledních jednotlivých ověřených release počtů, nikoli nová souběžná inventura. Skutečný sklad a provize neověřeny.
