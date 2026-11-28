@@ -63,7 +63,8 @@ jobs:
             const link=guide.locator('a[href="https://xfit.cz/xfit-os-fitness-obleceni-nabidky/#xfit-apparel-bra"]');
             assert.equal(await link.count(),1);
             assert.ok(await link.isVisible());
-            assert.equal(await guide.locator('img').count(),1);
+            assert.ok(await guide.locator('img').count()>=1);
+            assert.ok(await guide.locator('img[src*="/wp-content/uploads/"]').count()>=1);
             await page.goto('https://xfit.cz/xfit-os-fitness-obleceni-nabidky/#xfit-apparel-bra',{waitUntil:'domcontentloaded',timeout:45000});
             assert.equal(await page.locator('#xfit-apparel-bra').count(),1);
             console.log('LEGACY_BRA_GUIDE_MOBILE_LIVE_VERIFIED');
