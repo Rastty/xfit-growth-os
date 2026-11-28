@@ -35,3 +35,16 @@ class ApparelTests(unittest.TestCase):
         sizes=size_shortlist(eligible_variants(data,BASE,SAMPLE))
         self.assertEqual(sizes["shirt"]["S"]["id"],"2")
         self.assertNotIn("M",sizes["shirt"])
+
+    def test_sports_bra_requires_exact_category_and_product_type(self):
+        category="Sportovní podprsenky a topy"
+        bra=item(21,"Sportovní podprsenka A S",399,category=category)
+        self.assertEqual(apparel_kind(bra),"bra")
+        self.assertIsNone(apparel_kind(item(22,"Fitness top S",199,category=category)))
+        self.assertIsNone(apparel_kind(item(23,"Sportovní podprsenka S",199,category="Pánská trička")))
+        self.assertIsNone(apparel_kind(item(24,"Sportovní podprsenka bez velikosti",199,category=category)))
+        doc=build_document(catalog(bra,item(25,"Sportovní podprsenka B M",599,category=category),
+             item(26,"Fitness legíny C S",399,category="Fitness legíny")),BASE,SAMPLE)
+        self.assertIn('id="xfit-apparel-bra"',doc["content"])
+        self.assertIn('id="xfit-size-picker-bra"',doc["content"])
+        self.assertEqual(check_document(doc)["product_cards"],3)
