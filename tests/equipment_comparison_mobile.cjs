@@ -15,7 +15,7 @@ async function main() {
     const budget = page.locator('#xfit-gear-budget-v1');
     assert.equal(await budget.count(),1);
     const norm = text => text.replace(/\s+/g,' ').replace(/[–—−]/g,'-').trim();
-    const expectedBudget = norm(await budget.textContent());
+    const expectedBudget = (await budget.locator('h2,p').allTextContents()).map(norm).filter(Boolean);
     const expectedPrices = await budget.locator('strong').evaluateAll(els=>els.map(e=>e.textContent.replace(/\s+/g,' ').replace(/[–—−]/g,'-').trim()));
     if(phase === 'live'){
       await page.setExtraHTTPHeaders({'Cache-Control':'no-cache','Pragma':'no-cache'});
@@ -36,7 +36,7 @@ async function main() {
       assert.equal(overflow,false,'Card horizontal overflow');
     }
     assert.equal(await budget.count(),1);
-    assert.equal(norm(await budget.textContent()),expectedBudget,'budget text differs after rendering');
+    assert.deepEqual((await budget.locator('h2,p').allTextContents()).map(norm).filter(Boolean),expectedBudget,'budget text differs after rendering');
     assert.deepEqual(await budget.locator('strong').evaluateAll(els=>els.map(e=>e.textContent.replace(/\s+/g,' ').replace(/[–—−]/g,'-').trim())),expectedPrices,'budget prices differ');
     assert.equal(await budget.evaluate(el=>el.scrollWidth>el.clientWidth+2),false,'budget overflow');
     for(const id of ['xfit-gear-mat','xfit-gear-band']){
