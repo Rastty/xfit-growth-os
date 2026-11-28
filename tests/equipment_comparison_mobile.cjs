@@ -19,7 +19,7 @@ async function main() {
     const expectedPrices = await budget.locator('strong').evaluateAll(els=>els.map(e=>e.textContent.replace(/\s+/g,' ').replace(/[–—−]/g,'-').trim()));
     if(phase === 'live'){
       await page.setExtraHTTPHeaders({'Cache-Control':'no-cache','Pragma':'no-cache'});
-      await page.goto(URL,{waitUntil:'domcontentloaded',timeout:45000});
+      await page.goto(URL,{waitUntil:'domcontentloaded',timeout:60000});
       await budget.waitFor({state:'visible',timeout:15000});
       assert.equal(new global.URL(page.url()).pathname, new global.URL(URL).pathname);
     }
@@ -48,9 +48,13 @@ async function main() {
     }
     if(phase === 'live'){
       const guide = page.locator('#xfit-gear-buying-guide-v1');
+      await guide.waitFor({state:'visible',timeout:15000});
       assert.equal(await guide.count(),1);
       assert.equal(await guide.isVisible(),true);
       assert.equal(await guide.locator('h4').count(),4);
+      const gymLink=guide.locator('a[href="https://xfit.cz/domaci-posilovny-a-workout-hriste/"]');
+      assert.equal(await gymLink.count(),1);
+      assert.equal(await gymLink.isVisible(),true);
       assert.equal(await guide.evaluate(el=>el.scrollWidth>el.clientWidth+2),false,'guide overflow');
     }
     fs.mkdirSync('reports/browser-qa',{recursive:true});
