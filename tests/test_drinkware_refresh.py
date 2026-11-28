@@ -17,6 +17,7 @@ def source(price=249):
 class DrinkwareRefreshTests(unittest.TestCase):
     def test_only_owned_dynamic_sections_change_and_editorial_html_survives(self):
         old = MARKER + "\n" + source()
+        old = splice(old, source())
         old = old.replace(END, END + '\n<p>Redakční doplněk beze změny.</p>')
         new = source(259)
         changed = splice(old, new)
@@ -32,7 +33,9 @@ class DrinkwareRefreshTests(unittest.TestCase):
     def test_same_catalog_same_day_is_noop(self):
         body = source()
         old = MARKER + "\n" + body
-        self.assertEqual(splice(old, body), old)
+        upgraded = splice(old, body)
+        self.assertIn('xfit-drinkware-buying-guide-v1', upgraded)
+        self.assertEqual(splice(upgraded, body), upgraded)
 
     def test_missing_duplicate_boundaries_or_unowned_source_fail(self):
         old = MARKER + "\n" + source()
