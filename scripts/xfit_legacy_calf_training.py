@@ -15,6 +15,7 @@ from scripts.xfit_public_coupon_watch import probe
 from scripts.xfit_editorial_gate import check_document
 from scripts.xfit_equipment_refresh import read_source, URL as TARGET, TITLE as TARGET_TITLE
 
+POST_ID = 13285
 SLUG = "5-nejucinnejsich-cviku-pro-posileni-lytkovych-svalu"
 URL = "https://xfit.cz/" + SLUG + "/"
 TITLE = "5 nejúčinnějších cviků pro posílení lýtkových svalů"
@@ -26,6 +27,8 @@ ANCHORS = ("Kyvadlový běh po špičkách", "Cvičení na lýtka s činkou", "C
 OLD_LINKS = {("www.mayoclinic.org","/healthy-lifestyle/fitness/expert-answers/calf-muscle-exercises/faq-20057873"),
              ("cs.wikipedia.org","/wiki/Lýtkový_sval")}
 PLACEHOLDER = "<!-- XFIT_ORIGINAL_MEDIA -->"
+VIDEO = "https://www.youtube.com/watch?v=hY2fa6Q98-k"
+CATEGORY = "https://xfit.cz/category/kulturistika-fitness/trenink/"
 
 def media_url(value):
     # Old WordPress sources can contain relative or unescaped Czech filenames.
@@ -57,7 +60,7 @@ def read():
     if not isinstance(rows,list) or len(rows)!=1:
         raise PublishError("Expected one exact published source")
     row=rows[0]
-    if (type(row.get("id")) is not int or row["id"] in QUARANTINE_IDS or row.get("slug")!=SLUG
+    if (type(row.get("id")) is not int or row["id"]!=POST_ID or row["id"] in QUARANTINE_IDS or row.get("slug")!=SLUG
             or row.get("link")!=URL or row.get("status")!="publish"
             or normalize_visible(row.get("title",{}).get("raw",""))!=normalize_visible(TITLE)
             or not isinstance(row.get("modified_gmt"),str)):
@@ -75,12 +78,35 @@ def revised(row):
     visible,_=article_visible(raw)
     if any(normalize_visible(a) not in visible for a in ANCHORS):
         raise PublishError("Publicly reviewed old anchors missing")
+    # Exact GET-only review #486 identified one unrelated keto CTA, one
+    # specific historical YouTube iframe, and the original category link.
+    # No obsolete 5NM2022 coupon was present; any later occurrence blocks.
     raw,coupons=stripped(raw)
-    if coupons>8 or "5nm2022" in raw.casefold() or re.search(r"<\s*(?:iframe|video|audio|script|form|object|embed)\b|\[(?:gallery|embed|su_button)\b",raw,re.I):
-        raise PublishError("Unreviewed coupon or embedded media")
+    if coupons or "5nm2022" in raw.casefold():
+        raise PublishError("Unexpected obsolete coupon")
+    buttons=list(re.finditer(r"\[su_button\b[^\]]{0,1200}\](.*?)\[/su_button\]",raw,re.I|re.S))
+    if len(buttons)!=1 or len(re.findall(r"\[/?su_button\b",raw,re.I))!=2:
+        raise PublishError("Reviewed keto button count differs")
+    button=buttons[0]
+    if "top keto dieta v akci" not in normalize_visible(button.group(0)):
+        raise PublishError("Reviewed keto button label differs")
+    # Require the known local keto destination, not any other CTA.
+    keto_links=[urlsplit(urljoin(URL,u)) for u in editorial_links(raw)]
+    if sum(p.hostname=="xfit.cz" and p.path.rstrip("/")=="/ketomix" and not p.query and not p.fragment for p in keto_links)!=1:
+        raise PublishError("Reviewed keto destination differs")
+    frames=list(re.finditer(r'<iframe\b[^>]*\bsrc\s*=\s*["\x27]([^"\x27]+)["\x27][^>]*>\s*</iframe\s*>',raw,re.I|re.S))
+    if len(frames)!=1 or len(re.findall(r"<iframe\b",raw,re.I))!=1:
+        raise PublishError("Reviewed video count differs")
+    video=urlsplit(frames[0].group(1))
+    if (video.scheme not in ("http","https") or video.hostname!="www.youtube.com" or video.path!="/embed/hY2fa6Q98-k"
+            or video.username or video.password or video.port):
+        raise PublishError("Reviewed video destination differs")
+    if re.search(r"<\s*(?:video|audio|script|form|object|embed)\b|\[(?:gallery|embed)\b",raw,re.I):
+        raise PublishError("Unreviewed embedded media")
     inventory=[]
     main=[]
     removed=[]
+    kept_category=0
     for href in editorial_links(raw):
         if href in ("","#"):continue
         dest=urljoin(URL,href)
@@ -91,9 +117,13 @@ def revised(row):
         elif (p.scheme in ("https","http") and not p.username and not p.password and not p.port
               and not p.query and not p.fragment and (p.hostname,unquote(p.path).rstrip("/")) in OLD_LINKS):
             removed.append((p.hostname,unquote(p.path).rstrip("/")))
+        elif (p.hostname=="xfit.cz" and p.path.rstrip("/")=="/ketomix" and not p.query and not p.fragment and not p.username and not p.password and not p.port):
+            removed.append(("xfit.cz","/ketomix"))
+        elif (p.hostname=="xfit.cz" and p.path.rstrip("/")=="/category/kulturistika-fitness/trenink" and not p.query and not p.fragment and not p.username and not p.password and not p.port):
+            kept_category+=1
         else:
             raise PublishError("Unreviewed legacy link")
-    if len(removed)!=2 or set(removed)!=OLD_LINKS:
+    if len(removed)!=3 or set(removed)!=OLD_LINKS|{("xfit.cz","/ketomix")} or kept_category!=1:
         raise PublishError("Reviewed old citation inventory differs")
     for source in (raw,rendered):
         parser=Images();parser.feed(source)
@@ -112,11 +142,12 @@ def revised(row):
     parts=['<p><img src="'+html.escape(u,quote=True)+'" alt="Původní ilustrační fotografie k posilování lýtek" loading="lazy" style="max-width:100%;height:auto;" /></p>' for u in main]
     extras=[u for u in inventory if u not in main]
     if extras:parts.append('<details><summary>Původní obrazové přílohy</summary><ul>'+''.join('<li><a href="'+html.escape(u,quote=True)+'">Obrazová příloha '+str(i+1)+'</a></li>' for i,u in enumerate(extras))+'</ul></details>')
+    parts.append('<p><small>Původní ilustrační video: <a href="'+VIDEO+'">The Muscles Song</a>. Historický odkaz, nikoli instruktáž výponů. Další články: <a href="'+CATEGORY+'">kategorie trénink</a>.</small></p>')
     body=BODY.read_text(encoding="utf-8").strip()
     if body.count(MARKER)!=1 or body.count(PLACEHOLDER)!=1:raise PublishError("Reviewed revision missing")
     body=body.replace(PLACEHOLDER,"\n".join(parts))
     proof=check_document({"content":body},commercial=False)
-    if proof["word_count"]<1200 or editorial_links(body).count(TARGET)!=1 or not set(inventory)<=set(editorial_links(body))|set(main):
+    if proof["word_count"]<1200 or editorial_links(body).count(TARGET)!=1 or editorial_links(body).count(VIDEO)!=1 or editorial_links(body).count(CATEGORY)!=1 or not set(inventory)<=set(editorial_links(body))|set(main):
         raise PublishError("Editorial or media preservation guard failed")
     return body,proof["word_count"],len(removed),coupons
 
