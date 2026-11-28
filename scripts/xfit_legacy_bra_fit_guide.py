@@ -75,6 +75,8 @@ def revised(raw, rendered):
         if p.scheme not in ("http","https") or p.username or p.password or p.port:
             raise PublishError("Unreviewed legacy link")
         if local_image(href):
+            if not REVIEWED_PATH.fullmatch(p.path):
+                raise PublishError("Unreviewed linked local image")
             continue
         old.append((p.hostname or "").removeprefix("www."))
     if len(old)!=5 or set(old)!=OLD_HOSTS:
