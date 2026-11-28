@@ -40,7 +40,9 @@ class ApparelTests(unittest.TestCase):
         category="Sportovní podprsenky a topy"
         bra=item(21,"Sportovní podprsenka A S",399,category=category)
         self.assertEqual(apparel_kind(bra),"bra")
-        self.assertIsNone(apparel_kind(item(22,"Fitness top S",199,category=category)))
+        self.assertEqual(apparel_kind(item(22,"Fitness top S",199,category=category)),"top")
+        self.assertIsNone(apparel_kind(item(27,"Sportovní podprsenka fitness top S",199,category=category)))
+        self.assertIsNone(apparel_kind(item(28,"Fitness top S",199,category="Pánská trička")))
         self.assertIsNone(apparel_kind(item(23,"Sportovní podprsenka S",199,category="Pánská trička")))
         self.assertIsNone(apparel_kind(item(24,"Sportovní podprsenka bez velikosti",199,category=category)))
         doc=build_document(catalog(bra,item(25,"Sportovní podprsenka B M",599,category=category),
