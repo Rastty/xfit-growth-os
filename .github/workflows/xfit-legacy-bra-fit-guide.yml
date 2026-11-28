@@ -1,0 +1,69 @@
+name: XFIT Legacy Bra Fit Guide
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-legacy-bra-fit-guide.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate existing release safeguards
+        run: python -m unittest discover -s tests -v
+      - name: Capture reviewed exact existing article and destination
+        run: python -m scripts.xfit_legacy_bra_fit_guide snapshot
+      - name: Immutable original
+        uses: actions/upload-artifact@v4
+        with:
+          name: legacy-bra-original
+          path: reports/backups/xfit-legacy-bra-original.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Publish reviewed revision and verify exact live body
+        run: python -m scripts.xfit_legacy_bra_fit_guide apply
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Verify live mobile guide and exact internal target
+        run: |
+          node - <<'JS'
+          const {chromium}=require('playwright');
+          const assert=require('node:assert/strict');
+          (async()=>{const browser=await chromium.launch({headless:true});try{
+            const page=await browser.newPage({viewport:{width:375,height:812}});
+            await page.setExtraHTTPHeaders({'Cache-Control':'no-cache','Pragma':'no-cache'});
+            await page.goto('https://xfit.cz/jak-na-vyber-podprsenky/',{waitUntil:'domcontentloaded',timeout:45000});
+            const guide=page.locator('#xfit-bra-fit-guide-v1');
+            assert.equal(await guide.count(),1);
+            assert.ok(await guide.locator('h2').count()>=5);
+            assert.ok((await guide.innerText()).split(/\s+/).length>=800);
+            assert.equal(await guide.evaluate(el=>el.scrollWidth>el.clientWidth+2),false);
+            const link=guide.locator('a[href="https://xfit.cz/xfit-os-fitness-obleceni-nabidky/#xfit-apparel-bra"]');
+            assert.equal(await link.count(),1);
+            assert.ok(await link.isVisible());
+            assert.equal(await guide.locator('img').count(),1);
+            await page.goto('https://xfit.cz/xfit-os-fitness-obleceni-nabidky/#xfit-apparel-bra',{waitUntil:'domcontentloaded',timeout:45000});
+            assert.equal(await page.locator('#xfit-apparel-bra').count(),1);
+            console.log('LEGACY_BRA_GUIDE_MOBILE_LIVE_VERIFIED');
+          }finally{await browser.close()}})().catch(()=>process.exitCode=2);
+          JS
