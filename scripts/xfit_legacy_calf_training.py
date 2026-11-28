@@ -29,6 +29,12 @@ OLD_LINKS = {("www.mayoclinic.org","/healthy-lifestyle/fitness/expert-answers/ca
 PLACEHOLDER = "<!-- XFIT_ORIGINAL_MEDIA -->"
 VIDEO = "https://www.youtube.com/watch?v=hY2fa6Q98-k"
 CATEGORY = "https://xfit.cz/category/kulturistika-fitness/trenink/"
+BANNER_PATH = "/wp-content/uploads/2023/03/Blue-and-Yellow-Modern-Best-Deal-Fashion-Sale-Email-Header.png"
+REVIEWED_PHOTOS = {
+    "/wp-content/uploads/2023/04/scott-webb-5IsdIqwwNP4-unsplash.jpg",
+    "/wp-content/uploads/2023/04/alonso-reyes-0HlI76m4jxU-unsplash.jpg",
+    "/wp-content/uploads/2023/04/gabin-vallet-J154nEkpzlQ-unsplash.jpg",
+}
 
 def media_url(value):
     # Old WordPress sources can contain relative or unescaped Czech filenames.
@@ -128,7 +134,15 @@ def revised(row):
     for source in (raw,rendered):
         parser=Images();parser.feed(source)
         if len(parser.images)>12:raise PublishError("Too many original images")
+        banners=0
         for img in parser.images:
+            src=urlsplit(urljoin(URL,img.get("src","")))
+            if (src.scheme in ("https","http") and src.hostname=="dokonala-zena.cz"
+                    and src.path==BANNER_PATH and not src.query and not src.fragment
+                    and not src.username and not src.password and not src.port
+                    and not any(img.get(k) for k in ("data-src","data-lazy-src","srcset","data-srcset","data-lazy-srcset"))):
+                banners+=1
+                continue
             urls=[media_url(img[k]) for k in ("src","data-src","data-lazy-src") if img.get(k)]
             if not urls:raise PublishError("Missing original image source")
             for key in ("srcset","data-srcset","data-lazy-srcset"):
@@ -137,7 +151,10 @@ def revised(row):
             for u in urls:
                 if u not in inventory:inventory.append(u)
             if source==rendered and urls[0] not in main:main.append(urls[0])
-    if len(inventory)>40:raise PublishError("Too many original media destinations")
+        if banners!=1:
+            raise PublishError("Reviewed external promotional banner count differs")
+    if len(inventory)>40 or not REVIEWED_PHOTOS<={urlsplit(u).path for u in inventory}:
+        raise PublishError("Reviewed local media missing or inventory too large")
     if inventory and not main:main=[inventory[0]]
     parts=['<p><img src="'+html.escape(u,quote=True)+'" alt="Původní ilustrační fotografie k posilování lýtek" loading="lazy" style="max-width:100%;height:auto;" /></p>' for u in main]
     extras=[u for u in inventory if u not in main]
