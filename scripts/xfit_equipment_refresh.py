@@ -56,7 +56,7 @@ def segments(body):
             raise PublishError("Equipment budget boundary drifted")
         begin = budget_begin
     block = body[begin:end]
-    if not 2 <= block.count('class="xfit-product-card"') <= 6 or not 2 <= block.count('rel="sponsored nofollow noopener noreferrer"') <= 6:
+    if not 2 <= block.count('class="xfit-product-card"') <= 8 or not 2 <= block.count('rel="sponsored nofollow noopener noreferrer"') <= 8:
         raise PublishError("Unexpected equipment generated card structure")
     return dates[0].span(), (begin, end)
 
