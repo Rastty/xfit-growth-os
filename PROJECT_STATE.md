@@ -2,6 +2,10 @@
 
 **Cíl:** Důvěryhodný český fitness, výživový a suplementový poradce: relevantní návštěva → poctivé rozhodnutí (i nic nekoupit) → ověřená nabídka → skutečně schválená a vyplacená affiliate provize. PR, CI ani merge samy nejsou produkčním nasazením ani ziskem.
 
+## HOTOVO / OVĚŘENO — TURBO 28.11. (domácí vybavení)
+
+- **Rozšířený nákupní poradce:** [PR #469](https://github.com/Rastty/xfit-growth-os/pull/469) MERGED `4941fb673f77ccc696e1687b4cac31a97b83bc28`, [CI 46133814386](https://github.com/Rastty/xfit-growth-os/actions/runs/46133814386) SUCCESS. WP #26154, 760 slov nového redakčního průvodce: prostor, trénink, celkové náklady, nákupní checklist, 4 FAQ. Stávající denní katalogový writer, původní dynamický rozpočet a karty zachovány. [Release 46133852583](https://github.com/Rastty/xfit-growth-os/actions/runs/46133852583): immutable backup a krok authenticated/public proof SUCCESS, mobile dosud completed; přesný receipt z logu zatím neověřen. 0 nových URL. Další priorita: unikátní archivní záměr domácí posilovny / workout a návštěvnická cesta do existujícího poradce; druhý prodejce a GSC/GA4/Affial ekonomika zůstávají neověřeny. #468 ponechán samostatnému autorovi.
+
 ## HOTOVO / OVĚŘENO — TURBO 28.11. (kvalita archivního obsahu a další nabídky)
 
 - **Dokončen starý článek o výběru podprsenky:** [PR #463](https://github.com/Rastty/xfit-growth-os/pull/463) MERGED `af6f08b5c26e071c1d735fd200d08767597bb2ba`, [release 46128347998](https://github.com/Rastty/xfit-growth-os/actions/runs/46128347998) SUCCESS. WP #748, [původní URL](https://xfit.cz/jak-na-vyber-podprsenky/), 1066 slov nového průvodce, měření/střih/aktivita/FAQ a přímý odkaz na sportovní podprsenky. Zdrojově ověřeno University of Portsmouth včetně UEFA 2026; zachovány všechny původní lokální mediální destinace a uložená metadata, odstraněno 5 starých externích odkazů, immutable backup + 1 content-only POST, exact source/public + 375px mobile PASS. Blokace #461/#462 vyřešena bez opakovaného POST.
