@@ -41,5 +41,21 @@ jobs:
           shortcodes=Counter(re.findall(r"\[/?([A-Za-z][A-Za-z0-9_-]*)\b",clean))
           tags=Counter(re.findall(r"<\s*(iframe|video|audio|script|form|object|embed)\b",clean,re.I))
           frames=[safe(u) for u in re.findall(r'<iframe\b[^>]*\bsrc\s*=\s*["\x27]([^"\x27]+)["\x27]',clean,re.I)]
+          from scripts.xfit_legacy_fitness_fabric_guide import Images
+          def image_info(source):
+              parser=Images();parser.feed(source)
+              result=[]
+              for img in parser.images:
+                  fields={}
+                  for k in ("src","data-src","data-lazy-src","srcset","data-srcset","data-lazy-srcset"):
+                      if not img.get(k):continue
+                      u=img[k]
+                      if u.startswith("data:"):
+                          fields[k]={"scheme":"data","type":u[5:].split(";",1)[0].split(",",1)[0],"chars":len(u)}
+                      else:
+                          fields[k]=[safe(v.strip().split()[0]) for v in u.split(",") if v.strip()] if "srcset" in k else safe(u)
+                  result.append(fields)
+              return result
+          print(json.dumps({"state":"CALF_IMAGE_REVIEW","raw":image_info(raw),"rendered":image_info(row["content"]["rendered"]),"wordpress_writes":0},ensure_ascii=False))
           print(json.dumps({"state":"CALF_SOURCE_REVIEW","id":row["id"],"known_coupon_count":n,"residual_old_coupon": "5nm2022" in clean.casefold(),"shortcodes":dict(shortcodes),"embedded_tags":dict(tags),"frames":frames,"link_destinations":links,"wordpress_writes":0},ensure_ascii=False))
           PY
