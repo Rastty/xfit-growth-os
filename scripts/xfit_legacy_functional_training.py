@@ -1,4 +1,4 @@
-"""One reviewed legacy home gym/workout article, source-bound native release."""
+"""One reviewed legacy functional training article, source-bound native release."""
 import hashlib
 import html
 import json
@@ -21,7 +21,7 @@ BODY = Path("content/revisions/legacy-functional-training.html")
 BACKUP = Path("reports/backups/xfit-legacy-functional-training-original.json")
 FIELDS = "id,slug,status,link,title,content,excerpt,categories,tags,sticky,featured_media,modified_gmt"
 ANCHORS = ("Funkční trénink nabízí", "Funkční kruhový trénink", "kooperaci nervového a svalového systému", "kratší tréninková jednotka", "volnokladkových pomůckách")
-OLD_LINKS = {("hammerstrength.cz","/funkcni-kruhovy-trenink"), ("hammerstrength.cz","/"), ("fittyn.cz","/neni-cinka-jako-cinka-slyseli-jste-o-kettlebell/")}
+OLD_LINKS = {("hammerstrength.cz","/funkcni-kruhovy-trenink"), ("hammerstrength.cz","/"), ("fittyn.cz","/neni-cinka-jako-cinka-slyseli-jste-o-kettlebell")}
 VIDEO = "sUa1KynaPgU"
 PLACEHOLDER = "<!-- XFIT_ORIGINAL_MEDIA -->"
 
@@ -53,12 +53,12 @@ def revised(row):
         raise PublishError("Publicly reviewed old anchors missing")
     if "5nm2022" in raw.casefold() or re.search(r"<\s*(?:video|audio|script|form|object|embed)\b|\[(?:gallery|su_button)\b",raw,re.I):
         raise PublishError("Unreviewed coupon or embedded media")
-    frames=re.findall(r\'<iframe\\b[^>]*\\bsrc\\s*=\\s*["\\x27]([^"\\x27]+)["\\x27][^>]*>\',raw,re.I)
-    if len(frames)!=len(re.findall(r"<iframe\\b",raw,re.I)) or len(frames)>1 or any(urlsplit(u).hostname not in ("www.youtube.com","youtube.com","www.youtube-nocookie.com") or urlsplit(u).path!="/embed/"+VIDEO for u in frames):
+    frames=re.findall(r'<iframe\b[^>]*\bsrc\s*=\s*["\x27]([^"\x27]+)["\x27][^>]*>',raw,re.I)
+    if len(frames)!=len(re.findall(r"<iframe\b",raw,re.I)) or len(frames)>1 or any(urlsplit(u).hostname not in ("www.youtube.com","youtube.com","www.youtube-nocookie.com") or urlsplit(u).path!="/embed/"+VIDEO for u in frames):
         raise PublishError("Unreviewed embedded media")
     if VIDEO not in raw and VIDEO not in rendered:
         raise PublishError("Reviewed original video missing")
-    for match in re.findall(r"\\[embed\\](.*?)\\[/embed\\]",raw,re.I|re.S):
+    for match in re.findall(r"\[embed\](.*?)\[/embed\]",raw,re.I|re.S):
         if VIDEO not in match or len(match)>200:raise PublishError("Unreviewed video shortcode")
     inventory=[]
     main=[]
@@ -72,7 +72,7 @@ def revised(row):
             if u not in inventory:inventory.append(u)
         elif (p.hostname or "").removeprefix("www.") in ("youtube.com","youtu.be","youtube-nocookie.com") and VIDEO in (p.path+"?"+p.query):
             continue
-        elif ((p.hostname or "").removeprefix("www."),p.path or "/") in OLD_LINKS and p.scheme in ("http","https") and not p.username and not p.password and not p.port:
+        elif ((p.hostname or "").removeprefix("www."),p.path.rstrip("/") or "/") in OLD_LINKS and p.scheme in ("http","https") and not p.username and not p.password and not p.port:
             removed.append(((p.hostname or "").removeprefix("www."),p.path or "/"))
         else:
             raise PublishError("Unreviewed legacy link")
