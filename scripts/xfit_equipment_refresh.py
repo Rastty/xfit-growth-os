@@ -6,7 +6,7 @@ import os
 import re
 from pathlib import Path
 
-from scripts.xfit_equipment_comparison import CATALOG, PREPARED, SLUG, URL, build_document
+from scripts.xfit_equipment_comparison import CATALOG, PREPARED, SLUG, URL, build_document, BUDGET_MARKER
 from scripts.xfit_catalog_retrieval import verified_catalog_fetch_time
 from scripts.xfit_editorial_gate import check_document
 from scripts.wp_publish import (
@@ -36,6 +36,14 @@ def segments(body):
     begin, end = body.index(START), body.index(END)
     if len(dates) != 1 or dates[0].end() >= begin or not begin < body.index(OFFER_HEADING) < end:
         raise PublishError("Equipment retrieval date or offer block order invalid")
+    budget_start = '<section ' + BUDGET_MARKER
+    if BUDGET_MARKER in body:
+        if body.count(BUDGET_MARKER) != 1 or body.count(budget_start) != 1:
+            raise PublishError("Ambiguous equipment budget section")
+        budget_begin = body.index(budget_start)
+        if not dates[0].end() < budget_begin < begin or not body[budget_begin:begin].rstrip().endswith("</section>"):
+            raise PublishError("Equipment budget boundary drifted")
+        begin = budget_begin
     block = body[begin:end]
     if not 2 <= block.count('class="xfit-product-card"') <= 6 or not 2 <= block.count('rel="sponsored nofollow noopener noreferrer"') <= 6:
         raise PublishError("Unexpected equipment generated card structure")
