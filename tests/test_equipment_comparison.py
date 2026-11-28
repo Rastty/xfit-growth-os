@@ -60,6 +60,28 @@ class EquipmentTests(unittest.TestCase):
         self.assertNotIn("Pumpa na", doc["content"])
         self.assertEqual(len(shortlist(rows, BASE, SAMPLE)["ball"]), 1)
         self.assertNotIn('id="xfit-gear-ball"', build_document(catalog(item(1,"Yoga Mat"),item(2,"Resistance Band")),BASE,SAMPLE)["content"])
+    def test_strength_accessories_are_distinct_and_not_bandages(self):
+        category = "Pásky, trhačky, rukavice, bandáže"
+        rows = catalog(item(1, "Yoga Mat", 499), item(2, "Resistance Band", 549),
+                       item(3, "Dámské fitness rukavice Pink – Muscle Aggressive S", 269, category=category),
+                       item(4, "Kožený Fitness Opasek Warrior M", 449, category=category),
+                       item(5, "Powerlifterský opasek Warrior L", 499, category=category),
+                       item(6, "Trhačky Warrior", 99, category=category),
+                       item(7, "Figure 8 trhačky Warrior", 179, category=category),
+                       item(8, "Bandáže na zápěstí Warrior", 149, category=category),
+                       item(9, "Náhradní fitness opasek", 20, category=category),
+                       item(10, "Fitness rukavice a trhačky", 300, category=category))
+        doc = build_document(rows, BASE, SAMPLE)
+        self.assertEqual(check_document(doc)["product_cards"], 7)
+        for group in ("glove", "belt", "strap"):
+            self.assertIn('id="xfit-gear-'+group+'"', doc["content"])
+            self.assertIn('href="#xfit-gear-'+group+'"', doc["content"])
+        self.assertNotIn("Bandáže na zápěstí", doc["content"])
+        self.assertNotIn("Náhradní fitness", doc["content"])
+        self.assertNotIn("Fitness rukavice a trhačky", doc["content"])
+        self.assertIn("1\u00a0048,00 Kč", doc["content"])
+        self.assertIsNone(equipment_kind(item(11,"Trhačky Warrior",category="Vitamíny")))
+
     def test_budget_is_exact_sum_and_preserves_no_buy(self):
         from scripts.xfit_equipment_comparison import budget_block,shortlist
         rows=catalog(item(1,"Yoga Mat",499),item(2,"Resistance Band",549))

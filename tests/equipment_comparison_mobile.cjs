@@ -11,14 +11,14 @@ async function main() {
     const page = await browser.newPage({viewport:{width:375,height:812},deviceScaleFactor:1});
     await page.setContent('<html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>'+doc.content+'</body></html>');
     const links = await page.locator('article.xfit-product-card a[rel~="sponsored"]').evaluateAll(els=>els.map(a=>a.href));
-    assert.ok(links.length >= 2 && links.length <= 8);
+    assert.ok(links.length >= 2 && links.length <= 14);
     const budget = page.locator('#xfit-gear-budget-v1');
     assert.equal(await budget.count(),1);
     const norm = text => text.replace(/\s+/g,' ').replace(/[–—−]/g,'-').trim();
     const expectedBudget = (await budget.locator('h2,p').allTextContents()).map(norm).filter(Boolean);
     const expectedPrices = await budget.locator('strong').evaluateAll(els=>els.map(e=>e.textContent.replace(/\s+/g,' ').replace(/[–—−]/g,'-').trim()));
     const expectedOptional = [];
-    for(const id of ['xfit-gear-ball','xfit-gear-massage']){
+    for(const id of ['xfit-gear-ball','xfit-gear-massage','xfit-gear-glove','xfit-gear-belt','xfit-gear-strap']){
       if(await page.locator('#'+id).count()) expectedOptional.push(id);
     }
     if(phase === 'live'){
