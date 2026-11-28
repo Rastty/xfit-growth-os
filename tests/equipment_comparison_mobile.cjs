@@ -21,11 +21,21 @@ async function main() {
     for(const id of ['xfit-gear-ball','xfit-gear-massage','xfit-gear-glove','xfit-gear-belt','xfit-gear-strap']){
       if(await page.locator('#'+id).count()) expectedOptional.push(id);
     }
+    const nav=page.locator('#xfit-equipment-nav-v2');
+    const expectedNav=['#xfit-gear-mat','#xfit-gear-band',...expectedOptional.map(id=>'#'+id),'#xfit-gear-budget-v1'];
     if(phase === 'live'){
       await page.setExtraHTTPHeaders({'Cache-Control':'no-cache','Pragma':'no-cache'});
       await page.goto(URL,{waitUntil:'domcontentloaded',timeout:60000});
       await budget.waitFor({state:'visible',timeout:15000});
       assert.equal(new global.URL(page.url()).pathname, new global.URL(URL).pathname);
+    }
+    assert.equal(await nav.count(),1);
+    assert.deepEqual(await nav.locator('a').evaluateAll(els=>els.map(a=>a.getAttribute('href'))),expectedNav,'category navigation targets');
+    assert.equal(await nav.evaluate(el=>el.scrollWidth>el.clientWidth+2),false,'category navigation overflow');
+    for(let i=0;i<expectedNav.length;i++){
+      const box=await nav.locator('a').nth(i).boundingBox();
+      assert.ok(box && box.height>=44 && box.x>=-1 && box.x+box.width<=376,'category navigation geometry');
+      assert.equal(await page.locator(expectedNav[i]).count(),1,'category destination exists');
     }
     const cards = page.locator('article.xfit-product-card[id^="xfit-gear-offer-"]');
     assert.equal(await cards.count(),links.length);
@@ -74,8 +84,8 @@ async function main() {
     }
     fs.mkdirSync('reports/browser-qa',{recursive:true});
     await cards.first().scrollIntoViewIfNeeded();
-    await page.screenshot({path:'reports/browser-qa/equipment-'+phase+'.png'});
-    console.log(JSON.stringify({state:'EQUIPMENT_MOBILE_'+phase.toUpperCase()+'_VERIFIED',cards:links.length,budget_verified:true,optional_groups:expectedOptional,width:375,clicked_merchant_links:0}));
+    await page.screenshot({path:'reports/browser-qa/equipment-'+phase+'.png',timeout:15000,animations:'disabled'});
+    console.log(JSON.stringify({state:'EQUIPMENT_MOBILE_'+phase.toUpperCase()+'_VERIFIED',cards:links.length,budget_verified:true,navigation_verified:true,optional_groups:expectedOptional,width:375,clicked_merchant_links:0}));
   } finally {await browser.close();}
 }
 main().catch(err=>{console.error('EQUIPMENT_MOBILE_QA_FAILED: '+(err?.name==='AssertionError' ? (err.message||'').split('\n')[0].slice(0,120) : err?.name||'unknown'));process.exitCode=2;});
