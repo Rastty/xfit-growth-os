@@ -47,6 +47,14 @@ def local_image(url):
             and not p.username and not p.password and not p.port
             and not p.query and not p.fragment and p.path.startswith("/wp-content/uploads/"))
 
+def media_url(url):
+    # Preserve only site-local WordPress image assets, not arbitrary URLs.
+    p=urlsplit(url)
+    if not local_image(url) or not re.fullmatch(r"/wp-content/uploads/[0-9]{4}/[0-9]{2}/[A-Za-z0-9_%.-]+\.(?:jpg|jpeg|png|webp|gif)",p.path,re.I) or ".." in p.path:
+        raise PublishError("Unrecognized original media path")
+    return urlunsplit(("https",p.netloc,p.path,"",""))
+
+
 def read():
     rows = wp_request(normalized_base(), "posts?" + urlencode({
         "slug":SLUG,"context":"edit","status":"publish","per_page":2,"_fields":FIELDS}))
@@ -70,48 +78,74 @@ def revised(raw, rendered):
     if re.search(r"<\s*(?:iframe|video|audio|script|form|object|embed)\b|\[(?:gallery|embed)\b",raw,re.I):
         raise PublishError("Unreviewed embedded media")
     old=[]
+    linked_media=[]
     for href in editorial_links(raw):
         p=urlsplit(href)
         if p.scheme not in ("http","https") or p.username or p.password or p.port:
             raise PublishError("Unreviewed legacy link")
         if local_image(href):
-            if not REVIEWED_PATH.fullmatch(p.path):
-                raise PublishError("Unreviewed linked local image")
+            linked_media.append(media_url(href))
             continue
         old.append((p.hostname or "").removeprefix("www."))
     if len(old)!=5 or set(old)!=OLD_HOSTS:
         raise PublishError("Reviewed legacy link hosts differ")
-    # The reviewed public image is the authoritative unique photograph.
-    # WP legacy shortcodes or duplicate responsive markup can alter raw tag
-    # counts; permit only that same local file or its resized WP derivative.
+    # Retain ALL local original image destinations, including legacy linked
+    # full-size images not visible in the text extractor. Never infer that a
+    # different filename is a duplicate. Visible images retain their order.
     if not isinstance(rendered,str):
         raise PublishError("Missing authenticated rendered article")
-    parsers=[]
+    inventory=[]
+    visible_images=[]
     for source in (raw,rendered):
         parser=Images()
         parser.feed(source)
-        parsers.append(parser)
-    if not parsers[1].images or len(parsers[0].images)>6 or len(parsers[1].images)>6:
-        raise PublishError("Unexpected original image inventory: raw="+str(len(parsers[0].images))+", rendered="+str(len(parsers[1].images)))
-    for parser in parsers:
+        if len(parser.images)>12:
+            raise PublishError("Unexpectedly large original image inventory")
         for image in parser.images:
-            urls=[image.get(k) for k in ("src","data-src","data-lazy-src") if image.get(k)]
-            if not urls or any(not local_image(u) or not REVIEWED_PATH.fullmatch(urlsplit(u).path) for u in urls):
-                raise PublishError("Unreviewed original image in raw or rendered source")
+            urls=[media_url(image[k]) for k in ("src","data-src","data-lazy-src") if image.get(k)]
+            if not urls:
+                raise PublishError("Original image has no source")
             for key in ("srcset","data-srcset","data-lazy-srcset"):
                 for entry in image.get(key,"").split(","):
                     if entry.strip():
-                        u=entry.strip().split()[0]
-                        if not local_image(u) or not REVIEWED_PATH.fullmatch(urlsplit(u).path):
-                            raise PublishError("Unreviewed responsive image source")
-    pic='<p><img src="'+REVIEWED_IMAGE+'" alt="Ilustrační fotografie klasické podprsenky" loading="lazy" style="max-width:100%;height:auto;" /></p>'
+                        urls.append(media_url(entry.strip().split()[0]))
+            for u in urls:
+                if u not in inventory:
+                    inventory.append(u)
+            if source==rendered:
+                primary=urls[0]
+                if primary not in visible_images:
+                    visible_images.append(primary)
+    for u in linked_media:
+        if u not in inventory:
+            inventory.append(u)
+    if len(inventory)>40 or not any(REVIEWED_PATH.fullmatch(urlsplit(u).path) for u in inventory):
+        raise PublishError("Reviewed public photo absent or original inventory too large")
+    if not visible_images:
+        # Legacy malformed markup may expose only the linked photo.
+        visible_images=[next(u for u in inventory if REVIEWED_PATH.fullmatch(urlsplit(u).path))]
+    parts=[]
+    for u in visible_images:
+        alt="Ilustrační fotografie klasické podprsenky" if REVIEWED_PATH.fullmatch(urlsplit(u).path) else "Původní ilustrační fotografie k článku"
+        parts.append('<p><img src="'+html.escape(u,quote=True)+'" alt="'+alt+'" loading="lazy" style="max-width:100%;height:auto;" /></p>')
+    # Preserve every extra original media destination as an accessible link,
+    # including resized derivatives. No need to show identical photos twice.
+    extras=[u for u in inventory if u not in visible_images]
+    if extras:
+        parts.append('<details><summary>Původní obrazové přílohy článku</summary><ul>'+''.join(
+            '<li><a href="'+html.escape(u,quote=True)+'">Obrazová příloha '+str(i+1)+'</a></li>'
+            for i,u in enumerate(extras))+'</ul></details>')
+    pic="\n".join(parts)
     body=BODY.read_text(encoding="utf-8").strip()
     if body.count(IMAGE_PLACEHOLDER)!=1 or body.count(MARKER)!=1:
         raise PublishError("Reviewed new editorial source unavailable")
     body=body.replace(IMAGE_PLACEHOLDER,pic)
     proof=check_document({"content":body},commercial=False)
-    if proof["word_count"]<800 or proof["image_count"]!=1 or editorial_links(body).count(ANCHOR)!=1:
+    if proof["word_count"]<800 or proof["image_count"]!=len(visible_images) or editorial_links(body).count(ANCHOR)!=1:
         raise PublishError("Reviewed guide incomplete")
+    preserved=set(editorial_links(body)) | set(visible_images)
+    if not set(inventory)<=preserved:
+        raise PublishError("Original media destination not retained")
     return body,proof["word_count"]
 
 def snapshot():
