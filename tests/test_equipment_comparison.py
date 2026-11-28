@@ -47,6 +47,19 @@ class EquipmentTests(unittest.TestCase):
         self.assertEqual(len(result["band"]), 1)
         self.assertIn("nikoli nutně za jeden kus", build_document(rows, BASE, SAMPLE)["content"])
 
+    def test_optional_ball_and_massage_are_separate_and_feed_bound(self):
+        rows = catalog(item(1, "Yoga Mat", 499), item(2, "Resistance Band", 549),
+                       item(3, "Fitball 85 cm – Muscle Aggressive", 369),
+                       item(4, "Masážní sada Muscle Ball and Roller Set Black 4 ks – Muscle Aggressive", 499),
+                       item(5, "Pumpa na Fitball 85 cm", 100))
+        doc = build_document(rows, BASE, SAMPLE)
+        self.assertEqual(check_document(doc)["product_cards"], 4)
+        self.assertIn('id="xfit-gear-ball"', doc["content"])
+        self.assertIn('id="xfit-gear-massage"', doc["content"])
+        self.assertIn("1\u00a0048,00 Kč", doc["content"])
+        self.assertNotIn("Pumpa na", doc["content"])
+        self.assertEqual(len(shortlist(rows, BASE, SAMPLE)["ball"]), 1)
+        self.assertNotIn('id="xfit-gear-ball"', build_document(catalog(item(1,"Yoga Mat"),item(2,"Resistance Band")),BASE,SAMPLE)["content"])
     def test_budget_is_exact_sum_and_preserves_no_buy(self):
         from scripts.xfit_equipment_comparison import budget_block,shortlist
         rows=catalog(item(1,"Yoga Mat",499),item(2,"Resistance Band",549))
