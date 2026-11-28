@@ -58,7 +58,11 @@ async function main() {
       assert.equal(overflow,false,'Card horizontal overflow');
     }
     assert.equal(await budget.count(),1);
-    assert.deepEqual((await budget.locator('h2,p').allTextContents()).map(norm).filter(Boolean),expectedBudget,'budget text differs after rendering');
+    const actualBudget=(await budget.locator('h2,p').allTextContents()).map(norm).filter(Boolean);
+    if(JSON.stringify(actualBudget)!==JSON.stringify(expectedBudget)){
+      console.log(JSON.stringify({state:'EQUIPMENT_BUDGET_RENDER_DIFFERENCE',expected:expectedBudget,actual:actualBudget}));
+    }
+    assert.deepEqual(actualBudget,expectedBudget,'budget text differs after rendering');
     assert.deepEqual(await budget.locator('strong').evaluateAll(els=>els.map(e=>e.textContent.replace(/\s+/g,' ').replace(/[–—−]/g,'-').trim())),expectedPrices,'budget prices differ');
     assert.equal(await budget.evaluate(el=>el.scrollWidth>el.clientWidth+2),false,'budget overflow');
     for(const id of ['xfit-gear-mat','xfit-gear-band',...expectedOptional]){
