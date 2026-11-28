@@ -9,6 +9,7 @@ on:
       - '.github/workflows/xfit-drinkware-daily-live.yml'
       - 'scripts/xfit_drinkware_refresh.py'
       - 'tests/test_drinkware_refresh.py'
+      - 'content/revisions/drinkware-buying-guide.html'
 permissions:
   contents: read
   actions: read
@@ -63,7 +64,22 @@ jobs:
       - name: Refresh only generated sections and verify live
         run: python -m scripts.xfit_drinkware_refresh apply
       - name: Verify live card hrefs and mobile layout
-        run: node tests/drinkware_comparison_mobile.cjs live
+        run: |
+          node tests/drinkware_comparison_mobile.cjs live
+          node - <<'JS'
+          const {chromium}=require('playwright');
+          const assert=require('node:assert/strict');
+          (async()=>{const browser=await chromium.launch({headless:true});try{
+            const page=await browser.newPage({viewport:{width:375,height:812}});
+            await page.goto('https://xfit.cz/xfit-os-sejkry-a-sportovni-lahve/',{waitUntil:'domcontentloaded',timeout:45000});
+            const guide=page.locator('#xfit-drinkware-buying-guide-v1');
+            assert.equal(await guide.count(),1);
+            assert.ok(await guide.locator('h2').count()>=5);
+            assert.ok((await guide.innerText()).split(/\s+/).length>=650);
+            assert.equal(await guide.evaluate(el=>el.scrollWidth>el.clientWidth+2),false);
+            console.log('DRINKWARE_EDITORIAL_MOBILE_LIVE_VERIFIED');
+          }finally{await browser.close()}})().catch(()=>process.exitCode=2);
+          JS
       - name: Preserve mobile screenshots
         if: always()
         uses: actions/upload-artifact@v4

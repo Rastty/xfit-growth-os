@@ -22,6 +22,10 @@ START = '<h2 id="xfit-drink-shaker">Šejkry na míchání – aktuální nabídk
 END = "<h2>Kolik zaplatíte při samostatné objednávce</h2>"
 OFFER_HEADING = '<h2 id="xfit-drink-bottle">'
 MAX_BYTES = 400000
+GUIDE = Path("content/revisions/drinkware-buying-guide.html")
+GUIDE_MARKER = 'id="xfit-drinkware-buying-guide-v1"'
+GUIDE_ANCHOR = "<h2>Metodika výběru</h2>"
+
 
 
 def sha(value):
@@ -51,6 +55,13 @@ def splice(old, new):
     # All other existing editorial HTML survives byte-for-byte, even if a human
     # or a separate authorized editor has added a paragraph since launch.
     output = old[:d1] + new[n1:n2] + old[d2:b1] + new[m1:m2] + old[b2:]
+    if GUIDE_MARKER not in output:
+        guide = GUIDE.read_text(encoding="utf-8").strip()
+        if guide.count(GUIDE_MARKER) != 1 or output.count(GUIDE_ANCHOR) != 1:
+            raise PublishError("Reviewed drinkware buying guide insertion unavailable")
+        output = output.replace(GUIDE_ANCHOR, guide + "\n" + GUIDE_ANCHOR, 1)
+    elif output.count(GUIDE_MARKER) != 1:
+        raise PublishError("Duplicate drinkware buying guide marker")
     check_document({"content": output}, commercial=True)
     return output
 
