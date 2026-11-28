@@ -108,6 +108,21 @@ def shortlist(catalog, base, sample):
             for kind, rows in grouped.items()}
 
 
+BUDGET_MARKER = 'id="xfit-gear-budget-v1"'
+
+def budget_block(groups):
+    mat, band = groups["mat"][0], groups["band"][0]
+    total = mat["price"] + band["price"]
+    return ('<section '+BUDGET_MARKER+' aria-label="Rozpočet na domácí cvičení" style="border:1px solid #cdded7;border-radius:12px;padding:14px;margin:16px 0;background:#f6faf8;overflow-wrap:anywhere">'
+        '<h2>Kolik stojí základní vybavení na domácí cvičení?</h2>'
+        '<p>Vyberte jen to, co vám chybí. Níže jsou nejnižší ceny způsobilých katalogových nabídek v jednotlivých skupinách, nikoli doporučení kvality.</p>'
+        '<p><strong>0 Kč – využiji vlastní vybavení.</strong> Pokud mi vyhovuje, nic dalšího nepotřebuji.</p>'
+        '<p><a href="#xfit-gear-mat" style="display:block;min-height:44px;box-sizing:border-box;padding:10px 0"><strong>Jen podložka: '+money(mat["price"])+'</strong> – přejít na nabídku</a></p>'
+        '<p><a href="#xfit-gear-band" style="display:block;min-height:44px;box-sizing:border-box;padding:10px 0"><strong>Jen odporová guma: '+money(band["price"])+'</strong> – přejít na nabídku</a></p>'
+        '<p><strong>Podložka + guma: '+money(total)+'</strong> (součet nejnižších cen obou skupin, ne cena akčního setu).</p>'
+        '<p><small>Ceny bez dopravy a poplatků, pouze z jednoho prodejce. Ověřte parametry a cenu konkrétní varianty v košíku. Pokud nejlevnější varianta nevyhovuje vašemu pohybu, není pro vás výhodná.</small></p></section>')
+
+
 def build_document(catalog, base, sample):
     groups = shortlist(catalog, base, sample)
     if any(not groups[kind] for kind in GROUPS) or sum(map(len, groups.values())) < 2:
@@ -120,6 +135,7 @@ def build_document(catalog, base, sample):
         '<h2>Jak rozhodnout, za co utratit peníze</h2>',
         '<ul><li><strong>Cvičíte na zemi:</strong> nejdřív řešte prostor, povrch a rozměry podložky.</li><li><strong>Potřebujete přidat odpor:</strong> zvažte typ gumy podle pohybu, délky a bezpečného použití podle návodu.</li><li><strong>Obojí:</strong> ověřte, že každou pomůcku skutečně využijete. Nekupujte set jen kvůli slevě nebo dopravě zdarma.</li></ul>',
     ]
+    parts.append(budget_block(groups))
     n = 0
     for kind, (heading, guide, caution) in GROUPS.items():
         parts += [

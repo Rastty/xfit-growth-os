@@ -1,11 +1,6 @@
 name: XFIT Home Equipment Comparison First Live Release
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/xfit-equipment-comparison-first-live.yml'
-      - 'scripts/xfit_equipment_comparison.py'
-      - 'tests/test_equipment_comparison.py'
+  # Initial publication complete; subsequent changes use the pinned daily writer.
   workflow_dispatch:
 permissions:
   contents: read

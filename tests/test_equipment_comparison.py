@@ -47,5 +47,13 @@ class EquipmentTests(unittest.TestCase):
         self.assertEqual(len(result["band"]), 1)
         self.assertIn("nikoli nutně za jeden kus", build_document(rows, BASE, SAMPLE)["content"])
 
+    def test_budget_is_exact_sum_and_preserves_no_buy(self):
+        from scripts.xfit_equipment_comparison import budget_block,shortlist
+        rows=catalog(item(1,"Yoga Mat",499),item(2,"Resistance Band",549))
+        b=budget_block(shortlist(rows,BASE,SAMPLE))
+        self.assertIn("1\u00a0048,00 Kč",b)
+        self.assertIn("0 Kč",b)
+        self.assertIn("ne cena akčního setu",b)
+
 if __name__ == "__main__":
     unittest.main()
