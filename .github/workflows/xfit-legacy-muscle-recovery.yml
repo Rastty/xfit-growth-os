@@ -1,0 +1,70 @@
+name: XFIT Legacy Muscle Recovery Guide
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-legacy-muscle-recovery.yml'
+      - 'scripts/xfit_legacy_muscle_recovery.py'
+      - 'content/revisions/legacy-muscle-recovery.html'
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+      XFIT_GITHUB_ISSUES_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate existing release safeguards
+        run: python -m unittest discover -s tests -v
+      - name: Capture reviewed exact existing article and destination
+        run: python -m scripts.xfit_legacy_muscle_recovery snapshot
+      - name: Immutable original
+        uses: actions/upload-artifact@v4
+        with:
+          name: legacy-muscle-recovery-original
+          path: reports/backups/xfit-legacy-muscle-recovery-original.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Publish reviewed revision and verify exact live body
+        run: python -m scripts.xfit_legacy_muscle_recovery apply
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Verify live mobile guide and exact internal target
+        run: |
+          node - <<'JS'
+          const {chromium}=require('playwright');
+          const assert=require('node:assert/strict');
+          (async()=>{const browser=await chromium.launch({headless:true});try{
+            const page=await browser.newPage({viewport:{width:375,height:812}});
+            await page.setExtraHTTPHeaders({'Cache-Control':'no-cache','Pragma':'no-cache'});
+            await page.goto('https://xfit.cz/tri-typy-pro-regeneraci-svalu/',{waitUntil:'domcontentloaded',timeout:45000});
+            const guide=page.locator('#xfit-muscle-recovery-v1');
+            await guide.waitFor({state:'visible',timeout:15000});
+            assert.equal(await guide.count(),1);
+            assert.ok(await guide.locator('h2').count()>=7);
+            assert.equal(await guide.evaluate(el=>el.scrollWidth>el.clientWidth+2),false);
+            const link=guide.locator('a[href="https://xfit.cz/xfit-os-vybaveni-na-domaci-cviceni-nabidky/"]');
+            assert.equal(await link.count(),1);
+            assert.ok(await link.isVisible());
+            console.log('LEGACY_MUSCLE_RECOVERY_MOBILE_LIVE_VERIFIED');
+          }finally{await browser.close()}})().catch(e=>{console.error(e.name);process.exitCode=2});
+          JS
