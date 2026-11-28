@@ -50,3 +50,14 @@ class ApparelTests(unittest.TestCase):
         self.assertIn('id="xfit-apparel-bra"',doc["content"])
         self.assertIn('id="xfit-size-picker-bra"',doc["content"])
         self.assertEqual(check_document(doc)["product_cards"],3)
+
+    def test_expanded_training_clothing_groups(self):
+        for title,category,kind in (
+            ("Dámské tričko A S","Dámská trička","women-shirt"),
+            ("Dámske fitness kraťasy B M","Dámské šortky","women-shorts"),
+            ("Fitness kraťasy pánske C L","Pánske šortky","men-shorts"),
+            ("Tepláky Warrior XL","Pánské tepláky","joggers"),
+        ):
+            self.assertEqual(apparel_kind(item(51,title,299,category=category)),kind)
+        self.assertIsNone(apparel_kind(item(52,"Dámské tričko bez velikosti",299,category="Dámská trička")))
+        self.assertIsNone(apparel_kind(item(53,"Fitness legíny S",299,category="Dámské šortky")))

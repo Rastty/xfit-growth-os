@@ -20,7 +20,7 @@ SNAPSHOT = Path("reports/backups/xfit-apparel-before-refresh.json")
 RETRIEVAL = re.compile(r'<p class="xfit-feed-retrieval"><small>[^<]*(?:<strong>[^<]+</strong>)[^<]*</small></p>')
 END = "<h2>Co ověřit před objednáním</h2>"
 NAV = re.compile(r'<nav aria-label="Výběr oblečení">.*?</nav>', re.S)
-HEADING = re.compile(r'<h2 id="xfit-apparel-(?:shirt|hoodie|leggings|bra|top)">[^<]+</h2>')
+HEADING = re.compile(r'<h2 id="xfit-apparel-(?:shirt|hoodie|leggings|bra|top|women-shirt|women-shorts|men-shorts|joggers)">[^<]+</h2>')
 MAX_BYTES = 400000
 EDITORIAL = Path("content/revisions/apparel-fit-buying-guide.html")
 EDITORIAL_MARKER = 'id="xfit-apparel-fit-guide-v1"'
@@ -43,7 +43,7 @@ def segments(body):
     block=body[begin:end]
     count=block.count('class="xfit-product-card"')
     size_count = block.count('data-xfit-size="')
-    if not 3<=count<=15 or not 0<=size_count<=65 or block.count('rel="sponsored nofollow noopener noreferrer"')!=count+size_count:
+    if not 3<=count<=27 or not 0<=size_count<=117 or block.count('rel="sponsored nofollow noopener noreferrer"')!=count+size_count:
         raise PublishError("Unexpected apparel card or size-choice count")
     if size_count and block.count('<details id="xfit-size-picker-')!=len(headings):
         raise PublishError("Apparel size picker group count mismatch")

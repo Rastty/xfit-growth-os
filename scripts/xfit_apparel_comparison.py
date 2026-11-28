@@ -29,6 +29,10 @@ GROUPS = {
     "hoodie": ("Pánské mikiny", "Ověřte střih, tloušťku, materiál a zda chcete zip nebo provedení přes hlavu."),
     "leggings": ("Fitness legíny", "Ověřte rozměry pasu a boků, délku nohavic a možnost vrácení."),
     "top": ("Dámské fitness topy", "Ověřte délku, střih, materiál a tabulku rozměrů. Samotné označení top nedokládá vestavěnou podprsenku ani míru opory; pro běh a skoky vybírejte podle skutečných potřeb."),
+    "women-shirt": ("Dámská fitness trička", "Ověřte obvod hrudníku, délku a rozsah pohybu ramen."),
+    "women-shorts": ("Dámské fitness šortky", "Ověřte délku nohavic, pas a stabilitu při pohybu; neprůsvitnost nelze odvodit z ceny."),
+    "men-shorts": ("Pánské fitness šortky", "Zkontrolujte rozměry pasu, délku a zda kapsy a střih vyhovují pohybu."),
+    "joggers": ("Pánské tepláky", "Porovnejte pas a délku nohavic, tloušťku a pohodlí při dřepu."),
     "bra": ("Sportovní podprsenky", "Změřte obvod pod prsy a přes prsa podle návodu výrobce. Ověřte deklarovanou míru opory pro svůj pohyb, nastavení ramínek a možnost vrácení. Samotná velikost S nebo M nezaručuje stejný střih ani oporu."),
 }
 PRICE_LIMIT = Decimal("2000")
@@ -44,11 +48,17 @@ def apparel_kind(row):
     category = folded(row.get("category") or "").strip()
     title = folded(row.get("title") or "")
     kind = {"panska tricka": "shirt", "panske mikiny": "hoodie",
-            "fitness leginy": "leggings", "sportovni podprsenky a topy": "bra"}.get(category)
+            "fitness leginy": "leggings", "sportovni podprsenky a topy": "bra",
+            "damska tricka": "women-shirt", "damske sortky": "women-shorts",
+            "panske sortky": "men-shorts", "panske teplaky": "joggers"}.get(category)
     patterns = {"shirt": r"\b(?:trick\w*|trik\w*|t-shirt|tshirt|shirt)\b",
                 "hoodie": r"\b(?:mikin\w*|hoodie|sweatshirt)\b",
                 "leggings": r"\b(?:legin\w*|leggings)\b",
-                "bra": r"\b(?:podprsenk\w*|sports? bra|bra)\b"}
+                "bra": r"\b(?:podprsenk\w*|sports? bra|bra)\b",
+                "women-shirt": r"\b(?:trick\w*|trik\w*|t-shirt|tshirt|shirt)\b",
+                "women-shorts": r"\b(?:kratasy|sortk\w*|shorts)\b",
+                "men-shorts": r"\b(?:kratasy|sortk\w*|shorts)\b",
+                "joggers": r"\b(?:teplak\w*|joggers?)\b"}
     # Same merchant category includes both types; never silently treat a top
     # as a bra. Ambiguous combined titles are excluded.
     if kind == "bra":
@@ -191,6 +201,8 @@ def build_document(catalog, base, sample):
         if not groups[kind]:
             continue
         parts += ['<h2 id="xfit-apparel-'+kind+'">'+heading+' – katalogové varianty</h2>','<p>'+caution+'</p>', size_picker(kind,by_size[kind])]
+        if kind == "women-shirt":
+            parts.append('<p><a href="https://xfit.cz/vyber-spravneho-materialu-pro-damske-fitness-obleceni-rady-od-expertu/">Jak porovnat materiály fitness oblečení a jejich údržbu</a>.</p>')
         if kind == "bra":
             parts.append('<p><a href="https://xfit.cz/jak-na-vyber-podprsenky/">Průvodce měřením velikosti a výběrem sportovní podprsenky podle aktivity</a>.</p>')
         for item in groups[kind][:3]:
