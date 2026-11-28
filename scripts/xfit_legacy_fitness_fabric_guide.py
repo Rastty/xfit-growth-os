@@ -83,11 +83,14 @@ def revised(raw, rendered):
     frames=re.findall(r'<iframe\b[^>]*\bsrc\s*=\s*["\x27]([^"\x27]+)["\x27][^>]*>',cleaned,re.I)
     if any(urlsplit(u).hostname not in ("www.youtube.com","youtube.com","www.youtube-nocookie.com") or urlsplit(u).path!="/embed/aupTj6t-FfI" for u in frames):
         raise PublishError("Unreviewed video embed")
-    if len(frames)>1 or re.search(r"<\s*(?:video|audio|script|form|object|embed)\b|\[(?:gallery)\b",cleaned,re.I):
+    if len(re.findall(r"<iframe\b",cleaned,re.I))!=len(frames) or len(frames)>1 or re.search(r"<\s*(?:video|audio|script|form|object|embed)\b|\[(?:gallery)\b",cleaned,re.I):
         raise PublishError("Unreviewed embedded media")
     video_present=bool(frames) or "aupTj6t-FfI" in cleaned
     if not video_present:
         raise PublishError("Reviewed video missing")
+    for match in re.findall(r"\[embed\](.*?)\[/embed\]",cleaned,re.I|re.S):
+        if "aupTj6t-FfI" not in match or len(match)>200:
+            raise PublishError("Unreviewed shortcode video")
 
     old=[]
     linked_media=[]
@@ -135,7 +138,8 @@ def revised(raw, rendered):
     for u in linked_media:
         if u not in inventory:
             inventory.append(u)
-    if len(inventory)>40 or not any(REVIEWED_PATH.fullmatch(urlsplit(u).path) for u in inventory):
+    expected_families=("samuel-girven-4Bp8v9A0zKw-unsplash","damske-fitness-leginy-black-muscle-aggressive-53757","damska-mikina-crop-small-red-muscleaggressive-54235")
+    if len(inventory)>40 or not all(any(REVIEWED_PATH.fullmatch(urlsplit(u).path) and name in urlsplit(u).path for u in inventory) for name in expected_families):
         raise PublishError("Reviewed public photo absent or original inventory too large")
     if not visible_images:
         # Legacy malformed markup may expose only the linked photo.
