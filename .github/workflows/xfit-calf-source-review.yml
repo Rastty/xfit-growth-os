@@ -1,0 +1,45 @@
+name: XFIT Calf Legacy Source Review
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-calf-source-review.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Review exact published calf source (GET only)
+        run: |
+          python - <<'PY'
+          import json,re
+          from collections import Counter
+          from urllib.parse import urlsplit, urljoin, parse_qs
+          from scripts.xfit_legacy_calf_training import read, URL
+          from scripts.wp_publish import editorial_links
+          from scripts.xfit_coupon_cleanup import stripped
+          row=read()
+          raw=row["content"]["raw"]
+          clean,n=stripped(raw)
+          safe=lambda u: {"host":urlsplit(urljoin(URL,u)).hostname,"path":urlsplit(urljoin(URL,u)).path[:240]}
+          links=[safe(u) for u in editorial_links(clean) if u not in ("","#")]
+          shortcodes=Counter(re.findall(r"\[/?([A-Za-z][A-Za-z0-9_-]*)\b",clean))
+          tags=Counter(re.findall(r"<\s*(iframe|video|audio|script|form|object|embed)\b",clean,re.I))
+          frames=[safe(u) for u in re.findall(r'<iframe\b[^>]*\bsrc\s*=\s*["\x27]([^"\x27]+)["\x27]',clean,re.I)]
+          print(json.dumps({"state":"CALF_SOURCE_REVIEW","id":row["id"],"known_coupon_count":n,"residual_old_coupon": "5nm2022" in clean.casefold(),"shortcodes":dict(shortcodes),"embedded_tags":dict(tags),"frames":frames,"link_destinations":links,"wordpress_writes":0},ensure_ascii=False))
+          PY
