@@ -23,6 +23,10 @@ END = "<h2>Co zkontrolovat na etiketě před nákupem</h2>"
 NAV = re.compile(r'<nav aria-label="Druhy másel">.*?</nav>', re.S)
 HEADING = re.compile(r'<h2 id="xfit-butter-(?:peanut|almond|cashew)">[^<]+</h2>')
 MAX_BYTES = 400000
+GUIDE = Path("content/revisions/nut-butter-buying-guide.html")
+GUIDE_MARKER = 'id="xfit-nut-butter-buying-guide-v1"'
+GUIDE_ANCHOR = "<h2>Jak vzniká srovnání</h2>"
+
 
 
 def sha(value):
@@ -52,6 +56,13 @@ def splice(old,new):
     output=old
     for (a,b),(c,d) in reversed(list(zip(before,after))):
         output=output[:a]+new[c:d]+output[b:]
+    if GUIDE_MARKER not in output:
+        guide = GUIDE.read_text(encoding="utf-8").strip()
+        if guide.count(GUIDE_MARKER) != 1 or output.count(GUIDE_ANCHOR) != 1:
+            raise PublishError("Reviewed nut butter guide insertion unavailable")
+        output = output.replace(GUIDE_ANCHOR, guide + "\n" + GUIDE_ANCHOR, 1)
+    elif output.count(GUIDE_MARKER) != 1:
+        raise PublishError("Duplicate nut butter buying guide marker")
     check_document({"content":output},commercial=True)
     return output
 

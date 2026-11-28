@@ -21,7 +21,9 @@ class NutButterEntryTests(unittest.TestCase):
         fresh=splice(body,doc(110))
         self.assertIn("Redakční doplněk.",fresh)
         self.assertIn("110,00 Kč",fresh)
-        self.assertEqual(splice(body,doc(100)),body)
+        upgraded=splice(body,doc(100))
+        self.assertIn('xfit-nut-butter-buying-guide-v1',upgraded)
+        self.assertEqual(splice(upgraded,doc(100)),upgraded)
         with self.assertRaises(PublishError):
             splice(body.replace(END,END+END),doc(110))
 
