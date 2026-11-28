@@ -147,6 +147,30 @@ def shortlist(catalog, base, sample, budget=1500):
         raise PublishError("Not enough distinct creatine product/mass families; refuse repeated flavor offers")
     return choose_price_scenarios(result, limit=6)[0]
 
+def comparison_overview(chosen):
+    """Same selected variants as full cards; no new merchant destinations."""
+    rows = []
+    for i, offer in enumerate(chosen, 1):
+        title = html.escape(offer["title"])
+        price = f'{offer["price_czk"]:,.2f}'.replace(",", "\u00a0").replace(".", ",")
+        unit = f'{offer["price_per_100g_powder_czk"]:,.2f}'.replace(",", "\u00a0").replace(".", ",")
+        rows.append(
+            '<a data-xfit-creatine-compare="'+str(i)+'" href="#xfit-offer-'+str(i)+'" '
+            'style="display:block;min-width:0;box-sizing:border-box;min-height:110px;padding:12px;border:1px solid #b9d1c8;border-radius:10px;background:#fff;color:#172d26;text-decoration:none;overflow-wrap:anywhere;line-height:1.4;">'
+            '<strong style="display:block;color:#115e59;">'+title+'</strong>'
+            '<span style="display:block;margin:4px 0;font-size:.9em;">'+str(offer["mass_g"])+' g · '+price+' Kč za balení</span>'
+            '<strong style="display:block;font-size:1.15em;color:#115e59;">'+unit+' Kč / 100 g</strong>'
+            '<span style="display:block;font-size:.85em;margin-top:4px;color:#33453e;">Detail varianty <span aria-hidden="true">→</span></span></a>'
+        )
+    return (
+        '<section id="xfit-creatine-compare" aria-label="Rychlé porovnání všech balení" style="box-sizing:border-box;max-width:100%;margin:16px 0;padding:12px;border:1px solid #b9d1c8;border-radius:12px;background:#f4f9f6;color:#172d26;">'
+        '<h2 style="margin:0 0 8px;font-size:1.3rem;line-height:1.3;color:#172d26;">Všechna balení na jednom místě</h2>'
+        '<p style="margin:0 0 12px;font-size:.9em;">'+str(len(chosen))+' vybraných nabídek z jednoho obchodu, seřazeno podle ceny za 100 g prášku. Cena bez dopravy; nejde o srovnání čistoty ani kvality.</p>'
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:8px;max-width:100%;box-sizing:border-box;">'+''.join(rows)+'</div>'
+        '<p style="margin:10px 0 0;"><a href="#xfit-vyber-podle-rozpoctu" style="display:block;min-height:44px;box-sizing:border-box;padding:10px 12px;background:#115e59;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;">Vybrat podle maximálního rozpočtu <span aria-hidden="true">→</span></a></p></section>'
+    )
+
+
 def build_document(catalog, base, sample):
     chosen = shortlist(catalog, base, sample)
     bits = [
@@ -171,6 +195,7 @@ def build_document(catalog, base, sample):
       'Pořadí podle ceny není nezávislý test kvality ani účinnosti. '
       'Před nákupem můžete porovnat stejné balení i u jiných prodejců.</p>',
       quick_pick(chosen, product_kind="creatine"),
+      comparison_overview(chosen),
       '<nav aria-label="Rychlá navigace poradcem"><ul style="padding-left:24px;">'
       '<li><a href="#xfit-need" style="display:inline-block;padding:12px 0;">'
       'Potřebuji vůbec doplněk?</a></li>'
@@ -212,7 +237,7 @@ def build_document(catalog, base, sample):
       'U nabídky bez doložené dostupnosti to výslovně uvádíme. '
       'Údaj z katalogu není živou rezervací; stav ověřte v obchodě.</p>',
         model_portion_intro("creatine"),
-      '<div class="xfit-product-cards">'
+      '<div class="xfit-product-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px;max-width:100%;box-sizing:border-box;">'
     ]
     for i,offer in enumerate(chosen):
         disclosure_id="xfit-creatine-partner-"+str(i+1)
@@ -224,13 +249,13 @@ def build_document(catalog, base, sample):
         unit=f'{offer["price_per_100g_powder_czk"]:,.2f}'.replace(",", "\u00a0").replace(".", ",")
         label="Nejnižší jednotková cena ve výběru" if i==0 else "Alternativa podle ceny a velikosti balení"
         image=('<p><img src="'+html.escape(offer["image"],quote=True)+
-               '" alt="'+title+'" loading="lazy" width="120" height="120" style="max-width:100%;width:120px;height:120px;object-fit:contain;" /></p>'
+               '" alt="'+title+'" loading="lazy" width="120" height="120" style="display:block;margin:0 auto;max-width:100%;width:120px;height:120px;object-fit:contain;" /></p>'
                if offer["image"] else "")
-        bits.append('<article class="xfit-product-card" id="xfit-offer-'+str(i+1)+'" style="border:1px solid #dce5e8;'
-            'border-radius:12px;padding:16px;margin:16px 0;background:#ffffff;overflow-wrap:anywhere;">'
-            '<h3>'+title+'</h3>'+image+
+        bits.append('<article class="xfit-product-card" id="xfit-offer-'+str(i+1)+'" style="display:flex;flex-direction:column;min-width:0;box-sizing:border-box;scroll-margin-top:100px;border:1px solid #b9d1c8;'
+            'border-radius:12px;padding:12px;margin:0;background:#ffffff;color:#172d26;overflow-wrap:anywhere;">'
+            '<h3 style="font-size:1.05rem;line-height:1.35;margin:0 0 8px;color:#172d26;">'+title+'</h3>'+image+
             '<p><strong>'+label+'</strong></p>'
-            '<p><strong>Cena: '+price+' Kč</strong> · Balení: '+
+            '<p><strong style="font-size:1.3em;color:#115e59;">Cena: '+price+' Kč</strong> · Balení: '+
             str(offer["mass_g"])+' g</p>'
             '<p><strong>Cena za 100 g prášku: '+unit+' Kč</strong></p>'
             '<p data-xfit-availability="'+offer["availability_state"]+'">'+
@@ -238,10 +263,10 @@ def build_document(catalog, base, sample):
             +model_portion_line(offer, "creatine")+
             '<p><small id="'+disclosure_id+'">Partnerský odkaz · Xfit.cz může získat provizi. '
             'Cena bez dopravy a poplatků. NaMaximum.cz · nová karta</small></p>'
-            '<p><a'+card_click_attributes(offer["id"], "creatine")+' href="'+href+'" rel="sponsored nofollow noopener noreferrer" '
+            '<p style="margin:auto 0 0;padding-top:8px;"><a'+card_click_attributes(offer["id"], "creatine")+' href="'+href+'" rel="sponsored nofollow noopener noreferrer" '
             'aria-label="Ověřit cenu a dostupnost produktu '+html.escape(offer["title"],quote=True)+' na NaMaximum.cz (nová karta)" '
             'aria-describedby="'+disclosure_id+'" '
-            'target="_blank" style="display:inline-block;padding:12px 16px;min-height:44px;box-sizing:border-box;'
+            'target="_blank" style="display:block;padding:12px 10px;min-height:44px;box-sizing:border-box;text-align:center;line-height:1.4;'
             'background-color:#116a70;color:#ffffff;text-decoration:none;font-weight:700;'
             'border-radius:8px;">Ověřit cenu a dostupnost</a></p>'
             '<p><a href="#xfit-vyber-podle-rozpoctu" '
