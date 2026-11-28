@@ -27,6 +27,8 @@ ANCHORS = ("Dámy, umíte si vybrat tu pravou podprsenku", "krejčovský metr",
 OLD_HOSTS = {"tabulkavelikosti.cz","vybiramepodprsenky.blogspot.cz",
              "wonderbra.co.uk","lascana-shop.cz","victoriassecret.com"}
 IMAGE_PLACEHOLDER = "<!-- XFIT_REVIEWED_ORIGINAL_IMAGE -->"
+REVIEWED_IMAGE = "https://xfit.cz/wp-content/uploads/2016/08/1111111111.jpg"
+REVIEWED_PATH = re.compile(r"^/wp-content/uploads/2016/08/1111111111(?:-[0-9]+x[0-9]+)?\.jpg$")
 
 class Images(HTMLParser):
     def __init__(self):
@@ -59,7 +61,7 @@ def read():
     stable_metadata(row)
     return row
 
-def revised(raw):
+def revised(raw, rendered):
     if not isinstance(raw,str) or not 1500<=len(raw.encode())<=400000 or MARKER in raw:
         raise PublishError("Unexpected legacy source or already revised")
     visible,_=article_visible(raw)
@@ -73,26 +75,36 @@ def revised(raw):
         if p.scheme not in ("http","https") or p.username or p.password or p.port:
             raise PublishError("Unreviewed legacy link")
         if local_image(href):
+            if not REVIEWED_PATH.fullmatch(p.path):
+                raise PublishError("Unreviewed linked local image")
             continue
         old.append((p.hostname or "").removeprefix("www."))
     if len(old)!=5 or set(old)!=OLD_HOSTS:
         raise PublishError("Reviewed legacy link hosts differ")
-    parser=Images()
-    parser.feed(raw)
-    if len(parser.images)!=1:
-        raise PublishError("Reviewed original image count differs")
-    image=parser.images[0]
-    src=image.get("src","")
-    if not local_image(src):
-        raise PublishError("Original image is not a reviewed local upload")
-    p=urlsplit(src)
-    src=urlunsplit(("https",p.netloc,p.path,"",""))
-    dimensions=""
-    for key in ("width","height"):
-        value=image.get(key,"")
-        if re.fullmatch(r"[1-9][0-9]{0,3}",value):
-            dimensions+=' '+key+'="'+value+'"'
-    pic='<p><img src="'+html.escape(src,quote=True)+'" alt="Ilustrační fotografie k výběru podprsenky" loading="lazy"'+dimensions+' style="max-width:100%;height:auto;" /></p>'
+    # The reviewed public image is the authoritative unique photograph.
+    # WP legacy shortcodes or duplicate responsive markup can alter raw tag
+    # counts; permit only that same local file or its resized WP derivative.
+    if not isinstance(rendered,str):
+        raise PublishError("Missing authenticated rendered article")
+    parsers=[]
+    for source in (raw,rendered):
+        parser=Images()
+        parser.feed(source)
+        parsers.append(parser)
+    if not parsers[1].images or len(parsers[0].images)>6 or len(parsers[1].images)>6:
+        raise PublishError("Unexpected original image inventory: raw="+str(len(parsers[0].images))+", rendered="+str(len(parsers[1].images)))
+    for parser in parsers:
+        for image in parser.images:
+            urls=[image.get(k) for k in ("src","data-src","data-lazy-src") if image.get(k)]
+            if not urls or any(not local_image(u) or not REVIEWED_PATH.fullmatch(urlsplit(u).path) for u in urls):
+                raise PublishError("Unreviewed original image in raw or rendered source")
+            for key in ("srcset","data-srcset","data-lazy-srcset"):
+                for entry in image.get(key,"").split(","):
+                    if entry.strip():
+                        u=entry.strip().split()[0]
+                        if not local_image(u) or not REVIEWED_PATH.fullmatch(urlsplit(u).path):
+                            raise PublishError("Unreviewed responsive image source")
+    pic='<p><img src="'+REVIEWED_IMAGE+'" alt="Ilustrační fotografie klasické podprsenky" loading="lazy" style="max-width:100%;height:auto;" /></p>'
     body=BODY.read_text(encoding="utf-8").strip()
     if body.count(IMAGE_PLACEHOLDER)!=1 or body.count(MARKER)!=1:
         raise PublishError("Reviewed new editorial source unavailable")
@@ -110,7 +122,7 @@ def snapshot():
     row=read()
     raw=row["content"]["raw"]
     verify_public(URL,TITLE,row["content"].get("rendered") or raw)
-    new,words=revised(raw)
+    new,words=revised(raw,row["content"].get("rendered"))
     if BACKUP.exists():
         raise PublishError("Refusing to overwrite prewrite backup")
     BACKUP.parent.mkdir(parents=True,exist_ok=True)
@@ -122,7 +134,7 @@ def apply():
     backup=json.loads(BACKUP.read_text(encoding="utf-8"))
     row=read()
     old=row["content"]["raw"]
-    new,words=revised(old)
+    new,words=revised(old,row["content"].get("rendered"))
     if (backup.get("schema")!=1 or backup.get("wordpress_writes")!=0 or backup.get("before")!=row
             or backup.get("before_sha")!=sha(old) or backup.get("after_sha")!=sha(new)):
         raise PublishError("Source drift after immutable backup")
