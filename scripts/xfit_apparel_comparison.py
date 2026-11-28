@@ -154,7 +154,7 @@ def size_picker(kind, variants):
             'aria-label="Ověřit velikost a cenu: '+attr+' (nová karta)" style="display:inline-block;min-height:44px;box-sizing:border-box;padding:12px 0;font-weight:700;">Ověřit tuto variantu</a></li>')
     return ('<details id="xfit-size-picker-'+kind+'" style="border:1px solid #cdded7;border-radius:10px;padding:12px;margin:12px 0;background:#f6faf8">'
         '<summary style="cursor:pointer;min-height:44px;box-sizing:border-box;padding:10px 0;font-weight:700">Vybrat podle velikosti ('+str(len(rows))+' velikostí)</summary>'
-        '<p>Nejnižší katalogová cena způsobilé varianty v každé uvedené velikosti, nikoli doporučení kvality. Ceny bez dopravy. Označení velikosti ověřte v tabulce výrobce. Chybějící velikost neznamená, že ji obchod nemá.</p>'
+        '<p>'+GROUPS[kind][0]+': nejnižší katalogová cena způsobilé varianty v každé uvedené velikosti, nikoli doporučení kvality. Ceny bez dopravy. Označení velikosti ověřte v tabulce výrobce. Chybějící velikost neznamená, že ji obchod nemá.</p>'
         '<ul style="padding-left:20px">'+''.join(rows)+'</ul>'
         '<p><small>Partnerské odkazy · Xfit.cz může získat provizi · NaMaximum.cz · nová karta.</small></p></details>')
 
