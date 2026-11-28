@@ -15,6 +15,8 @@ from scripts.xfit_public_coupon_watch import probe
 from scripts.xfit_editorial_gate import check_document
 from scripts.xfit_apparel_refresh import read_source, URL as TARGET, TITLE as TARGET_TITLE
 
+POST_ID = 6361
+CATEGORY_URL = "https://xfit.cz/category/kulturistika-fitness/ostatni/"
 SLUG = "vyber-spravneho-materialu-pro-damske-fitness-obleceni-rady-od-expertu"
 URL = "https://xfit.cz/" + SLUG + "/"
 TITLE = "Výběr správného materiálu pro dámské fitness oblečení – rady od expertů"
@@ -62,7 +64,7 @@ def read():
     if not isinstance(rows,list) or len(rows)!=1:
         raise PublishError("Expected one exact published legacy article")
     row=rows[0]
-    if (type(row.get("id")) is not int or row["id"] in QUARANTINE_IDS
+    if (type(row.get("id")) is not int or row["id"]!=POST_ID or row["id"] in QUARANTINE_IDS
             or row.get("slug")!=SLUG or row.get("link")!=URL or row.get("status")!="publish"
             or normalize_visible(row.get("title",{}).get("raw",""))!=normalize_visible(TITLE)
             or not isinstance(row.get("modified_gmt"),str)):
@@ -94,6 +96,7 @@ def revised(raw, rendered):
 
     old=[]
     linked_media=[]
+    category_links=0
     for href in editorial_links(cleaned):
         if href in ("#",""):
             continue
@@ -105,8 +108,11 @@ def revised(raw, rendered):
         if local_image(href):
             linked_media.append(media_url(href))
             continue
-        old.append((p.hostname or "").removeprefix("www."))
-    if len(old)!=2 or set(old)!=OLD_HOSTS:
+        if (p.hostname or "").removeprefix("www.")=="xfit.cz" and p.path=="/category/kulturistika-fitness/ostatni/" and not p.query and not p.fragment:
+            category_links+=1
+            continue
+        old.append(((p.hostname or "").removeprefix("www."),p.path))
+    if category_links!=1 or sorted(old)!=[("cs.wikipedia.org","/wiki/Fitness"),("shape.com","/fitness/clothes/best-fabrics-workout-clothes-breathable-sweat-wicking")]:
         raise PublishError("Reviewed legacy link hosts differ")
     # Retain ALL local original image destinations, including legacy linked
     # full-size images not visible in the text extractor. Never infer that a
@@ -161,7 +167,7 @@ def revised(raw, rendered):
         raise PublishError("Reviewed new editorial source unavailable")
     body=body.replace(IMAGE_PLACEHOLDER,pic)
     proof=check_document({"content":body},commercial=False)
-    if proof["word_count"]<800 or proof["image_count"]!=len(visible_images) or editorial_links(body).count(ANCHOR)!=1:
+    if proof["word_count"]<800 or proof["image_count"]!=len(visible_images) or editorial_links(body).count(ANCHOR)!=1 or editorial_links(body).count(CATEGORY_URL)!=1:
         raise PublishError("Reviewed guide incomplete")
     preserved=set(editorial_links(body)) | set(visible_images)
     if not set(inventory)<=preserved:
