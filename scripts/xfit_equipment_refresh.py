@@ -38,6 +38,16 @@ GYM_LINK = (
 )
 
 
+TRAINING_TARGET = "https://xfit.cz/co-je-to-funkcni-trenink/"
+TRAINING_MARKER = 'id="xfit-gear-training-return-v1"'
+TRAINING_ANCHOR = "<h2>Jak rozhodnout, za co utratit peníze</h2>"
+TRAINING_LINK = (
+    '<aside '+TRAINING_MARKER+' aria-label="Nejprve vyberte trénink" style="box-sizing:border-box;max-width:100%;margin:16px 0;padding:12px;border:1px solid #bdcfc9;border-radius:10px;background:#f4f9f6;color:#172d26;">'
+    '<p style="margin:0 0 4px;"><strong>Ještě nevíte, jak budete cvičit?</strong> Nejdřív si vyberte trénink podle cíle. Pomůcky dokupujte, až když je skutečně potřebujete.</p>'
+    '<a href="'+TRAINING_TARGET+'" style="display:inline-flex;align-items:center;min-height:44px;box-sizing:border-box;color:#115e59;font-weight:700;text-decoration:underline;overflow-wrap:anywhere;">Vybrat domácí trénink i bez nákupu</a></aside>'
+)
+
+
 def sha(value):
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
@@ -111,6 +121,12 @@ def splice(old, new):
         output = output.replace(GUIDE_ANCHOR, guide + "\n" + GUIDE_ANCHOR, 1)
     elif output.count(STRENGTH_MARKER) != 1:
         raise PublishError("Duplicate strength accessory guide marker")
+    if TRAINING_MARKER not in output:
+        if output.count(TRAINING_ANCHOR)!=1 or TRAINING_TARGET in editorial_links(output):
+            raise PublishError("Reviewed training return insertion unavailable")
+        output=output.replace(TRAINING_ANCHOR,TRAINING_LINK+"\n"+TRAINING_ANCHOR,1)
+    elif output.count(TRAINING_MARKER)!=1 or output.count(TRAINING_LINK)!=1:
+        raise PublishError("Ambiguous training return")
     check_document({"content": output}, commercial=True)
     return output
 
@@ -153,6 +169,13 @@ def snapshot():
         if gym["link"] != GYM_TARGET or GYM_GUIDE_MARKER not in gym["content"]["raw"]:
             raise PublishError("New gym planning guide not live")
         verify_public(GYM_TARGET, gym["title"]["raw"], gym["content"]["rendered"])
+    if TRAINING_MARKER not in old:
+        # Import lazily to avoid the chooser's dependency on equipment reader.
+        from scripts.xfit_home_training_chooser import read as read_training, CHOOSER, POST_ID as TRAINING_ID
+        training=read_training()
+        if training["id"]!=TRAINING_ID or training["link"]!=TRAINING_TARGET or CHOOSER not in training["content"]["raw"]:
+            raise PublishError("Reviewed training chooser is not live")
+        verify_public(TRAINING_TARGET,training["title"]["raw"],training["content"]["rendered"])
     if SNAPSHOT.exists():
         raise PublishError("Refusing to overwrite prewrite backup")
     SNAPSHOT.parent.mkdir(parents=True, exist_ok=True)
