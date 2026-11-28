@@ -29,7 +29,13 @@ GROUPS = {
             "Ověřte délku, šířku, tloušťku a povrch. Ne každá podložka se hodí pro dynamický pohyb nebo odkládání závaží."),
     "band": ("Odporové gumy", "xfit-os-vyber-odporove-gumy",
              "Ověřte tvar, délku, rozsah odporu při uvedeném natažení a způsob uchycení. Barva není jednotnou stupnicí mezi výrobci."),
+    "ball": ("Gymnastické míče (fitball)", None,
+             "Vybírejte rozměr podle zamýšleného pohybu, návodu a skutečných rozměrů. Zkontrolujte deklarované zatížení, nafukování, protiskluznost a dostatek volného prostoru. Nestabilní míč není nutný pro začátečníka."),
+    "massage": ("Masážní válce a míčky v sadě", None,
+                "Sada má smysl jen pokud využijete její součásti. Ověřte přesný obsah, rozměry, materiál a pokyny pro používání. Nepoužívejte bolestivý tlak ani pomůcku jako náhradu zdravotní péče."),
 }
+REQUIRED_GROUPS = ("mat", "band")
+OPTIONAL_GROUPS = ("ball", "massage")
 PRICE_LIMIT = Decimal("2000")
 
 
@@ -40,6 +46,17 @@ def equipment_kind(row):
                     "podlozk", "expand", "posilovaci gum", "odporove gum", "fitness pomucky",
                     "pomocky na cvicenie", "treningove prislusenstvo")):
         return None
+    # Exact optional types from the reviewed merchant category. Do not treat
+    # a fitball as a resistance band, or a massage set as a yoga mat.
+    if re.search(r"\b(?:nahradn\w*|replacement|repair|drzak\w*|pouzdro|obal|obaly|pump\w*|ventil\w*|kniha|trhac\w*|bandaz\w*|bandage|stahovac\w*|opasek|protein\w*)\b", title):
+        return None
+    if "pomucky pro cviceni" in category or "pomocky na cvicenie" in category:
+        ball = bool(re.search(r"\bfitball\s+[0-9]{2,3}\s*cm\b", title))
+        massage = bool(re.search(r"\bmasazni sada muscle ball and roller set\b", title))
+        if ball and not massage and not re.search(r"\b(?:mat|band|podlozk\w*|gum\w*)\b", title):
+            return "ball"
+        if massage and not ball and not re.search(r"\b(?:mat|band|podlozk\w*|gum\w*)\b", title):
+            return "massage"
     if re.search(r"\b(?:masaz\w*|massage|roller|podlozk\w* pod|ochrann\w* podlozk\w*|"
                  r"nahradn\w*|replacement|repair|drzak\w*|pouzdro|obal|obaly|"
                  r"kniha|trhac\w*|bandaz\w*|bandage|stahovac\w*|opasek|protein\w*)\b", title):
@@ -120,12 +137,12 @@ def budget_block(groups):
         '<p><a href="#xfit-gear-mat" style="display:block;min-height:44px;box-sizing:border-box;padding:10px 0"><strong>Jen podložka: '+money(mat["price"])+'</strong> – přejít na nabídku</a></p>'
         '<p><a href="#xfit-gear-band" style="display:block;min-height:44px;box-sizing:border-box;padding:10px 0"><strong>Jen odporová guma: '+money(band["price"])+'</strong> – přejít na nabídku</a></p>'
         '<p><strong>Podložka + guma: '+money(total)+'</strong> (součet nejnižších cen obou skupin, ne cena akčního setu).</p>'
-        '<p><small>Ceny bez dopravy a poplatků, pouze z jednoho prodejce. Ověřte parametry a cenu konkrétní varianty v košíku. Pokud nejlevnější varianta nevyhovuje vašemu pohybu, není pro vás výhodná.</small></p></section>')
+        + optional + '<p><small>Ceny bez dopravy a poplatků, pouze z jednoho prodejce. Ověřte parametry a cenu konkrétní varianty v košíku. Pokud nejlevnější varianta nevyhovuje vašemu pohybu, není pro vás výhodná.</small></p></section>')
 
 
 def build_document(catalog, base, sample):
     groups = shortlist(catalog, base, sample)
-    if any(not groups[kind] for kind in GROUPS) or sum(map(len, groups.values())) < 2:
+    if any(not groups[kind] for kind in REQUIRED_GROUPS):
         raise PublishError("Both equipment purposes must have genuine eligible products")
     parts = [
         '<p><strong>Co opravdu potřebujete pro domácí cvičení?</strong> Podložka řeší kontakt se zemí a odporová guma umožňuje přidat odpor. Není nutné kupovat obě věci najednou. Pokud vám vyhovuje stávající vybavení, nekupujte nic. Zvolte nejprve účel a až potom nabídku podle ceny.</p>',
@@ -138,11 +155,14 @@ def build_document(catalog, base, sample):
     parts.append(budget_block(groups))
     n = 0
     for kind, (heading, guide, caution) in GROUPS.items():
+        if not groups[kind]:
+            continue
+        guide_link = (' <a href="https://xfit.cz/' + guide + '/">Podrobný návod k výběru</a>.') if guide else ""
         parts += [
             '<h2 id="xfit-gear-' + kind + '">' + heading + ' – aktuální nabídky</h2>',
-            '<p>' + caution + ' <a href="https://xfit.cz/' + guide + '/">Podrobný návod k výběru</a>.</p>',
+            '<p>' + caution + guide_link + '</p>',
         ]
-        for item in groups[kind][:3]:
+        for item in groups[kind][:1 if kind in OPTIONAL_GROUPS else 3]:
             n += 1
             title = html.escape(item["title"])
             attr = html.escape(item["title"], quote=True)
