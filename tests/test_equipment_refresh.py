@@ -2,7 +2,7 @@ import unittest
 from datetime import datetime, timezone
 from unittest.mock import patch
 from scripts.xfit_equipment_comparison import build_document
-from scripts.xfit_equipment_refresh import splice, segments, START, END
+from scripts.xfit_equipment_refresh import splice, segments, START, END, GUIDE_MARKER
 from scripts.wp_publish import MARKER, PublishError
 from test_equipment_comparison import BASE, SAMPLE, catalog, item
 
@@ -16,7 +16,8 @@ def source(price=249):
 
 class EquipmentRefreshTests(unittest.TestCase):
     def test_only_owned_dynamic_sections_change_and_editorial_html_survives(self):
-        old = MARKER + "\n" + source()
+        body = source()
+        old = splice(MARKER + "\n" + body, body)
         old = old.replace(END, END + '\n<p>Redakční doplněk beze změny.</p>')
         new = source(259)
         changed = splice(old, new)
@@ -32,7 +33,9 @@ class EquipmentRefreshTests(unittest.TestCase):
     def test_same_catalog_same_day_is_noop(self):
         body = source()
         old = MARKER + "\n" + body
-        self.assertEqual(splice(old, body), old)
+        upgraded = splice(old, body)
+        self.assertEqual(upgraded.count(GUIDE_MARKER), 1)
+        self.assertEqual(splice(upgraded, body), upgraded)
 
     def test_missing_duplicate_boundaries_or_unowned_source_fail(self):
         old = MARKER + "\n" + source()

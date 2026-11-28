@@ -46,6 +46,13 @@ async function main() {
       assert.ok(box && box.height>=44 && box.x>=-1 && box.x+box.width<=376,'budget jump link geometry');
       assert.equal(await page.locator('#'+id).count(),1,'budget target missing');
     }
+    if(phase === 'live'){
+      const guide = page.locator('#xfit-gear-buying-guide-v1');
+      assert.equal(await guide.count(),1);
+      assert.equal(await guide.isVisible(),true);
+      assert.equal(await guide.locator('h4').count(),4);
+      assert.equal(await guide.evaluate(el=>el.scrollWidth>el.clientWidth+2),false,'guide overflow');
+    }
     fs.mkdirSync('reports/browser-qa',{recursive:true});
     await cards.first().scrollIntoViewIfNeeded();
     await page.screenshot({path:'reports/browser-qa/equipment-'+phase+'.png'});
