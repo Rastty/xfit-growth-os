@@ -1,8 +1,14 @@
-# XFIT — PROJECT_STATE (2026-11-27, TURBO)
+# XFIT — PROJECT_STATE (2026-11-28, TURBO)
 
 **Cíl:** Důvěryhodný český fitness, výživový a suplementový poradce: relevantní návštěva → poctivé rozhodnutí (i nic nekoupit) → ověřená nabídka → skutečně schválená a vyplacená affiliate provize. PR, CI ani merge samy nejsou produkčním nasazením ani ziskem.
 
-## HOTOVO / OVĚŘENO — poslední TURBO
+## HOTOVO / OVĚŘENO — TURBO 2026-11-28
+
+- **Opraveno reálné cenové srovnání hotových másel:** [PR #448](https://github.com/Rastty/xfit-growth-os/pull/448) MERGED `502b85273d110c4c1fa675822226fc5f1d7d53f5`, [CI 46123207522](https://github.com/Rastty/xfit-growth-os/actions/runs/46123207522) SUCCESS. [Release 46123244485](https://github.com/Rastty/xfit-growth-os/actions/runs/46123244485) SUCCESS: WP #26178, 4 nabídky místo 5, výslovně práškové varianty a konfliktní identity mimo cenové pořadí hotových másel, vysvětlení přímo v generovaném bloku. Immutable backup, 1 content-only POST, exact source/public proof, 375px mobile 4 cards PASS, 0 merchant clicks. Denní writer nově používá filtrovaný dokument; původní first-live generátor zachován, aby se nespustil druhý writer.
+- **Sedmý komerční segment skutečně publikován:** [PR #449](https://github.com/Rastty/xfit-growth-os/pull/449) MERGED `3a405a0c644e90ca879853ab1c67a427c5e4baa7`, [CI 46123591202](https://github.com/Rastty/xfit-growth-os/actions/runs/46123591202) SUCCESS. [Release 46123617280](https://github.com/Rastty/xfit-growth-os/actions/runs/46123617280): PUBLIC_VERIFIED_NEW_POST WP #26219 [Fitness oblečení](https://xfit.cz/xfit-os-fitness-obleceni-nabidky/), APPAREL_MOBILE_LIVE_VERIFIED 375px 9 karet (3 trička, 3 mikiny, 3 legíny), 0 merchant clicks. Čerstvý zdroj potvrdil 7/10/10 způsobilých rodin v příslušných skupinách; přesná velikost v názvu, cena konkrétní varianty, žádný odhad skladu jiných velikostí ani materiálu. Jeden nový článek, žádný přepis archivu. Celkem 39 karet napříč 7 segmenty podle posledních jednotlivých ověřených release počtů, nikoli nová souběžná inventura.
+- **Další nejvyšší priorita:** daily refresh pinned #26219 s ochranou původního obsahu, přidat 9. cestu do homepage-first rozcestníku #25458 až po ověření targetu; využít starší relevantní archivní články (např. výběr materiálu dámského fitness oblečení) s přesnými zdrojovými ID a koordinací kuponového writeru. Nezasahovat do otevřených agentních PR #445/#380/#263/#270. Nevydávat katalogové řádky za sklad nebo provize. XFIT GSC/GA4, Affial approved/paid a druhý schválený prodejce stále neověřeny; revenue UNKNOWN.
+
+## HOTOVO / OVĚŘENO — předchozí TURBO (27.11.)
 
 - **Hlavní proteinový poradce:** [PR #443](https://github.com/Rastty/xfit-growth-os/pull/443) MERGED `c3df8a189247e381e180e234e5c4445215bd5f25`, [CI 46061274092](https://github.com/Rastty/xfit-growth-os/actions/runs/46061274092) SUCCESS. [Release 46061331578](https://github.com/Rastty/xfit-growth-os/actions/runs/46061331578) SUCCESS: 1 content-only POST, exact source/public proof, 375px mobile target PASS, 0 merchant clicks. Vlastní druhá produkční změna v tomto běhu. Jeden kontextový odstavec před individuální radou #25451, odkaz do nabídky šejkrů, původní protein-guide-v2 zachovat, žádný nový článek.
 
