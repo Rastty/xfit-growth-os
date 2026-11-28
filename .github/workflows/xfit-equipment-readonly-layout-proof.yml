@@ -1,0 +1,56 @@
+name: XFIT Equipment Read-Only Layout Proof
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/xfit-equipment-readonly-layout-proof.yml'
+permissions:
+  contents: read
+concurrency:
+  group: xfit-wp-heavy-reads
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || 'https://xfit.cz' }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Capture current owned published body with GET only
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from scripts.xfit_equipment_refresh import read_source,URL,TITLE
+          from scripts.wp_publish import verify_public
+          body,_=read_source()
+          verify_public(URL,TITLE,body)
+          assert "data-xfit-gear-choice" in body and "data-xfit-offer-grid" in body
+          p=Path("reports/private-equipment-comparison.json")
+          p.parent.mkdir(parents=True,exist_ok=True)
+          p.write_text(json.dumps({"content":body},ensure_ascii=False),encoding="utf-8")
+          print("EQUIPMENT_CURRENT_SOURCE_PUBLIC_VERIFIED; wordpress_writes=0")
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Verify the actual current published page without POST
+        run: node tests/equipment_comparison_mobile.cjs live
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: equipment-readonly-layout
+          path: reports/browser-qa/equipment-live.png
+          if-no-files-found: ignore
