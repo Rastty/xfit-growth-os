@@ -31,6 +31,16 @@ class CreatineGuideTests(unittest.TestCase):
             item(403,"Creatine Monohydrate Complex 500g",180,500),
             item(404,"Creatine Creatine 500g",420,500),
         ]}
+    def test_compact_comparison_matches_selected_variants(self):
+        chosen = shortlist(self.catalog, BASE, SAMPLE)
+        body = build_document(self.catalog, BASE, SAMPLE)["content"]
+        self.assertIn('id="xfit-creatine-compare"', body)
+        self.assertEqual(body.count('data-xfit-creatine-compare='), len(chosen))
+        for index, item in enumerate(chosen, 1):
+            self.assertIn('data-xfit-creatine-compare="'+str(index)+'" href="#xfit-offer-'+str(index)+'"', body)
+            self.assertIn('id="xfit-offer-'+str(index)+'"', body)
+        self.assertIn('class="xfit-product-cards" style="display:grid;', body)
+
     def test_sample(self):
         self.assertTrue(validate_example(BASE,SAMPLE))
     def test_correct_target_and_no_heureka(self):

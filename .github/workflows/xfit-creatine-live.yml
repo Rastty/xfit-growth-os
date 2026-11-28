@@ -37,7 +37,7 @@ jobs:
   deploy:
     if: ${{ vars.XFIT_AFFIL_FEED_ENABLED == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
       WP_USERNAME: ${{ secrets.WP_USERNAME }}
@@ -77,3 +77,12 @@ jobs:
           retention-days: 7
       - name: Idempotently publish or update canonical creatine guide, verify live
         run: python -m scripts.xfit_creatine_guide --deploy
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Verify live comparison geometry and exact offer anchors
+        run: node tests/creatine_comparison_live.cjs
