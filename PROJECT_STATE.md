@@ -4,7 +4,7 @@
 
 ## HOTOVO / OVĚŘENO — TURBO 28.11. (nákupní průvodce silovým příslušenstvím)
 
-- **Nový redakční blok:** [PR #477](https://github.com/Rastty/xfit-growth-os/pull/477) připravený přibližně 947slovný průvodce výběrem rukavic, opasků a trhaček, velikosti, rozdíly konstrukce, checklist, čtyři FAQ a nezávislé odborné zdroje 2026. Podmíněné propojení z jednotlivých skutečných skupin a návrat k dynamickým cenám. Existující jediný daily writer; žádná nová URL. Zatím PR, ne produkce.
+- **Nový redakční blok:** [PR #477](https://github.com/Rastty/xfit-growth-os/pull/477) MERGED `902300064eb20affaa45fcf3357eb3259cb5faf0`, CI 46139940888 SUCCESS, přibližně 947slovný průvodce výběrem rukavic, opasků a trhaček, velikosti, rozdíly konstrukce, checklist, čtyři FAQ a nezávislé odborné zdroje 2026. Podmíněné propojení z jednotlivých skutečných skupin a návrat k dynamickým cenám. Existující jediný daily writer; žádná nová URL. [Release 46140029133](https://github.com/Rastty/xfit-growth-os/actions/runs/46140029133) spuštěn; zatím bez finálního receipt, nezapočítávat do nasazení.
 
 ## HOTOVO / OVĚŘENO — TURBO 28.11. (silové příslušenství)
 
