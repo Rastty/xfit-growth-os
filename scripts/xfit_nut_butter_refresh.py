@@ -6,7 +6,8 @@ import os
 import re
 from pathlib import Path
 
-from scripts.xfit_nut_butter_comparison import CATALOG, PREPARED, SLUG, URL, build_document
+from scripts.xfit_nut_butter_comparison import CATALOG, PREPARED, SLUG, URL, build_document as base_document
+from scripts.xfit_select import folded
 from scripts.xfit_catalog_retrieval import verified_catalog_fetch_time
 from scripts.xfit_editorial_gate import check_document
 from scripts.wp_publish import (
@@ -69,6 +70,58 @@ def read_source():
         raise PublishError("Missing nut-butter post ownership")
     segments(raw)
     return raw, modified
+
+
+# Dry powdered products are not comparable gram-for-gram with ready-to-eat
+# nut butter. Reject them before ranking or family deduplication.
+_POWDER = re.compile(r"\b(?:v prasku|praskov\w*|powder(?:ed)?|powders)\b")
+_FORM_NOTE = ('<p><strong>Hotové máslo vs. prášek:</strong> '
+              'Arašídové a ořechové máslo v prášku do tohoto cenového srovnání '
+              'nezahrnujeme. Po přidání vody se změní hmotnost připravené porce; '
+              'cena za 100 g suchého prášku není přímo srovnatelná s cenou '
+              'za 100 g hotového másla. Řiďte se návodem na konkrétní etiketě.</p>')
+
+
+def build_document(catalog, base, sample):
+    items = catalog.get("products")
+    if not isinstance(items, list):
+        raise PublishError("Unexpected nut butter catalog inventory")
+    # Keep the original raw inventory limit before filtering.
+    from scripts.xfit_select import MAX_FULL_CATALOG_SCAN
+    if len(items) > MAX_FULL_CATALOG_SCAN:
+        raise PublishError("Unexpected nut butter catalog inventory")
+    # Do not let filtering hide contradictory catalog identities.
+    rejected = [row for row in items
+                if _POWDER.search(folded(row.get("title") or ""))]
+    conflict_keys = {(key, str(row[key])) for row in rejected
+                     for key in ("id", "ean", "source_url") if row.get(key)}
+    filtered = dict(catalog, products=[
+        row for row in items
+        if not _POWDER.search(folded(row.get("title") or ""))
+        and not any((key, str(row[key])) in conflict_keys
+                    for key in ("id", "ean", "source_url") if row.get(key))
+    ])
+    doc = base_document(filtered, base, sample)
+    # This paragraph belongs inside the generated region so that the daily
+    # refresh preserves it without replacing the surrounding editorial copy.
+    first = HEADING.search(doc["content"])
+    if first is None:
+        raise PublishError("No comparable nut butter offer section")
+    end = first.end()
+    doc["content"] = doc["content"][:end] + "\n" + _FORM_NOTE + doc["content"][end:]
+    check_document(doc, commercial=True)
+    return doc
+
+
+def prepare():
+    catalog = json.loads(CATALOG.read_text(encoding="utf-8"))
+    verified_catalog_fetch_time(catalog, required=True)
+    doc = build_document(catalog, os.environ["XFIT_AFFIL_DEFAULT_LINK"],
+                         os.environ["XFIT_AFFIL_SAMPLE_PRODUCT_LINK"])
+    PREPARED.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
+    print(json.dumps({"state": "NUT_BUTTER_COMPARABLE_FORMS_PREPARED",
+                      "cards": check_document(doc)["product_cards"],
+                      "wordpress_writes": 0}))
 
 
 def fresh_document():
@@ -147,10 +200,10 @@ def apply():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("step", choices=("snapshot", "apply"))
+    parser.add_argument("step", choices=("prepare", "snapshot", "apply"))
     args = parser.parse_args()
     try:
-        (snapshot if args.step == "snapshot" else apply)()
+        {"prepare": prepare, "snapshot": snapshot, "apply": apply}[args.step]()
     except (PublishError, ValueError, OSError, KeyError, TypeError) as exc:
         print("XFIT_NUT_BUTTER_REFRESH_BLOCKED: " + type(exc).__name__)
         raise SystemExit(2)
