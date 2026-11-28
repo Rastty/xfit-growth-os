@@ -2,9 +2,13 @@
 
 **Cíl:** Důvěryhodný český fitness, výživový a suplementový poradce: relevantní návštěva → poctivé rozhodnutí (i nic nekoupit) → ověřená nabídka → skutečně schválená a vyplacená affiliate provize. PR, CI ani merge samy nejsou produkčním nasazením ani ziskem.
 
+## HOTOVO / OVĚŘENO — TURBO 28.11. (nákupní průvodce silovým příslušenstvím)
+
+- **Nový redakční blok:** [PR #477](https://github.com/Rastty/xfit-growth-os/pull/477) připravený přibližně 947slovný průvodce výběrem rukavic, opasků a trhaček, velikosti, rozdíly konstrukce, checklist, čtyři FAQ a nezávislé odborné zdroje 2026. Podmíněné propojení z jednotlivých skutečných skupin a návrat k dynamickým cenám. Existující jediný daily writer; žádná nová URL. Zatím PR, ne produkce.
+
 ## HOTOVO / OVĚŘENO — TURBO 28.11. (silové příslušenství)
 
-- **Fitness rukavice, opasky a trhačky:** [PR #476](https://github.com/Rastty/xfit-growth-os/pull/476) MERGED `80c01a2a50bbcafa6de75e95e337331bacb263f0`, CI 46139367966 SUCCESS. Tři nové volitelné skupiny v existujícím WP #26154, nejvýše dvě způsobilé produktové rodiny v každé, přesná identita z katalogu, kritéria výběru a dynamický rozpočet, beze změny původního součtu podložky a gumy. Bez nové URL. [Release 46139502261](https://github.com/Rastty/xfit-growth-os/actions/runs/46139502261) spuštěn; zatím bez finálního receipt, nezapočítávat do nasazení ani karet. Poslední potvrzené celkové počty zůstávají 47 karet / 7 komerčních stránek; GSC/GA4/Affial a druhý schválený prodejce neověřeny.
+- **Fitness rukavice, opasky a trhačky:** [PR #476](https://github.com/Rastty/xfit-growth-os/pull/476) MERGED `80c01a2a50bbcafa6de75e95e337331bacb263f0`, CI 46139367966 SUCCESS. Tři nové volitelné skupiny v existujícím WP #26154, nejvýše dvě způsobilé produktové rodiny v každé, přesná identita z katalogu, kritéria výběru a dynamický rozpočet, beze změny původního součtu podložky a gumy. Bez nové URL. [Release 46139502261](https://github.com/Rastty/xfit-growth-os/actions/runs/46139502261) live_verified + 375px mobile PASS: mat 1, band 1, ball 1, massage 1, glove 1, belt 3 způsobilé / 2 zobrazené, strap 2. WP #26154 má 9 karet místo 4, 1 content-only POST, immutable backup + exact public readback, 0 merchant clicks. Celkem 52 karet / 7 komerčních stránek podle posledních jednotlivých ověřených počtů; GSC/GA4/Affial a druhý schválený prodejce neověřeny.
 
 ## HOTOVO / OVĚŘENO — TURBO 28.11. (rozšíření domácího fitness a regenerace)
 
