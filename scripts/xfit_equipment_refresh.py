@@ -25,6 +25,14 @@ MAX_BYTES = 400000
 GUIDE = Path("content/revisions/equipment-buying-guide.html")
 GUIDE_MARKER = 'id="xfit-gear-buying-guide-v1"'
 GUIDE_ANCHOR = "<h2>Metodika výběru</h2>"
+GYM_TARGET = "https://xfit.cz/domaci-posilovny-a-workout-hriste/"
+GYM_MARKER = 'data-xfit-handoff="xfit-gear-home-gym-plan-v1"'
+GYM_ANCHOR = '<h3>Výběr podle místa, které máte k dispozici</h3>'
+GYM_LINK = (
+    '<p ' + GYM_MARKER + '><strong>Plánujete celou domácí posilovnu nebo workout na zahradě?</strong> '
+    'Projděte si <a href="' + GYM_TARGET + '">průvodce rozvržením prostoru, rozpočtem a venkovním workoutem</a> '
+    's modelovými rozpočty a postupem od cvičení bez vybavení až po větší investici.</p>'
+)
 
 
 def sha(value):
@@ -69,6 +77,12 @@ def splice(old, new):
         output = output.replace(GUIDE_ANCHOR, guide + "\n" + GUIDE_ANCHOR, 1)
     elif output.count(GUIDE_MARKER) != 1:
         raise PublishError("Duplicate equipment buying guide marker")
+    if GYM_MARKER not in output:
+        if output.count(GYM_ANCHOR) != 1 or GYM_TARGET in editorial_links(output):
+            raise PublishError("Reviewed gym planning route insertion unavailable")
+        output = output.replace(GYM_ANCHOR, GYM_LINK + "\n" + GYM_ANCHOR, 1)
+    elif output.count(GYM_MARKER) != 1 or output.count(GYM_LINK) != 1:
+        raise PublishError("Ambiguous gym planning handoff")
     check_document({"content": output}, commercial=True)
     return output
 
@@ -104,6 +118,13 @@ def snapshot():
     doc = fresh_document()
     old, modified = read_source()
     new = splice(old, doc["content"])
+    if GYM_MARKER not in old:
+        # Check the exact published destination before adding its first link.
+        from scripts.xfit_legacy_home_gym_workout import read as read_gym, MARKER as GYM_GUIDE_MARKER
+        gym = read_gym()
+        if gym["link"] != GYM_TARGET or GYM_GUIDE_MARKER not in gym["content"]["raw"]:
+            raise PublishError("New gym planning guide not live")
+        verify_public(GYM_TARGET, gym["title"]["raw"], gym["content"]["rendered"])
     if SNAPSHOT.exists():
         raise PublishError("Refusing to overwrite prewrite backup")
     SNAPSHOT.parent.mkdir(parents=True, exist_ok=True)
