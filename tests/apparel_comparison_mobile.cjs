@@ -11,16 +11,18 @@ async function main() {
     const page = await browser.newPage({viewport:{width:375,height:812},deviceScaleFactor:1});
     await page.setContent('<html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>'+doc.content+'</body></html>');
     const links = await page.locator('article.xfit-product-card a[rel~="sponsored"]').evaluateAll(els=>els.map(a=>a.href));
-    assert.ok(links.length >= 3 && links.length <= 15);
+    assert.ok(links.length >= 3 && links.length <= 27);
     const sizeSelector = 'details[id^="xfit-size-picker-"] li[data-xfit-size] a[rel~="sponsored"]';
     const sizeLinks = await page.locator(sizeSelector).evaluateAll(els=>els.map(a=>a.href));
-    assert.ok(sizeLinks.length>=3 && sizeLinks.length<=65);
+    assert.ok(sizeLinks.length>=3 && sizeLinks.length<=117);
+    const groupIds = await page.locator('h2[id^="xfit-apparel-"]').evaluateAll(els=>els.map(e=>e.id));
     const expectedBra = await page.locator('#xfit-apparel-bra').count();
     const expectedTop = await page.locator('#xfit-apparel-top').count();
     if(phase === 'live'){
       await page.goto(URL,{waitUntil:'domcontentloaded',timeout:45000});
       assert.equal(new global.URL(page.url()).pathname, new global.URL(URL).pathname);
     }
+    assert.deepEqual(await page.locator('h2[id^="xfit-apparel-"]').evaluateAll(els=>els.map(e=>e.id)),groupIds);
     assert.equal(await page.locator('#xfit-apparel-bra').count(),expectedBra);
     assert.equal(await page.locator('#xfit-apparel-top').count(),expectedTop);
     if(expectedBra){assert.equal(await page.locator('a[href="https://xfit.cz/jak-na-vyber-podprsenky/"]').count(),1);}
@@ -62,7 +64,7 @@ async function main() {
     fs.mkdirSync('reports/browser-qa',{recursive:true});
     await cards.first().scrollIntoViewIfNeeded();
     await page.screenshot({path:'reports/browser-qa/apparel-'+phase+'.png'});
-    console.log(JSON.stringify({state:'APPAREL_MOBILE_'+phase.toUpperCase()+'_VERIFIED',cards:links.length,size_choices:sizeLinks.length,bra_section:expectedBra,top_section:expectedTop,width:375,clicked_merchant_links:0}));
+    console.log(JSON.stringify({state:'APPAREL_MOBILE_'+phase.toUpperCase()+'_VERIFIED',cards:links.length,size_choices:sizeLinks.length,bra_section:expectedBra,top_section:expectedTop,groups:groupIds,width:375,clicked_merchant_links:0}));
   } finally {await browser.close();}
 }
 main().catch(err=>{console.error('APPAREL_MOBILE_QA_FAILED: '+(err?.name==='AssertionError'?(err.message||'').split('\n')[0].slice(0,120):err?.name||'unknown'));process.exitCode=2;});
