@@ -8,6 +8,7 @@ on:
     paths:
       - '.github/workflows/xfit-equipment-daily-live.yml'
       - 'scripts/xfit_equipment_refresh.py'
+      - 'content/revisions/equipment-buying-guide.html'
       - 'scripts/xfit_equipment_comparison.py'
       - 'tests/equipment_comparison_mobile.cjs'
       - 'tests/test_equipment_refresh.py'
